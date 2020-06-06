@@ -1,0 +1,18 @@
+{
+  "name"             : "cloudatlas/flyclone",
+  "description"      : "PHP wrapper for rclone",
+  "type"             : "library",
+  "require"          : {
+    "php"            : ">=7.3",
+    "symfony/process": "^5.1"
+  },
+  "license"          : "MIT",
+  "authors"          : [
+    {
+      "name" : "Hélio",
+      "email": "insign@gmail.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "prefer-stable"    : true
+}
