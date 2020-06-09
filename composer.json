@@ -1,18 +1,28 @@
 {
-  "name"             : "cloudatlas/flyclone",
-  "description"      : "PHP wrapper for rclone",
-  "type"             : "library",
-  "require"          : {
-    "php"            : ">=7.3",
-    "symfony/process": "^5.1"
-  },
-  "license"          : "MIT",
-  "authors"          : [
+  "name"              : "cloudatlas/flyclone",
+  "description"       : "PHP wrapper for rclone",
+  "type"              : "library",
+  "keywords"          : [
+    "filesystem", "filesystems", "files", "storage", "dropbox", "aws", "abstraction", "s3", "ftp", "sftp", "remote",
+    "webdav", "file systems", "cloud", "cloud files", "rackspace", "rclone", "sync"
+  ],
+  "authors"           : [
     {
-      "name" : "Hélio",
-      "email": "insign@gmail.com"
+      "name"  : "Hélio",
+      "email" : "insign@gmail.com"
     }
   ],
-  "minimum-stability": "dev",
-  "prefer-stable"    : true
+  "license"           : "MIT",
+  "require"           : {
+    "php"             : ">=7.4",
+    "ext-json"        : "*",
+    "symfony/process" : "^5.1"
+  },
+  "autoload"          : {
+    "psr-4" : {
+      "CloudAtlas\\Flyclone\\" : "src/"
+    }
+  },
+  "minimum-stability" : "dev",
+  "prefer-stable"     : true
 }
