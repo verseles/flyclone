@@ -38,7 +38,7 @@ class Rclone
       return trim($process->getOutput());
    }
 
-   protected function simpleRun(string $command, array $flags = [], array $envs = [])
+   protected static function simpleRun(string $command, array $flags = [], array $envs = [])
    {
       $process = new Process([ self::bin(), $command, ...$flags ], NULL, $envs);
       $process->mustRun();
@@ -65,9 +65,14 @@ class Rclone
       return trim($process->getOutput());
    }
 
-   public function version()
+   public static function version()
+   : string
    {
-      return $this->simpleRun('version');
+      $version = self::simpleRun('version');
+
+      preg_match_all('/rclone\sv(.+)/m', $version, $semver, PREG_SET_ORDER, 0);
+
+      return $semver[ 0 ][ 1 ];
    }
 
    public static function bin(string $set = NULL)
