@@ -13,7 +13,7 @@ class Rclone
    private Provider $left_side;
    private ?Provider $right_side;
 
-   public function prefix_flags(array $arr)
+   public static function prefix_flags(array $arr)
    : array
    {
       $newArr = [];
@@ -24,11 +24,22 @@ class Rclone
       return $newArr;
    }
 
+
+   public function allFlags(array $add = [])
+   : array
+   {
+      $forced[ 'RCONFIG_ONE_FILE_SYSTEM' ] = TRUE;
+
+      var_dump([ ...$this->left_side->flags(), ...$this->right_side->flags(), ...$add, $forced ]);
+      exit();
+   }
+
    public function __construct(Provider $left_side, ?Provider $right_side = NULL)
    {
       $this->left_side  = $left_side;
-      $this->right_side = $right_side;
+      $this->right_side = $right_side ?? $left_side;
    }
+
 
    public static function obscure(string $secret)
    {
@@ -58,10 +69,6 @@ class Rclone
 
    protected function directTwinRun(string $command, $left_path = NULL, $right_path = NULL, array $flags = [])
    {
-      if (!$this->right_side) {
-         throw new \InvalidArgumentException('Instantiate right side first.');
-      }
-
       self::simpleRun($command, [
           $this->left_side->backend($left_path),
           $this->right_side->backend($right_path),
