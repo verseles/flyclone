@@ -48,8 +48,23 @@ class Rclone
 
    protected function directRun(string $command, $path = NULL, array $flags = [])
    {
-      $this->simpleRun($command, [
+      self::simpleRun($command, [
           $this->left_side->backend($path),
+          ...$flags,
+      ], $this->left_side->flags());
+
+      return TRUE;
+   }
+
+   protected function directTwinRun(string $command, $left_path = NULL, $right_path = NULL, array $flags = [])
+   {
+      if (!$this->right_side) {
+         throw new \InvalidArgumentException('Instantiate right side first.');
+      }
+
+      self::simpleRun($command, [
+          $this->left_side->backend($left_path),
+          $this->right_side->backend($right_path),
           ...$flags,
       ], $this->left_side->flags());
 
@@ -87,7 +102,7 @@ class Rclone
 
    public function ls(string $path = NULL, array $flags = [])
    {
-      $result = $this->simpleRun('lsjson', [
+      $result = self::simpleRun('lsjson', [
           $this->left_side->backend($path),
           ...$flags,
       ], $this->left_side->flags());
@@ -121,7 +136,7 @@ class Rclone
 
    public function size(string $path = NULL, array $flags = [])
    {
-      $result = $this->simpleRun('size', [
+      $result = self::simpleRun('size', [
           $this->left_side->backend($path),
           ...$flags,
           '--json',
@@ -151,4 +166,15 @@ class Rclone
       return $result;
    }
 
+   public function copy(string $source_path, string $dest_path, array $flags = [])
+   : bool
+   {
+      return $this->directTwinRun('copy', $source_path, $dest_path, $flags);
+   }
+
+   public function move(string $source_path, string $dest_path, array $flags = [])
+   : bool
+   {
+      return $this->directTwinRun('move', $source_path, $dest_path, $flags);
+   }
 }
