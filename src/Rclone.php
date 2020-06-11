@@ -28,10 +28,11 @@ class Rclone
    public function allFlags(array $add = [])
    : array
    {
-      $forced[ 'RCONFIG_ONE_FILE_SYSTEM' ] = TRUE;
+      $forced[ 'RCLONE_LOCAL_ONE_FILE_SYSTEM' ] = TRUE;
 
-      var_dump([ ...$this->left_side->flags(), ...$this->right_side->flags(), ...$add, $forced ]);
-      exit();
+      $add = self::prefix_flags($add);
+
+      return [ ...$this->left_side->flags(), ...$this->right_side->flags(), ...$add, $forced ];
    }
 
    public function __construct(Provider $left_side, ?Provider $right_side = NULL)
@@ -61,8 +62,7 @@ class Rclone
    {
       self::simpleRun($command, [
           $this->left_side->backend($path),
-          ...$flags,
-      ], $this->left_side->flags());
+      ], $this->allFlags($flags));
 
       return TRUE;
    }
@@ -72,8 +72,7 @@ class Rclone
       self::simpleRun($command, [
           $this->left_side->backend($left_path),
           $this->right_side->backend($right_path),
-          ...$flags,
-      ], $this->left_side->flags());
+      ], $this->allFlags($flags));
 
       return TRUE;
    }
@@ -111,8 +110,7 @@ class Rclone
    {
       $result = self::simpleRun('lsjson', [
           $this->left_side->backend($path),
-          ...$flags,
-      ], $this->left_side->flags());
+      ], $this->allFlags($flags));
 
       return json_decode($result);
    }
@@ -145,9 +143,8 @@ class Rclone
    {
       $result = self::simpleRun('size', [
           $this->left_side->backend($path),
-          ...$flags,
           '--json',
-      ], $this->left_side->flags());
+      ], $this->allFlags($flags));
 
       return json_decode($result);
    }
@@ -156,8 +153,7 @@ class Rclone
    {
       $result = $this->simpleRun('cat', [
           $this->left_side->backend($path),
-          ...$flags,
-      ], $this->left_side->flags());
+      ], $this->allFlags($flags));
 
       return $result;
    }
@@ -167,8 +163,7 @@ class Rclone
    {
       $result = $this->inputRun('rcat', [
           $this->left_side->backend($path),
-          ...$flags,
-      ], $this->left_side->flags());
+      ], $this->allFlags($flags));
 
       return $result;
    }
