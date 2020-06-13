@@ -64,10 +64,13 @@ $rclone = new Rclone($left_side, $left_side);
 
 $rclone->copy('/home/appleinc/index.html', '/home/www/'); // always true, otherwise throws error
 ```
-## Tips
+## Tips - READ BEFORE USE.
 * Of course, you need known how [rclone works](https://rclone.org/docs).
-* Classes Rclone and Providers always support any flag listed at [rclone documentation](https://rclone.org/flags/).
-* Be careful, some flags wasn't implemented yet, like `-P` / `--progress`
+* Rclone class and Providers classes always support any flag listed at [rclone documentation](https://rclone.org/flags/), often as 3rd argument. But
+* Any flag, parameter or option passed like `--parameter-here`, in this lib is a array like `['parameter-here'='value', 'max-depth' => 3, 'any'=>'1']` 
+* Be careful, some flags wasn't implemented yet, like `-P` / `--progress`, others will never be implemented like `--ask-password`.
+* We propably will never support default `ls` since we want a clear flow. You always can change the `--max-depth` flag. _**Our**_ default is `1`, default rclone `ls` behavior is `0`.
+* If you inform only one provider (_'left side'_), in commands like `copy`/`move` we assume _'right side'_ as the same _'left side'_ provider. Which means a copying/moving to the same disk.
 ## WIP
 -[ ] Add progress support
 -[ ] Add more commands

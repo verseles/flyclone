@@ -32,7 +32,8 @@ class Rclone
 
       $add = self::prefix_flags($add);
 
-      return [ ...$this->left_side->flags(), ...$this->right_side->flags(), ...$add, $forced ];
+      return array_merge($this->left_side->flags(), $this->right_side->flags(), $add, $forced);
+
    }
 
    public function __construct(Provider $left_side, ?Provider $right_side = NULL)
@@ -136,7 +137,7 @@ class Rclone
    public function delete(string $path = NULL, array $flags = [])
    : bool
    {
-      return $this->directRun('purge', $path, $flags);
+      return $this->directRun('delete', $path, $flags);
    }
 
    public function size(string $path = NULL, array $flags = [])
@@ -178,5 +179,17 @@ class Rclone
    : bool
    {
       return $this->directTwinRun('move', $source_path, $dest_path, $flags);
+   }
+
+   public function sync(string $source_path, string $dest_path, array $flags = [])
+   : bool
+   {
+      return $this->directTwinRun('sync', $source_path, $dest_path, $flags);
+   }
+
+   public function check(string $source_path, string $dest_path, array $flags = [])
+   : bool
+   {
+      return $this->directTwinRun('check', $source_path, $dest_path, $flags);
    }
 }
