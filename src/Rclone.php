@@ -24,8 +24,7 @@ class Rclone
       return $newArr;
    }
 
-
-   public function allFlags(array $add = [])
+      public function allFlags(array $add = [])
    : array
    {
       $forced[ 'RCLONE_LOCAL_ONE_FILE_SYSTEM' ] = TRUE;
@@ -46,6 +45,7 @@ class Rclone
    public static function obscure(string $secret)
    {
       $process = new Process([ self::bin(), 'obscure', $secret ]);
+      $process->setTimeout(3);
       $process->mustRun();
 
       return trim($process->getOutput());
@@ -169,7 +169,7 @@ class Rclone
       return $result;
    }
 
-   public function copy(string $source_path, string $dest_path, array $flags = [])
+   public function copy(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
    : bool
    {
       return $this->directTwinRun('copy', $source_path, $dest_path, $flags);

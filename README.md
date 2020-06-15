@@ -72,7 +72,8 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/'); // always true, otherw
 * We propably will never support default `ls` since we want a clear flow. You always can change the `--max-depth` flag. _**Our**_ default is `1`, default rclone `ls` behavior is `0`.
 * If you inform only one provider (_'left side'_), in commands like `copy`/`move` we assume _'right side'_ as the same _'left side'_ provider. Which means a copying/moving to the same disk.
 ## WIP
--[ ] Add progress support
+-[ ] Add progress support (_work-in-progress_)
+-[ ] Add timeout support
 -[ ] Add more commands
 -[ ] Add tests
 
