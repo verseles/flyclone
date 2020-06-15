@@ -13,18 +13,34 @@ class Rclone
    private Provider $left_side;
    private ?Provider $right_side;
 
+   private int $timeout = 60;
+   private int $processIdleTimeout = 60;
+   private $input = NULL;
+   private static array $reset = [ 'timeout' => 60, 'idleTimeout' => 60, 'input' => NULL ];
+
+   private function reset()
+   : self
+   {
+      $this->timeout     = self::$reset[ 'timeout' ];
+      $this->idleTimeout = self::$reset[ 'idleTimeout' ];
+      $this->input       = self::$reset[ 'input' ];
+
+      return $this;
+   }
+
+
    public static function prefix_flags(array $arr)
    : array
    {
       $newArr = [];
       foreach ($arr as $key => $value) {
-         $newArr[ 'RCLONE_' . strtoupper($key) ] = $value;
+         $newArr[ 'RCLONE_' . strtoupper(str_ireplace('-', '_', $key)) ] = $value;
       }
 
       return $newArr;
    }
 
-      public function allFlags(array $add = [])
+   private function allFlags(array $add = [])
    : array
    {
       $forced[ 'RCLONE_LOCAL_ONE_FILE_SYSTEM' ] = TRUE;
@@ -51,34 +67,39 @@ class Rclone
       return trim($process->getOutput());
    }
 
-   protected static function simpleRun(string $command, array $flags = [], array $envs = [])
+   protected static function simpleRun(string $command, array $flags = [], array $envs = [], callable $onProgress = NULL)
    {
       $process = new Process([ self::bin(), $command, ...$flags ], NULL, $envs);
-      $process->mustRun();
+      if (is_callable($onProgress)) {
+         $process->mustRun($onProgress);
+      }
+      else {
+         $process->mustRun();
+      }
 
       return trim($process->getOutput());
    }
 
-   protected function directRun(string $command, $path = NULL, array $flags = [])
+   protected function directRun(string $command, $path = NULL, array $flags = [], callable $onProgress = NULL)
    {
       self::simpleRun($command, [
           $this->left_side->backend($path),
-      ], $this->allFlags($flags));
+      ], $this->allFlags($flags), $onProgress);
 
       return TRUE;
    }
 
-   protected function directTwinRun(string $command, $left_path = NULL, $right_path = NULL, array $flags = [])
+   protected function directTwinRun(string $command, $left_path = NULL, $right_path = NULL, array $flags = [], callable $onProgress = NULL)
    {
       self::simpleRun($command, [
           $this->left_side->backend($left_path),
           $this->right_side->backend($right_path),
-      ], $this->allFlags($flags));
+      ], $this->allFlags($flags), $onProgress);
 
       return TRUE;
    }
 
-   protected function inputRun(string $command, $input, array $flags = [], array $envs = [])
+   protected function inputRun(string $command, $input, array $flags = [], array $envs = [], callable $onProgress = NULL)
    {
       $process = new Process([ self::bin(), $command, ...$flags ], NULL, $envs);
       $process->setInput($input);
@@ -191,5 +212,13 @@ class Rclone
    : bool
    {
       return $this->directTwinRun('check', $source_path, $dest_path, $flags);
+   }
+
+   public function setTimeout(int $timeout)
+   : self
+   {
+      $this->timeout = $timeout;
+
+      return $this;
    }
 }
