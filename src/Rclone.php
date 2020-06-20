@@ -9,12 +9,12 @@ use Symfony\Component\Process\Process;
 
 class Rclone
 {
-   private static $BIN = '/usr/bin/rclone';
+   private static string $BIN = '/usr/bin/rclone';
    private Provider $left_side;
    private ?Provider $right_side;
 
    private int $timeout = 60;
-   private int $processIdleTimeout = 60;
+   private int $idleTimeout = 60;
    private $input = NULL;
    private static array $reset = [ 'timeout' => 60, 'idleTimeout' => 60, 'input' => NULL ];
 
@@ -108,14 +108,14 @@ class Rclone
       return trim($process->getOutput());
    }
 
-   public static function version()
+   public static function version($numeric = FALSE)
    : string
    {
-      $version = self::simpleRun('version');
+      $cmd = self::simpleRun('version');
 
-      preg_match_all('/rclone\sv(.+)/m', $version, $semver, PREG_SET_ORDER, 0);
+      preg_match_all('/rclone\sv(.+)/m', $cmd, $version, PREG_SET_ORDER, 0);
 
-      return $semver[ 0 ][ 1 ];
+      return $numeric ? (float) $version[ 0 ][ 1 ] : $version[ 0 ][ 1 ];
    }
 
    public static function bin(string $set = NULL)
