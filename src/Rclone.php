@@ -9,23 +9,22 @@ use Symfony\Component\Process\Process;
 
 class Rclone
 {
-   private static string $BIN = '/usr/bin/rclone';
+
+   private static string $BIN = NULL;
    private Provider $left_side;
    private ?Provider $right_side;
 
-   private int $timeout = 60;
-   private int $idleTimeout = 60;
-   private $input = NULL;
+   private static int $timeout = 60;
+   private static int $idleTimeout = 60;
+   private static $input = NULL;
    private static array $reset = [ 'timeout' => 60, 'idleTimeout' => 60, 'input' => NULL ];
 
-   private function reset()
-   : self
+   private static function reset()
+   : void
    {
-      $this->timeout     = self::$reset[ 'timeout' ];
-      $this->idleTimeout = self::$reset[ 'idleTimeout' ];
-      $this->input       = self::$reset[ 'input' ];
-
-      return $this;
+      self::$timeout     = self::$reset[ 'timeout' ];
+      self::$idleTimeout = self::$reset[ 'idleTimeout' ];
+      self::$input       = self::$reset[ 'input' ];
    }
 
 
@@ -59,6 +58,7 @@ class Rclone
 
 
    public static function obscure(string $secret)
+   : string
    {
       $process = new Process([ self::bin(), 'obscure', $secret ]);
       $process->setTimeout(3);
@@ -68,14 +68,24 @@ class Rclone
    }
 
    protected static function simpleRun(string $command, array $flags = [], array $envs = [], callable $onProgress = NULL)
+   : string
    {
       $process = new Process([ self::bin(), $command, ...$flags ], NULL, $envs);
-      if (is_callable($onProgress)) {
+
+      $process->setTimeout(self::$timeout);
+      $process->setIdleTimeout(self::$idleTimeout);
+      if (isset(self::$input)) {
+         $process->setInput(self::$input);
+      }
+
+      if ($onProgress) {
          $process->mustRun($onProgress);
       }
       else {
          $process->mustRun();
       }
+
+      self::reset();
 
       return trim($process->getOutput());
    }
@@ -118,15 +128,49 @@ class Rclone
       return $numeric ? (float) $version[ 0 ][ 1 ] : $version[ 0 ][ 1 ];
    }
 
-   public static function bin(string $set = NULL)
+   public static function bin()
    : string
    {
-      if (isset($set)) {
-         self::$BIN = $set;
-      }
+      $in_system = once(static function () {
+         $process = new Process([ 'which', 'rclone' ]);
+         $process->setTimeout(3);
+         $process->run();
 
-      return self::$BIN;
+         return trim($process->getOutput()) ?: NULL;
+      });
+
+      return self::$BIN ?? $in_system ?? '/usr/bin/rclone';
    }
+
+   public function setBIN(string $BIN)
+   {
+      self::$BIN = $BIN;
+   }
+
+   public function input($input)
+   : self
+   {
+      self::$input = $input;
+
+      return $this;
+   }
+
+   public function timeout(int $timeout)
+   : self
+   {
+      self::$timeout = $timeout;
+
+      return $this;
+   }
+
+   public function idleTimeout($idleTimeout)
+   : self
+   {
+      self::$idleTimeout = $idleTimeout;
+
+      return $this;
+   }
+
 
    public function ls(string $path = NULL, array $flags = [])
    {

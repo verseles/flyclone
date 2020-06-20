@@ -16,7 +16,8 @@
   "require"           : {
     "php"             : ">=7.4",
     "ext-json"        : "*",
-    "symfony/process" : "^5.1"
+    "symfony/process" : "^5.1",
+    "spatie/once": "^2.2"
   },
   "autoload"          : {
     "psr-4" : {
