@@ -10,30 +10,44 @@ use Symfony\Component\Process\Process;
 class Rclone
 {
 
-   private static string $BIN = NULL;
+   private static $BIN = NULL;
    private Provider $left_side;
    private ?Provider $right_side;
 
    private static int $timeout = 60;
    private static int $idleTimeout = 60;
+   private static array $flags = [];
+   private static array $envs = [];
    private static $input = NULL;
-   private static array $reset = [ 'timeout' => 60, 'idleTimeout' => 60, 'input' => NULL ];
+   private static array $reset = [
+       'timeout'     => 60,
+       'idleTimeout' => 60,
+       'flags'       => [],
+       'envs'        => [],
+       'input'       => NULL,
+   ];
 
    private static function reset()
    : void
    {
       self::$timeout     = self::$reset[ 'timeout' ];
       self::$idleTimeout = self::$reset[ 'idleTimeout' ];
+      self::$flags       = self::$reset[ 'flags' ];
+      self::$envs        = self::$reset[ 'envs' ];
       self::$input       = self::$reset[ 'input' ];
    }
 
 
-   public static function prefix_flags(array $arr)
+   public static function prefix_flags(array $arr, string $prefix = 'RCLONE_')
    : array
    {
-      $newArr = [];
+      $newArr  = [];
+      $replace = [ '/^--/m' => '', '/-/m' => '_', ];
       foreach ($arr as $key => $value) {
-         $newArr[ 'RCLONE_' . strtoupper(str_ireplace('-', '_', $key)) ] = $value;
+         $key = preg_replace(array_keys($replace), array_values($replace), $key);
+         $key = strtoupper($key);
+
+         $newArr[ $prefix . $key ] = $value;
       }
 
       return $newArr;
@@ -42,11 +56,21 @@ class Rclone
    private function allFlags(array $add = [])
    : array
    {
+      $fluent = self::prefix_flags(self::$flags);
+      $add    = self::prefix_flags($add);
+
+      return array_merge($this->left_side->flags(), $this->right_side->flags(), $fluent, $add);
+   }
+
+   private function allEnvs(array $add = [])
+   : array
+   {
       $forced[ 'RCLONE_LOCAL_ONE_FILE_SYSTEM' ] = TRUE;
 
-      $add = self::prefix_flags($add);
+      $fluent = self::prefix_flags(self::$envs);
+      $add    = self::prefix_flags($add);
 
-      return array_merge($this->left_side->flags(), $this->right_side->flags(), $add, $forced);
+      return array_merge($this->allFlags(), $fluent, $add, $forced);
 
    }
 
@@ -110,15 +134,14 @@ class Rclone
    }
 
    protected function inputRun(string $command, $input, array $flags = [], array $envs = [], callable $onProgress = NULL)
+   : bool
    {
-      $process = new Process([ self::bin(), $command, ...$flags ], NULL, $envs);
-      $process->setInput($input);
-      $process->mustRun();
+      $this->input($input);
 
-      return trim($process->getOutput());
+      return (bool) self::simpleRun($command, $flags, $envs, $onProgress);
    }
 
-   public static function version($numeric = FALSE)
+   public static function version(bool $numeric = FALSE)
    : string
    {
       $cmd = self::simpleRun('version');
@@ -131,15 +154,13 @@ class Rclone
    public static function bin()
    : string
    {
-      $in_system = once(static function () {
-         $process = new Process([ 'which', 'rclone' ]);
-         $process->setTimeout(3);
-         $process->run();
+      return self::$BIN ?? once(static function () {
+             $process = new Process([ 'which', 'rclone' ]);
+             $process->setTimeout(3);
+             $process->run();
 
-         return trim($process->getOutput()) ?: NULL;
-      });
-
-      return self::$BIN ?? $in_system ?? '/usr/bin/rclone';
+             return trim($process->getOutput()) ?: NULL;
+          }) ?? '/usr/bin/rclone';
    }
 
    public function setBIN(string $BIN)
@@ -171,8 +192,24 @@ class Rclone
       return $this;
    }
 
+   public function flags(array $flags)
+   : self
+   {
+      self::$flags = $flags;
 
-   public function ls(string $path = NULL, array $flags = [])
+      return $this;
+   }
+
+   public function envs($envs)
+   : self
+   {
+      self::$envs = $envs;
+
+      return $this;
+   }
+
+
+   public function ls(string $path, array $flags = [])
    {
       $result = self::simpleRun('lsjson', [
           $this->left_side->backend($path),
@@ -181,19 +218,19 @@ class Rclone
       return json_decode($result);
    }
 
-   public function mkdir(string $path = NULL, array $flags = [])
+   public function mkdir(string $path, array $flags = [])
    : bool
    {
       return $this->directRun('mkdir', $path, $flags);
    }
 
-   public function rmdir(string $path = NULL, array $flags = [])
+   public function rmdir(string $path, array $flags = [])
    : bool
    {
       return $this->directRun('rmdir', $path, $flags);
    }
 
-   public function purge(string $path = NULL, array $flags = [])
+   public function purge(string $path, array $flags = [])
    : bool
    {
       return $this->directRun('purge', $path, $flags);
@@ -215,23 +252,19 @@ class Rclone
       return json_decode($result);
    }
 
-   public function cat(string $path = NULL, array $flags = [])
+   public function cat(string $path, array $flags = [])
    {
-      $result = $this->simpleRun('cat', [
+      return self::simpleRun('cat', [
           $this->left_side->backend($path),
       ], $this->allFlags($flags));
-
-      return $result;
    }
 
 
-   public function rcat(string $path = NULL, array $flags = [])
+   public function rcat(string $path, $input, array $flags = [])
    {
-      $result = $this->inputRun('rcat', [
+      return $this->inputRun('rcat', $input, [
           $this->left_side->backend($path),
       ], $this->allFlags($flags));
-
-      return $result;
    }
 
    public function copy(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
@@ -256,13 +289,5 @@ class Rclone
    : bool
    {
       return $this->directTwinRun('check', $source_path, $dest_path, $flags);
-   }
-
-   public function setTimeout(int $timeout)
-   : self
-   {
-      $this->timeout = $timeout;
-
-      return $this;
    }
 }

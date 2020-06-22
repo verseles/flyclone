@@ -3,6 +3,8 @@
 
 namespace CloudAtlas\Flyclone\Providers;
 
+use CloudAtlas\Flyclone\Rclone;
+
 abstract class AbstractProvider
 {
    public function provider()
@@ -14,24 +16,19 @@ abstract class AbstractProvider
    public function flags()
    : array
    {
-      $flags = $this->flags;
-
       $prefix = 'RCLONE_CONFIG_' . $this->name() . '_';
 
-      return $this->prefix_envs($flags, $prefix);
+      return $this->prefix_flags($prefix);
    }
 
-   private function prefix_envs(array $arr, string $prefix)
+   private function prefix_flags(string $prefix)
    : array
    {
-      $newArr = [];
-      foreach ($arr as $key => $value) {
-         $newArr[ strtoupper($prefix . $key) ] = $value;
-      }
+      $prefixed = Rclone::prefix_flags($this->flags, $prefix);
 
-      $newArr[ strtoupper($prefix . 'TYPE') ] = $this->provider();
+      $prefixed[ strtoupper($prefix . 'TYPE') ] = $this->provider();
 
-      return $newArr;
+      return $prefixed;
    }
 
    public function name()
