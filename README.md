@@ -4,7 +4,7 @@ PHP wrapper for rclone
 ## Installation
 
 ```shell script
-composer require cloudatlas/flycone
+composer require cloudatlas/flyclone
 ```
 
 ## Usage
