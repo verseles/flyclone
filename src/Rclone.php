@@ -155,17 +155,25 @@ class Rclone
    : string
    {
       return self::$BIN ?? once(static function () {
+             $process = new Process([ 'which', 'rclone.exe' ]);
+             $process->setTimeout(3);
+             $process->run();
+
+             $firstTry = trim($process->getOutput()) ?: NULL;
+
              $process = new Process([ 'which', 'rclone' ]);
              $process->setTimeout(3);
              $process->run();
 
-             return trim($process->getOutput()) ?: NULL;
+             $secondTry = trim($process->getOutput()) ?: NULL;
+
+             return $firstTry ?? $secondTry ?? NULL;
           }) ?? '/usr/bin/rclone';
    }
 
    public function setBIN(string $BIN)
    {
-      self::$BIN = $BIN;
+      self::$BIN = (string) $BIN;
    }
 
    public function input($input)
