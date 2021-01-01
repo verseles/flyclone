@@ -1,2 +1,0 @@
-2021/01/01 15:56:56 Micro started
-2021/01/01 15:57:06 Cleared cursors: 1
