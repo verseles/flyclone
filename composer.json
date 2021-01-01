@@ -21,9 +21,20 @@
   },
   "autoload"          : {
     "psr-4" : {
-      "CloudAtlas\\Flyclone\\" : "src/"
+      "CloudAtlas\\Flyclone\\" : "src"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "CloudAtlas\\Flyclone\\Test\\": "tests"
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  },
   "minimum-stability" : "dev",
-  "prefer-stable"     : true
+  "prefer-stable"     : true,
+  "require-dev": {
+    "phpunit/phpunit": "^9"
+  }
 }

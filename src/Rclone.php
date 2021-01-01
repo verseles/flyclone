@@ -4,6 +4,8 @@
 namespace CloudAtlas\Flyclone;
 
 
+use CloudAtlas\Flyclone\Exception\WriteOperationFailedException;
+use CloudAtlas\Flyclone\Providers\LocalProvider;
 use CloudAtlas\Flyclone\Providers\Provider;
 use Symfony\Component\Process\Process;
 
@@ -26,6 +28,12 @@ class Rclone
        'envs'        => [],
        'input'       => NULL,
    ];
+
+   public function __construct(Provider $left_side, ?Provider $right_side = NULL)
+   {
+      $this->left_side  = $left_side;
+      $this->right_side = $right_side ?? $left_side;
+   }
 
    private static function reset()
    : void
@@ -56,10 +64,7 @@ class Rclone
    private function allFlags(array $add = [])
    : array
    {
-      $fluent = self::prefix_flags(self::$flags);
-      $add    = self::prefix_flags($add);
-
-      return array_merge($this->left_side->flags(), $this->right_side->flags(), $fluent, $add);
+      return array_merge($this->left_side->flags(), $this->right_side->flags(), self::$flags, $add);
    }
 
    private function allEnvs(array $add = [])
@@ -74,27 +79,21 @@ class Rclone
 
    }
 
-   public function __construct(Provider $left_side, ?Provider $right_side = NULL)
-   {
-      $this->left_side  = $left_side;
-      $this->right_side = $right_side ?? $left_side;
-   }
-
 
    public static function obscure(string $secret)
    : string
    {
-      $process = new Process([ self::bin(), 'obscure', $secret ]);
+      $process = new Process([ self::getBIN(), 'obscure', $secret ]);
       $process->setTimeout(3);
       $process->mustRun();
 
       return trim($process->getOutput());
    }
 
-   protected static function simpleRun(string $command, array $flags = [], array $envs = [], callable $onProgress = NULL)
+   private static function simpleRun(string $command, array $flags = [], array $envs = [], callable $onProgress = NULL)
    : string
    {
-      $process = new Process([ self::bin(), $command, ...$flags ], NULL, $envs);
+      $process = new Process([ self::getBIN(), $command, ...$flags ], NULL, $envs);
 
       $process->setTimeout(self::$timeout);
       $process->setIdleTimeout(self::$idleTimeout);
@@ -115,10 +114,11 @@ class Rclone
    }
 
    protected function directRun(string $command, $path = NULL, array $flags = [], callable $onProgress = NULL)
+   : bool
    {
       self::simpleRun($command, [
           $this->left_side->backend($path),
-      ], $this->allFlags($flags), $onProgress);
+      ], $this->allEnvs($flags), $onProgress);
 
       return TRUE;
    }
@@ -128,12 +128,12 @@ class Rclone
       self::simpleRun($command, [
           $this->left_side->backend($left_path),
           $this->right_side->backend($right_path),
-      ], $this->allFlags($flags), $onProgress);
+      ], $this->allEnvs($flags), $onProgress);
 
       return TRUE;
    }
 
-   protected function inputRun(string $command, $input, array $flags = [], array $envs = [], callable $onProgress = NULL)
+   private function inputRun(string $command, $input, array $flags = [], array $envs = [], callable $onProgress = NULL)
    : bool
    {
       $this->input($input);
@@ -151,79 +151,66 @@ class Rclone
       return $numeric ? (float) $version[ 0 ][ 1 ] : $version[ 0 ][ 1 ];
    }
 
-   public static function bin()
+   public static function getBIN()
    : string
    {
-      return self::$BIN ?? once(static function () {
-             $process = new Process([ 'which', 'rclone.exe' ]);
+      return self::$BIN ?? self::guessBIN();
+   }
+
+   public static function setBIN(string $BIN)
+   {
+      self::$BIN = (string) $BIN;
+   }
+
+   public static function guessBIN()
+   {
+      $BIN = once(static function () {
+             $process = new Process([ 'where', 'rclone' ]);
              $process->setTimeout(3);
              $process->run();
 
-             $firstTry = trim($process->getOutput()) ?: NULL;
+             $tryWindows = trim($process->getOutput()) ?: NULL;
 
              $process = new Process([ 'which', 'rclone' ]);
              $process->setTimeout(3);
              $process->run();
 
-             $secondTry = trim($process->getOutput()) ?: NULL;
+             $tryUnix = trim($process->getOutput()) ?: NULL;
 
-             return $firstTry ?? $secondTry ?? NULL;
+             return $tryWindows ?? $tryUnix ?? NULL;
           }) ?? '/usr/bin/rclone';
-   }
 
-   public function setBIN(string $BIN)
-   {
-      self::$BIN = (string) $BIN;
+      self::setBIN($BIN);
+
+      return self::getBIN();
    }
 
    public function input($input)
-   : self
    {
       self::$input = $input;
-
-      return $this;
    }
 
-   public function timeout(int $timeout)
-   : self
-   {
-      self::$timeout = $timeout;
-
-      return $this;
-   }
-
-   public function idleTimeout($idleTimeout)
-   : self
+   public function setIdleTimeout($idleTimeout)
+   : void
    {
       self::$idleTimeout = $idleTimeout;
-
-      return $this;
-   }
-
-   public function flags(array $flags)
-   : self
-   {
-      self::$flags = $flags;
-
-      return $this;
-   }
-
-   public function envs($envs)
-   : self
-   {
-      self::$envs = $envs;
-
-      return $this;
    }
 
 
    public function ls(string $path, array $flags = [])
+   : array
    {
       $result = self::simpleRun('lsjson', [
           $this->left_side->backend($path),
-      ], $this->allFlags($flags));
+      ], $this->allEnvs($flags));
 
       return json_decode($result);
+   }
+
+   public function touch(string $path, array $flags = [])
+   : bool
+   {
+      return $this->directRun('touch', $path, $flags);
    }
 
    public function mkdir(string $path, array $flags = [])
@@ -255,7 +242,7 @@ class Rclone
       $result = self::simpleRun('size', [
           $this->left_side->backend($path),
           '--json',
-      ], $this->allFlags($flags));
+      ], $this->allEnvs($flags));
 
       return json_decode($result);
    }
@@ -264,7 +251,7 @@ class Rclone
    {
       return self::simpleRun('cat', [
           $this->left_side->backend($path),
-      ], $this->allFlags($flags));
+      ], $this->allEnvs($flags));
    }
 
 
@@ -272,7 +259,26 @@ class Rclone
    {
       return $this->inputRun('rcat', $input, [
           $this->left_side->backend($path),
-      ], $this->allFlags($flags));
+      ], $this->allEnvs($flags));
+   }
+
+   public function write_file(string $path, $input, array $flags = [])
+   : bool
+   {
+      $temp_filepath = tempnam(sys_get_temp_dir(), 'flyclone_');
+
+      $bytes_writted = file_put_contents($temp_filepath, $input, LOCK_EX);
+
+      if ($bytes_writted === FALSE) {
+         throw new WriteOperationFailedException($temp_filepath);
+      }
+
+      $left_local = new LocalProvider('local');
+      $right_mix = $this->left_side;
+
+      $rclone = new self($left_local, $right_mix);
+
+      return $rclone->moveto($temp_filepath, $path, $flags);
    }
 
    public function copy(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
@@ -281,10 +287,16 @@ class Rclone
       return $this->directTwinRun('copy', $source_path, $dest_path, $flags);
    }
 
-   public function move(string $source_path, string $dest_path, array $flags = [])
+   public function move(string $source_path, string $dest_DIR_path, array $flags = [])
    : bool
    {
-      return $this->directTwinRun('move', $source_path, $dest_path, $flags);
+      return $this->directTwinRun('move', $source_path, $dest_DIR_path, $flags);
+   }
+
+   public function moveto(string $source_path, string $dest_path, array $flags = [])
+   : bool
+   {
+      return $this->directTwinRun('moveto', $source_path, $dest_path, $flags);
    }
 
    public function sync(string $source_path, string $dest_path, array $flags = [])
