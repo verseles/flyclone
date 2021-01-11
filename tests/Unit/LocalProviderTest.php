@@ -2,26 +2,36 @@
 
 namespace CloudAtlas\Flyclone\Test\Unit;
 
-use PHPUnit\Framework\TestCase;
-use CloudAtlas\Flyclone\Rclone;
 use CloudAtlas\Flyclone\Providers\LocalProvider;
+use CloudAtlas\Flyclone\Providers\Provider;
+use CloudAtlas\Flyclone\Rclone;
 
-class LocalProviderTest extends TestCase
+class LocalProviderTest extends AbstractProvider
 {
-   /**  @test */
-   final public function instantiate_local_provider()
-   : LocalProvider
+   public function setUp()
+   : void
    {
-      $left_side = new LocalProvider('mydisk'); // name
+      $left_disk_name = 'local_disk';
+      $this->setLeftProviderName($left_disk_name);
 
-      self::assertInstanceOf(LocalProvider::class, $left_side);
+      self::assertEquals($left_disk_name, $this->getLeftProviderName());
+   }
+
+   /**  @test
+    */
+   public function instantiate_left_provider()
+   : Provider
+   {
+      $left_side = new LocalProvider($this->getLeftProviderName()); // name
+
+      self::assertInstanceOf(get_class($left_side), $left_side);
 
       return $left_side;
    }
 
    /**
     * @test
-    * @depends instantiate_local_provider
+    * @depends instantiate_left_provider
     */
    final public function instantiate_with_one_provider($left_side)
    : Rclone
@@ -61,7 +71,7 @@ class LocalProviderTest extends TestCase
     * @test
     * @depends instantiate_with_one_provider
     */
-   final public function list_files_from_root_dir($left_side)
+   public function list_files_from_root_dir($left_side)
    : void
    {
       $dir    = '/';

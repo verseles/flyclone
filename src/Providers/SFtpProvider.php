@@ -4,9 +4,9 @@
 namespace CloudAtlas\Flyclone\Providers;
 
 
-class FtpProvider extends Provider
+class SFtpProvider extends Provider
 {
-   protected string $provider = 'ftp';
+   protected string $provider = 'sftp';
 
    public function __construct(string $name, array $flags = [])
    {

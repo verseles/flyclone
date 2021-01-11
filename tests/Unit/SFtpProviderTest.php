@@ -2,17 +2,16 @@
 
 namespace CloudAtlas\Flyclone\Test\Unit;
 
-use CloudAtlas\Flyclone\Providers\FtpProvider;
 use CloudAtlas\Flyclone\Providers\Provider;
+use CloudAtlas\Flyclone\Providers\SFtpProvider;
 use CloudAtlas\Flyclone\Rclone;
 
-class FtpProviderTest extends AbstractProvider
+class SFtpProviderTest extends AbstractProvider
 {
-
    public function setUp()
    : void
    {
-      $left_disk_name = 'ftp_disk';
+      $left_disk_name = 'sftp_disk';
       $this->setLeftProviderName($left_disk_name);
 
       self::assertEquals($left_disk_name, $this->getLeftProviderName());
@@ -23,7 +22,7 @@ class FtpProviderTest extends AbstractProvider
    final public function instantiate_left_provider()
    : Provider
    {
-      $left_side = new FtpProvider($this->getLeftProviderName(), [
+      $left_side = new SFtpProvider($this->getLeftProviderName(), [
           'HOST' => $_ENV[ 'FTP_HOST' ],
           'USER' => $_ENV[ 'FTP_USER' ],
           'PASS' => Rclone::obscure($_ENV[ 'FTP_PASS' ]),
@@ -37,9 +36,8 @@ class FtpProviderTest extends AbstractProvider
    /**
     * @test
     * @depends instantiate_left_provider
-    *
     */
-   final public function instantiate_with_one_provider(Provider $left_side)
+   final public function instantiate_with_one_provider($left_side)
    : Rclone
    {
       $left_side = new Rclone($left_side);
@@ -53,7 +51,7 @@ class FtpProviderTest extends AbstractProvider
     * @test
     * @depends instantiate_with_one_provider
     */
-   final public function list_remote_root_directory(Rclone $left_side)
+   final public function list_remote_root_directory($left_side)
 
    {
       $dir    = '/';
@@ -64,13 +62,13 @@ class FtpProviderTest extends AbstractProvider
       self::assertObjectHasAttribute('Name', $result[ 0 ], 'Unexpected result from ls');
    }
 
-
    /**
     * @test
     * @depends instantiate_with_one_provider
     *
+    * @param Rclone $left_side
     */
-   final public function file_operations(Rclone $left_side)
+   final public function file_operations($left_side)
    : void
    {
       $file    = '/flyclone_' . random_int(100, 999) . '.txt';
@@ -96,10 +94,10 @@ class FtpProviderTest extends AbstractProvider
     *
     * @param Rclone $left_side
     */
-   final public function directory_operations(Rclone $left_side)
+   final public function directory_operations($left_side)
    : void
    {
-      $dir        = '/flyclone_' . random_int(100, 999);
+      $dir        = 'flyclone_' . random_int(100, 999);
       $dir_inside = "$dir/flyclone";
       $file       = $dir . '/flyclone_' . random_int(100, 999) . '.txt';
       $success    = $left_side->mkdir($dir);
