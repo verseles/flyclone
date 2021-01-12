@@ -207,6 +207,45 @@ class Rclone
       return json_decode($result);
    }
 
+   public function is_file($path)
+   : object
+   {
+      try {
+         $ls = $this->ls($path);
+
+         if (count($ls) !== 1) {
+            return (object) [ 'exists' => FALSE, 'details' => [], 'error' => NULL, ];
+         }
+
+         return (object) [ 'exists' => $ls[ 0 ]->IsDir === FALSE, 'details' => $ls[ 0 ], 'error' => NULL, ];
+      } catch (\Exception $e) {
+         return (object) [ 'exists' => FALSE, 'error' => $e, 'details' => [], ];
+      }
+   }
+
+   public function is_dir($path)
+   : object
+   {
+      try {
+         $parent = dirname($path);
+         $name   = basename($path);
+
+         $ls = $this->ls($parent);
+
+         $find = array_filter($ls, fn($i) => $i->Name === $name && $i->IsDir === TRUE);
+         if (count($find) !== 1) {
+            return (object) [ 'exists' => FALSE, 'details' => [], 'error' => '', ];
+         }
+         $found = reset($find);
+
+
+         return (object) [ 'exists' => TRUE, 'details' => $found, ];
+      } catch (\Exception $e) {
+         return (object) [ 'exists' => FALSE, 'error' => $e, ];
+      }
+   }
+
+
    public function touch(string $path, array $flags = [])
    : bool
    {
@@ -274,7 +313,7 @@ class Rclone
       }
 
       $left_local = new LocalProvider('local');
-      $right_mix = $this->left_side;
+      $right_mix  = $this->left_side;
 
       $rclone = new self($left_local, $right_mix);
 
