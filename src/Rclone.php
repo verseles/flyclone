@@ -12,18 +12,18 @@ use Symfony\Component\Process\Process;
 class Rclone
 {
 
-   private static $BIN = NULL;
+   private static $BIN;
    private Provider $left_side;
    private ?Provider $right_side;
 
-   private static int $timeout = 60;
-   private static int $idleTimeout = 60;
+   private static int $timeout = 120;
+   private static int $idleTimeout = 100;
    private static array $flags = [];
    private static array $envs = [];
-   private static $input = NULL;
+   private static $input;
    private static array $reset = [
-       'timeout'     => 60,
-       'idleTimeout' => 60,
+       'timeout'     => 120,
+       'idleTimeout' => 100,
        'flags'       => [],
        'envs'        => [],
        'input'       => NULL,

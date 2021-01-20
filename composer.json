@@ -17,24 +17,27 @@
     "php"             : ">=7.4",
     "ext-json"        : "*",
     "symfony/process" : "^5.1",
-    "spatie/once": "^2.2"
+    "spatie/once"     : "^2.2"
   },
   "autoload"          : {
     "psr-4" : {
       "CloudAtlas\\Flyclone\\" : "src"
     }
   },
-  "autoload-dev": {
-    "psr-4": {
-      "CloudAtlas\\Flyclone\\Test\\": "tests"
+  "autoload-dev"      : {
+    "psr-4" : {
+      "CloudAtlas\\Flyclone\\Test\\" : "tests"
     }
   },
-  "scripts": {
-    "test": "phpunit"
+  "scripts"           : {
+    "test" : "phpunit"
+  },
+  "config"            : {
+    "process-timeout" : 0
   },
   "minimum-stability" : "dev",
   "prefer-stable"     : true,
-  "require-dev": {
-    "phpunit/phpunit": "^9"
+  "require-dev"       : {
+    "phpunit/phpunit" : "^9"
   }
 }

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         backupGlobals="false" backupStaticAttributes="false" colors="true" testdox="true" verbose="true"
+         convertErrorsToExceptions="true" convertNoticesToExceptions="true" convertWarningsToExceptions="true"
+         processIsolation="false" stopOnFailure="false"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+>
+    <coverage>
+        <include>
+            <directory suffix=".php">src/</directory>
+        </include>
+    </coverage>
+    <testsuites>
+        <testsuite name="CloudAtlas Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+
+        <env name="FTP_HOST" value=""/>
+        <env name="FTP_USER" value=""/>
+        <env name="FTP_PASS" value=""/>
+
+        <env name="MEGA_USER" value=""/>
+        <env name="MEGA_PASS" value=""/>
+
+        <env name="GDRIVE_CLIENT_ID" value=""/>
+        <env name="GDRIVE_CLIENT_SECRET" value=""/>
+        <env name="GDRIVE_TOKEN" value=''/>
+
+        <env name="DROPBOX_CLIENT_ID" value=""/>
+        <env name="DROPBOX_CLIENT_SECRET" value=""/>
+        <env name="DROPBOX_TOKEN" value=''/>
+    </php>
+</phpunit>

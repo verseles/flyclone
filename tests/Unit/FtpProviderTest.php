@@ -3,10 +3,9 @@
 namespace CloudAtlas\Flyclone\Test\Unit;
 
 use CloudAtlas\Flyclone\Providers\FtpProvider;
-use CloudAtlas\Flyclone\Providers\Provider;
 use CloudAtlas\Flyclone\Rclone;
 
-class FtpProviderTestTest extends AbstractProviderTest
+class FtpProviderTest extends AbstractProviderTest
 {
 
    public function setUp()
@@ -23,7 +22,7 @@ class FtpProviderTestTest extends AbstractProviderTest
    /**  @test
     */
    final public function instantiate_left_provider()
-   : Provider
+   : FtpProvider
    {
       $left_side = new FtpProvider($this->getLeftProviderName(), [
           'HOST' => $_ENV[ 'FTP_HOST' ],

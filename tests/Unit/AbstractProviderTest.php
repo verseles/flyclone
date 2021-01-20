@@ -123,7 +123,7 @@ abstract class AbstractProviderTest extends TestCase
 
       /** @var Rclone $left_side */
       [ $left_side, $temp_filepath ] = $params;
-      $tmp_dir  = $this->working_directory . DIRECTORY_SEPARATOR;
+      $tmp_dir  = $this->working_directory . '/';
       $new_path = $tmp_dir . 'flyclone_test.txt';
 
       $new_file = $left_side->is_file($new_path);

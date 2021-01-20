@@ -3,7 +3,6 @@
 namespace CloudAtlas\Flyclone\Test\Unit;
 
 use CloudAtlas\Flyclone\Providers\LocalProvider;
-use CloudAtlas\Flyclone\Providers\Provider;
 
 class LocalProviderTest extends AbstractProviderTest
 {
@@ -20,7 +19,7 @@ class LocalProviderTest extends AbstractProviderTest
    /**  @test
     */
    public function instantiate_left_provider()
-   : Provider
+   : LocalProvider
    {
       $left_side = new LocalProvider($this->getLeftProviderName()); // name
 

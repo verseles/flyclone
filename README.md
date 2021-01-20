@@ -20,11 +20,12 @@ var_dump($rclone->ls('/home/')); // returns array
 ```
 > Our `ls()` method use `lsjson` command, so the default `--max-depth` is `1`
 ### List FTP files
+
 ```php
 use CloudAtlas\Flyclone\Rclone;
-use CloudAtlas\Flyclone\Providers\FtpProvider;
+use CloudAtlas\Flyclone\Providers\MegaProvider;
 
-$left_side = new FtpProvider('myserver',[
+$left_side = new MegaProvider('myserver',[
     'host'=>'222.222.222.222',
     'user'=>'johnivy',
     'pass'=> Rclone::obscure('applesux')
@@ -35,14 +36,15 @@ $rclone = new Rclone($left_side);
 var_dump($rclone->ls('/public_html')); // returns array
 ```
 ### Copy from local disk to FTP
+
 ```php
 use CloudAtlas\Flyclone\Rclone;
 use CloudAtlas\Flyclone\Providers\LocalProvider;
-use CloudAtlas\Flyclone\Providers\FtpProvider;
+use CloudAtlas\Flyclone\Providers\MegaProvider;
 
 $left_side = new LocalProvider('mydisk'); // name
 
-$right_side = new FtpProvider('myserver',[
+$right_side = new MegaProvider('myserver',[
     'host'=>'222.222.222.222',
     'user'=>'JohnIvy',
     'pass'=> Rclone::obscure('4ppl35u*')
