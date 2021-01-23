@@ -45,6 +45,16 @@ class Rclone
       self::$input       = self::$reset[ 'input' ];
    }
 
+   public function isLeftSideFolderAgnostic()
+   {
+      return $this->left_side->isFolderAgnostic();
+   }
+
+   public function isRightSideFolderAgnostic()
+   {
+      return $this->right_side->isFolderAgnostic();
+   }
+
 
    public static function prefix_flags(array $arr, string $prefix = 'RCLONE_')
    : array
@@ -93,6 +103,10 @@ class Rclone
    private static function simpleRun(string $command, array $flags = [], array $envs = [], callable $onProgress = NULL)
    : string
    {
+//      echo "$command\n";
+//      var_dump($flags);
+//      var_dump($envs);
+
       $process = new Process([ self::getBIN(), $command, ...$flags ], NULL, $envs);
 
       $process->setTimeout(self::$timeout);
@@ -110,7 +124,12 @@ class Rclone
 
       self::reset();
 
-      return trim($process->getOutput());
+      /** @noinspection PhpUnnecessaryLocalVariableInspection */
+      $output = trim($process->getOutput());
+
+//      echo "$output\n";
+
+      return $output;
    }
 
    protected function directRun(string $command, $path = NULL, array $flags = [], callable $onProgress = NULL)

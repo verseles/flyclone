@@ -7,6 +7,8 @@ use CloudAtlas\Flyclone\Rclone;
 
 abstract class AbstractProvider
 {
+   protected bool $folderAgnostic = FALSE;
+
    public function provider()
    : string
    {
@@ -39,6 +41,12 @@ abstract class AbstractProvider
    public function backend($path = NULL)
    {
       return $this->name() . ':' . $path;
+   }
+
+   public function isFolderAgnostic()
+   : bool
+   {
+      return $this->folderAgnostic;
    }
 
 }

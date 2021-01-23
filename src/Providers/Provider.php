@@ -22,4 +22,5 @@ class Provider extends AbstractProvider
 
       $this->flags = $flags;
    }
+
 }

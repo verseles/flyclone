@@ -34,5 +34,10 @@
         <env name="DROPBOX_CLIENT_ID" value=""/>
         <env name="DROPBOX_CLIENT_SECRET" value=""/>
         <env name="DROPBOX_TOKEN" value=''/>
+
+        <env name="AWS_REGION" value=""/>
+        <env name="AWS_ENDPOINT" value=""/>
+        <env name="AWS_ACCESS_KEY_ID" value=""/>
+        <env name="AWS_SECRET_ACCESS_KEY" value=""/>
     </php>
 </phpunit>
