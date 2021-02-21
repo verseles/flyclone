@@ -2,7 +2,7 @@
 
 namespace CloudAtlas\Flyclone\Test\Unit;
 
-use CloudAtlas\Flyclone\Providers\GdriveProvider;
+use CloudAtlas\Flyclone\Providers\GDriveProvider;
 
 class GDriveProviderTest extends AbstractProviderTest
 {
@@ -22,9 +22,9 @@ class GDriveProviderTest extends AbstractProviderTest
     * @test
     */
    final public function instantiate_left_provider()
-   : GdriveProvider
+   : GDriveProvider
    {
-      $left_side = new GdriveProvider($this->getLeftProviderName(), [
+      $left_side = new GDriveProvider($this->getLeftProviderName(), [
           'CLIENT_ID' => $_ENV[ 'GDRIVE_CLIENT_ID' ],
           'CLIENT_SECRET' => $_ENV[ 'GDRIVE_CLIENT_SECRET' ],
           'TOKEN' => $_ENV[ 'GDRIVE_TOKEN' ],

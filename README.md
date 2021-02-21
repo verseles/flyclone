@@ -35,7 +35,7 @@ $rclone = new Rclone($left_side);
 
 var_dump($rclone->ls('/public_html')); // returns array
 ```
-### Copy from local disk to FTP
+### Copy from local disk to MEGA
 
 ```php
 use CloudAtlas\Flyclone\Rclone;
@@ -44,9 +44,8 @@ use CloudAtlas\Flyclone\Providers\MegaProvider;
 
 $left_side = new LocalProvider('mydisk'); // name
 
-$right_side = new MegaProvider('myserver',[
-    'host'=>'222.222.222.222',
-    'user'=>'JohnIvy',
+$right_side = new MegaProvider('myremote',[
+    'user'=>'your@email.com',
     'pass'=> Rclone::obscure('4ppl35u*')
 ]);
 
