@@ -223,7 +223,7 @@ class Rclone
       return self::getBIN();
    }
 
-   public function parseProgress(string $type, string $buffer, callable $onProgress = NULL)
+   private function parseProgress(string $type, string $buffer, callable $onProgress = NULL)
    : void
    {
       // @TODO throw "unreliable" error if $type === ERR
@@ -250,6 +250,12 @@ class Rclone
           'speed'     => $data[ 4 ],
           'eta'       => $data[ 5 ],
       ];
+   }
+
+   public function getProgress()
+   : object
+   {
+      return $this->progress;
    }
 
    private function resetProgress()
