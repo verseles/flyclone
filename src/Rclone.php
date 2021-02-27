@@ -13,7 +13,7 @@ use Symfony\Component\Process\Process;
 class Rclone
 {
 
-   private static $BIN;
+   private static string $BIN;
    private Provider $left_side;
    private ?Provider $right_side;
 
@@ -21,22 +21,33 @@ class Rclone
    private static int $idleTimeout = 100;
    private static array $flags = [];
    private static array $envs = [];
-   private static $input;
+   private static string $input;
+   private object $progress;
    private static array $reset = [
        'timeout'     => 120,
        'idleTimeout' => 100,
        'flags'       => [],
        'envs'        => [],
-       'input'       => NULL,
+       'input'       => '',
+       'progress'    => [
+           'raw'       => '',
+           'dataSent'  => 0,
+           'dataTotal' => 0,
+           'sent'      => 0,
+           'speed'     => 0,
+           'eta'       => 0,
+       ],
    ];
 
    public function __construct(Provider $left_side, ?Provider $right_side = NULL)
    {
+      $this->reset();
+
       $this->left_side  = $left_side;
       $this->right_side = $right_side ?? $left_side;
    }
 
-   private static function reset()
+   private function reset()
    : void
    {
       self::$timeout     = self::$reset[ 'timeout' ];
@@ -44,14 +55,18 @@ class Rclone
       self::$flags       = self::$reset[ 'flags' ];
       self::$envs        = self::$reset[ 'envs' ];
       self::$input       = self::$reset[ 'input' ];
+
+      $this->resetProgress();
    }
 
    public function isLeftSideFolderAgnostic()
+   : bool
    {
       return $this->left_side->isFolderAgnostic();
    }
 
    public function isRightSideFolderAgnostic()
+   : bool
    {
       return $this->right_side->isFolderAgnostic();
    }
@@ -101,42 +116,46 @@ class Rclone
       return trim($process->getOutput());
    }
 
-   private static function simpleRun(string $command, array $flags = [], array $envs = [], callable $onProgress = NULL)
+   private function simpleRun(string $command, array $flags = [], array $envs = [], callable $onProgress = NULL)
    : string
    {
       //      echo "$command\n";
       //      var_dump($flags);
       //      var_dump($envs);
 
-      $process = new Process([ self::getBIN(), $command, ...$flags ], NULL, $envs);
+      if ($onProgress) {
+         $envs += [ 'RCLONE_STATS_ONE_LINE' => 1, 'RCLONE_PROGRESS' => 1 ]; // needed for $this->parseProgress()
+
+      }
+      $process = new Process([ self::getBIN(), $command, ...$flags ], sys_get_temp_dir(), $envs);
 
       $process->setTimeout(self::$timeout);
       $process->setIdleTimeout(self::$idleTimeout);
-      if (isset(self::$input)) {
+      if (!empty(self::$input)) {
          $process->setInput(self::$input);
       }
 
       if ($onProgress) {
-         $process->mustRun($onProgress);
+         $process->mustRun(function ($type, $buffer) use ($onProgress) {
+            $this->parseProgress($type, $buffer, $onProgress);
+            $onProgress($type, $buffer);
+         });
       }
       else {
          $process->mustRun();
       }
 
-      self::reset();
+      $this->reset();
 
-      /** @noinspection PhpUnnecessaryLocalVariableInspection */
-      $output = trim($process->getOutput());
+      $output = $process->getOutput();
 
-      //      echo "$output\n";
-
-      return $output;
+      return trim($output);
    }
 
    protected function directRun(string $command, $path = NULL, array $flags = [], callable $onProgress = NULL)
    : bool
    {
-      self::simpleRun($command, [
+      $this->simpleRun($command, [
           $this->left_side->backend($path),
       ], $this->allEnvs($flags), $onProgress);
 
@@ -144,8 +163,9 @@ class Rclone
    }
 
    protected function directTwinRun(string $command, $left_path = NULL, $right_path = NULL, array $flags = [], callable $onProgress = NULL)
+   : bool
    {
-      self::simpleRun($command, [
+      $this->simpleRun($command, [
           $this->left_side->backend($left_path),
           $this->right_side->backend($right_path),
       ], $this->allEnvs($flags), $onProgress);
@@ -153,18 +173,18 @@ class Rclone
       return TRUE;
    }
 
-   private function inputRun(string $command, $input, array $flags = [], array $envs = [], callable $onProgress = NULL)
+   private function inputRun(string $command, string $input, array $flags = [], array $envs = [], callable $onProgress = NULL)
    : bool
    {
-      $this->input($input);
+      $this->setInput($input);
 
-      return (bool) self::simpleRun($command, $flags, $envs, $onProgress);
+      return (bool) $this->simpleRun($command, $flags, $envs, $onProgress);
    }
 
-   public static function version(bool $numeric = FALSE)
+   public function version(bool $numeric = FALSE)
    : string
    {
-      $cmd = self::simpleRun('version');
+      $cmd = $this->simpleRun('version');
 
       preg_match_all('/rclone\sv(.+)/m', $cmd, $version, PREG_SET_ORDER, 0);
 
@@ -203,7 +223,42 @@ class Rclone
       return self::getBIN();
    }
 
-   public function input($input)
+   public function parseProgress(string $type, string $buffer, callable $onProgress = NULL)
+   : void
+   {
+      // @TODO throw "unreliable" error if $type === ERR
+
+      if ($type === 'out') {
+         $regex = '/([\d.]+\w)\s\/\s([\d.]+\s\wB)ytes\,\s(\d+)\%,\s([\d.]+\s\wB)ytes\/s,\sETA\s([\w]+)/miu';
+
+         preg_match_all($regex, $buffer, $matches, PREG_SET_ORDER, 0);
+
+         if (count($matches) === 1 && count($matches[ 0 ]) === 6) {
+            $this->setProgress($matches[ 0 ]);
+         }
+      }
+   }
+
+   private function setProgress(array $data)
+   : void
+   {
+      $this->progress = (object) [
+          'raw'       => $data[ 0 ],
+          'dataSent'  => $data[ 1 ],
+          'dataTotal' => $data[ 2 ],
+          'sent'      => $data[ 3 ],
+          'speed'     => $data[ 4 ],
+          'eta'       => $data[ 5 ],
+      ];
+   }
+
+   private function resetProgress()
+   : void
+   {
+      $this->progress = (object) self::$reset[ 'progress' ];
+   }
+
+   public function setInput(string $input)
    : void
    {
       self::$input = $input;
@@ -226,7 +281,7 @@ class Rclone
    public function ls(string $path, array $flags = [])
    : array
    {
-      $result = self::simpleRun('lsjson', [
+      $result = $this->simpleRun('lsjson', [
           $this->left_side->backend($path),
       ], $this->allEnvs($flags));
 
@@ -304,30 +359,32 @@ class Rclone
 
    public function size(string $path = NULL, array $flags = [], callable $onProgress = NULL)
    {
-      $result = self::simpleRun('size', [
+      $result = $this->simpleRun('size', [
           $this->left_side->backend($path),
           '--json',
       ], $this->allEnvs($flags), $onProgress);
 
-      return json_decode($result);
+      return json_decode($result, FALSE, 10, JSON_THROW_ON_ERROR);
    }
 
    public function cat(string $path, array $flags = [], callable $onProgress = NULL)
+   : string
    {
-      return self::simpleRun('cat', [
+      return $this->simpleRun('cat', [
           $this->left_side->backend($path),
       ], $this->allEnvs($flags), $onProgress);
    }
 
 
-   public function rcat(string $path, $input, array $flags = [], callable $onProgress = NULL)
+   public function rcat(string $path, string $input, array $flags = [], callable $onProgress = NULL)
+   : bool
    {
       return $this->inputRun('rcat', $input, [
           $this->left_side->backend($path),
       ], $this->allEnvs($flags), $onProgress);
    }
 
-   public function write_file(string $path, $input, array $flags = [], callable $onProgress = NULL)
+   public function write_file(string $path, string $input, array $flags = [], callable $onProgress = NULL)
    : bool
    {
       $temp_filepath = tempnam(sys_get_temp_dir(), 'flyclone_');
@@ -349,9 +406,7 @@ class Rclone
    public function copy(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
    : bool
    {
-      return $this->directTwinRun('copy', $source_path, $dest_path, $flags, function ($type, $buffer) {
-         echo Process::ERR === $type ? 'ERR' : 'OUT' . " > {$buffer}\n";
-      });
+      return $this->directTwinRun('copy', $source_path, $dest_path, $flags, $onProgress);
    }
 
    public function move(string $source_path, string $dest_DIR_path, array $flags = [], callable $onProgress = NULL)
