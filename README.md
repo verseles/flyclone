@@ -101,4 +101,4 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 > You know how to do that.
 
 ## License
-MIT - 2020
+MIT - 2021
