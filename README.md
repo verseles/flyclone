@@ -3,6 +3,8 @@ PHP wrapper for rclone
 
 Supports [Local](https://rclone.org/local/) disk, [Dropbox](https://rclone.org/dropbox/), [FTP](https://rclone.org/ftp/), [SFTP](https://rclone.org/sftp/), [Google Drive](https://drive.google.com), [MEGA](https://rclone.org/mega/), [S3](https://rclone.org/s3/) (any compatible) and others can be easily added via PR.
 
+Progress support.
+
 ## Installation
 
 ```shell script
@@ -88,9 +90,7 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 ## Tips - READ BEFORE USE.
 * Of course, you need known how [rclone works](https://rclone.org/docs).
 * Rclone class and Providers classes always support any flag listed at [rclone documentation](https://rclone.org/flags/), often as 3rd argument. But
-* Any flag, parameter or option passed like `--parameter-here`, in this lib is a array like `['parameter-here'='value', 'max-depth' => 3, 'any'=>'1']` 
-* Be careful, some flags wasn't implemented yet, like `-P` / `--progress`, others will never be implemented like `--ask-password`.
-* We propably will never support default `ls` since we want a clear flow about how things work. You always can change the `--max-depth` flag. _**Our**_ default is `1`, default rclone `ls` behavior is `0`.
+* Any flag, parameter or option passed like `--parameter-here`, in this lib is a array like `['parameter-here'='value', 'max-depth' => 3, 'any'=>'1']`
 * If you inform only one provider (_'left side'_), in commands like `copy`/`move` we assume _'right side'_ as the same _'left side'_ provider. Which means a copying/moving to the same disk.
 * We don't have a great doc for now so open a issue always you have a doubt. Remember to be descriptful.
 ## ~~WIP~~
