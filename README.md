@@ -1,6 +1,8 @@
 # CloudAtlas\Flyclone
 PHP wrapper for rclone
 
+Supports [Local](https://rclone.org/local/) disk, [Dropbox](https://rclone.org/dropbox/), [FTP](https://rclone.org/ftp/), [SFTP](https://rclone.org/sftp/), [Google Drive](https://drive.google.com), [MEGA](https://rclone.org/mega/), [S3](https://rclone.org/s3/) (any compatible) and others can be easily added via PR.
+
 ## Installation
 
 ```shell script
