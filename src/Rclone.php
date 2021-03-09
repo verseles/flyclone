@@ -4,9 +4,21 @@
 namespace CloudAtlas\Flyclone;
 
 
+use CloudAtlas\Flyclone\Exception\DirectoryNotFoundException;
+use CloudAtlas\Flyclone\Exception\FatalErrorException;
+use CloudAtlas\Flyclone\Exception\FileNotFoundException;
+use CloudAtlas\Flyclone\Exception\LessSeriousErrorException;
+use CloudAtlas\Flyclone\Exception\MaxTransferReachedException;
+use CloudAtlas\Flyclone\Exception\NoFilesTransferredException;
+use CloudAtlas\Flyclone\Exception\ProcessTimedOutException;
+use CloudAtlas\Flyclone\Exception\SyntaxErrorException;
+use CloudAtlas\Flyclone\Exception\TemporaryErrorException;
+use CloudAtlas\Flyclone\Exception\UnknownErrorException;
 use CloudAtlas\Flyclone\Exception\WriteOperationFailedException;
 use CloudAtlas\Flyclone\Providers\LocalProvider;
 use CloudAtlas\Flyclone\Providers\Provider;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyProcessTimedOutExceptionAlias;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
@@ -111,6 +123,7 @@ class Rclone
    {
       $process = new Process([ self::getBIN(), 'obscure', $secret ]);
       $process->setTimeout(3);
+
       $process->mustRun();
 
       return trim($process->getOutput());
@@ -125,7 +138,6 @@ class Rclone
 
       if ($onProgress) {
          $envs += [ 'RCLONE_STATS_ONE_LINE' => 1, 'RCLONE_PROGRESS' => 1 ]; // needed for $this->parseProgress()
-
       }
       $process = new Process([ self::getBIN(), $command, ...$flags ], sys_get_temp_dir(), $envs);
 
@@ -135,21 +147,67 @@ class Rclone
          $process->setInput(self::$input);
       }
 
-      if ($onProgress) {
-         $process->mustRun(function ($type, $buffer) use ($onProgress) {
-            $this->parseProgress($type, $buffer, $onProgress);
-            $onProgress($type, $buffer);
-         });
+      try {
+         if ($onProgress) {
+            $process->mustRun(function ($type, $buffer) use ($onProgress) {
+               $this->parseProgress($type, $buffer, $onProgress);
+               $onProgress($type, $buffer);
+            });
+         }
+         else {
+            $process->mustRun();
+         }
+         $this->reset();
+
+         $output = $process->getOutput();
+
+         return trim($output);
+      } catch (ProcessFailedException $exception) {
+         $regex = '/Exit\sCode:\s(\d+?).*Error\sOutput:.*?={10,20}\s(.*)/mis';
+
+         preg_match_all($regex, $exception->getMessage(), $matches, PREG_SET_ORDER, 0);
+
+         if (count($matches[ 0 ]) === 3) {
+            [ , $code, $msg ] = $matches[ 0 ];
+            $msg = trim($msg);
+            switch ($code) {
+               case 1:
+                  throw new SyntaxErrorException($exception, $msg, $code);
+                  break;
+               // case 2 is default
+               case 3:
+                  throw new DirectoryNotFoundException($exception, $msg, $code);
+                  break;
+               case 4:
+                  throw new FileNotFoundException($exception, $msg, $code);
+                  break;
+               case 5:
+                  throw new TemporaryErrorException($exception, $msg, $code);
+                  break;
+               case 6:
+                  throw new LessSeriousErrorException($exception, $msg, $code);
+                  break;
+               case 7:
+                  throw new FatalErrorException($exception, $msg, $code);
+                  break;
+               case 8:
+                  throw new MaxTransferReachedException($exception, $msg, $code);
+                  break;
+               case 9:
+                  throw new NoFilesTransferredException($exception, $msg, $code);
+                  break;
+               default:
+                  throw new UnknownErrorException($exception, $msg, $code);
+            }
+         }
+         else {
+            throw new UnknownErrorException($exception);
+         }
+      } catch (SymfonyProcessTimedOutExceptionAlias $exception) {
+         throw new ProcessTimedOutException($exception);
+      } catch (\Exception $exception) {
+         throw new UnknownErrorException($exception);
       }
-      else {
-         $process->mustRun();
-      }
-
-      $this->reset();
-
-      $output = $process->getOutput();
-
-      return trim($output);
    }
 
    protected function directRun(string $command, $path = NULL, array $flags = [], callable $onProgress = NULL)
