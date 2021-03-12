@@ -93,11 +93,12 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 * Any flag, parameter or option passed like `--parameter-here`, in this lib is a array like `['parameter-here'='value', 'max-depth' => 3, 'any'=>'1']`
 * If you inform only one provider (_'left side'_), in commands like `copy`/`move` we assume _'right side'_ as the same _'left side'_ provider. Which means a copying/moving to the same disk.
 * We don't have a great doc for now so open a issue always you have a doubt. Remember to be descriptful.
-## ~~WIP~~
+## ~~WIP~~ TO-DO
 - [X] ~~Add progress support~~
 - [X] ~~Add timeout support~~
 - [X] ~~Add more commands~~
 - [X] ~~Add tests~~
+- [ ] Add phpDoc (help wanted)
 
 ## Contribution
 > You know how to do that.
