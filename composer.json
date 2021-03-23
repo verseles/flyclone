@@ -17,7 +17,8 @@
     "php"             : ">=7.4",
     "ext-json"        : "*",
     "symfony/process" : "^5.1",
-    "spatie/once"     : "^2.2"
+    "spatie/once"     : "^2.2",
+    "nesbot/carbon": "^2.46"
   },
   "autoload"          : {
     "psr-4" : {

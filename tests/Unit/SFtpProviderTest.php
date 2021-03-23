@@ -27,6 +27,7 @@ class SFtpProviderTest extends AbstractProviderTest
          'HOST' => $_ENV['SFTP_HOST'],
          'USER' => $_ENV['SFTP_USER'],
          'PASS' => Rclone::obscure($_ENV['SFTP_PASS']),
+         'PORT' => $_ENV['SFTP_PORT'],
       ]);
 
       self::assertInstanceOf(get_class($left_side), $left_side);

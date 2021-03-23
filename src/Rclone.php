@@ -3,7 +3,7 @@
 
 namespace CloudAtlas\Flyclone;
 
-
+use Carbon\Carbon;
 use CloudAtlas\Flyclone\Exception\DirectoryNotFoundException;
 use CloudAtlas\Flyclone\Exception\FatalErrorException;
 use CloudAtlas\Flyclone\Exception\FileNotFoundException;
@@ -349,7 +349,15 @@ class Rclone
           $this->left_side->backend($path),
       ], $this->allEnvs($flags));
 
-      return json_decode($result, FALSE, 10, JSON_THROW_ON_ERROR);
+      $arr = json_decode($result, FALSE, 10, JSON_THROW_ON_ERROR);
+
+      foreach ($arr as &$item) {
+         if ($item->ModTime) {
+            $item->timestamp = strtotime($item->ModTime);
+         }
+      }
+
+      return $arr;
    }
 
    public function is_file($path)
