@@ -354,6 +354,7 @@ class Rclone
          if ($item->ModTime) {
             $time_string = preg_replace('/\.0{8,}Z/m', '.0Z', $item->ModTime);
             $item->timestamp = strtotime($time_string);
+            unset($item->ModTime);
          }
 
          if ($item->Size && $item->Size < 0) {
