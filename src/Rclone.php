@@ -355,10 +355,6 @@ class Rclone
             $time_string = preg_replace('/\.0{8,}Z/m', '.0Z', $item->ModTime);
             $item->ModTime = strtotime($time_string);
          }
-
-         if ($item->Size && $item->Size < 0) {
-            $item->Size = 0;
-         }
       }
 
       return $arr;
