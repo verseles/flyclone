@@ -353,8 +353,7 @@ class Rclone
       foreach ($arr as &$item) {
          if ($item->ModTime) {
             $time_string = preg_replace('/\.0{8,}Z/m', '.0Z', $item->ModTime);
-            $item->timestamp = strtotime($time_string);
-            unset($item->ModTime);
+            $item->ModTime = strtotime($time_string);
          }
 
          if ($item->Size && $item->Size < 0) {
