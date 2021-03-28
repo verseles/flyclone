@@ -352,7 +352,7 @@ class Rclone
 
       foreach ($arr as &$item) {
          if ($item->ModTime) {
-            $time_string = preg_replace('/\.0{8,}Z/m', '.0Z', $item->ModTime);
+            $time_string   = preg_replace('/\.0{8,}Z/m', '.0Z', $item->ModTime);
             $item->ModTime = strtotime($time_string);
          }
       }
@@ -399,31 +399,127 @@ class Rclone
    }
 
 
+   /**
+    * Create new file or change file modification time.
+    *
+    * @see https://rclone.org/commands/rclone_touch/
+    *
+    * @param string        $path
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    */
    public function touch(string $path, array $flags = [], callable $onProgress = NULL)
    : bool
    {
       return $this->directRun('touch', $path, $flags, $onProgress);
    }
 
+   /**
+    * Make the path if it doesn't already exist.
+    *
+    * @see https://rclone.org/commands/rclone_mkdir/
+    *
+    * @param string        $path
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    */
    public function mkdir(string $path, array $flags = [], callable $onProgress = NULL)
    : bool
    {
       return $this->directRun('mkdir', $path, $flags, $onProgress);
    }
 
+   /**
+    * This removes empty directory given by path. Will not remove the path if it has any objects in it, not even empty
+    * subdirectories. Use command rmdirs (or delete with option --rmdirs) to do that.
+    *
+    * @see https://rclone.org/commands/rclone_rmdir/
+    *
+    * @param string        $path
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    */
    public function rmdir(string $path, array $flags = [], callable $onProgress = NULL)
    : bool
    {
       return $this->directRun('rmdir', $path, $flags, $onProgress);
    }
 
+   /**
+    * Remove empty directories under the path.
+    *
+    * @see https://rclone.org/commands/rclone_rmdirs/
+    *
+    * @param string        $path
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    */
+   public function rmdirs(string $path, array $flags = [], callable $onProgress = NULL)
+   : bool
+   {
+      return $this->directRun('rmdir', $path, $flags, $onProgress);
+   }
+
+   /**
+    * Remove the path and all of its contents. Note that this does not obey include/exclude filters - everything will
+    * be removed. Use the delete command if you want to selectively delete files. To delete empty directories only, use
+    * command rmdir or rmdirs.
+    *
+    * @see https://rclone.org/commands/rclone_purge/
+    *
+    * @param string        $path
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    */
    public function purge(string $path, array $flags = [], callable $onProgress = NULL)
    : bool
    {
       return $this->directRun('purge', $path, $flags, $onProgress);
    }
 
+   /**
+    * Remove the files in path. Unlike purge it obeys include/exclude filters so can be used to selectively delete
+    * files.
+    * rclone delete only deletes files but leaves the directory structure alone. If you want to delete a directory and
+    * all of its contents use the purge command.
+    *
+    * @see https://rclone.org/commands/rclone_delete/
+    *
+    * @param string|null   $path
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    */
    public function delete(string $path = NULL, array $flags = [], callable $onProgress = NULL)
+   : bool
+   {
+      return $this->directRun('delete', $path, $flags, $onProgress);
+   }
+
+   /**
+    * Remove a single file from remote. Unlike delete it cannot be used to remove a directory and it doesn't obey
+    * include/exclude filters - if the specified file exists, it will always be removed.
+    *
+    * @see https://rclone.org/commands/rclone_deletefile/
+    *
+    * @param string|null   $path
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    */
+   public function deletefile(string $path = NULL, array $flags = [], callable $onProgress = NULL)
    : bool
    {
       return $this->directRun('delete', $path, $flags, $onProgress);
@@ -487,6 +583,21 @@ class Rclone
       return $this->directTwinRun('move', $source_path, $dest_DIR_path, $flags, $onProgress);
    }
 
+   /**
+    * Move file or directory from source to dest.
+    * If source:path is a file or directory then it moves it to a file or directory named dest:path.
+    * This can be used to rename files or upload single files to other than their existing name. If the source is a
+    * directory then it acts exactly like the move command.
+    *
+    * @see https://rclone.org/commands/rclone_moveto/
+    *
+    * @param string        $source_path
+    * @param string        $dest_path
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    */
    public function moveto(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
    : bool
    {
