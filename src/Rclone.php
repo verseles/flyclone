@@ -465,7 +465,7 @@ class Rclone
    public function rmdirs(string $path, array $flags = [], callable $onProgress = NULL)
    : bool
    {
-      return $this->directRun('rmdir', $path, $flags, $onProgress);
+      return $this->directRun('rmdirs', $path, $flags, $onProgress);
    }
 
    /**
@@ -522,7 +522,7 @@ class Rclone
    public function deletefile(string $path = NULL, array $flags = [], callable $onProgress = NULL)
    : bool
    {
-      return $this->directRun('delete', $path, $flags, $onProgress);
+      return $this->directRun('deletefile', $path, $flags, $onProgress);
    }
 
    public function size(string $path = NULL, array $flags = [], callable $onProgress = NULL)
