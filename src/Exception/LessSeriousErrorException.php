@@ -3,7 +3,7 @@
 
 namespace CloudAtlas\Flyclone\Exception;
 
-class LessSeriousErrorException extends RcloneException implements Exception
+class LessSeriousErrorException extends RcloneException
 {
    public function __construct(\Exception $exception, string $message = 'Less serious errors (like 461 errors from dropbox) (NoRetry errors).', int $code = 6)
    {

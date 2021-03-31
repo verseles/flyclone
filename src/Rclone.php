@@ -552,6 +552,17 @@ class Rclone
       ], $this->allEnvs($flags), $onProgress);
    }
 
+   /**
+    * Write a local file then upload to $path
+    *
+    * @param string        $path
+    * @param string        $input
+    * @param array         $flags
+    * @param callable|null $onProgress
+    *
+    * @return bool
+    * @throws \CloudAtlas\Flyclone\Exception\WriteOperationFailedException
+    */
    public function write_file(string $path, string $input, array $flags = [], callable $onProgress = NULL)
    : bool
    {
@@ -569,6 +580,17 @@ class Rclone
       $rclone = new self($left_local, $right_mix);
 
       return $rclone->moveto($temp_filepath, $path, $flags, $onProgress);
+   }
+
+   public function upload_file(string $local_path, string $remote_path, array $flags = [], callable $onProgress = NULL)
+   : bool
+   {
+      $left_local = new LocalProvider('local');
+      $right_mix  = $this->left_side;
+
+      $rclone = new self($left_local, $right_mix);
+
+      return $rclone->moveto($local_path, $remote_path, $flags, $onProgress);
    }
 
    public function copy(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)

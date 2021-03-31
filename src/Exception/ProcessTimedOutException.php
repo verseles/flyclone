@@ -4,9 +4,7 @@
 namespace CloudAtlas\Flyclone\Exception;
 
 
-use Symfony\Component\Process\Process;
-
-class ProcessTimedOutException extends RcloneException implements Exception
+class ProcessTimedOutException extends RcloneException
 {
    public function __construct(\Exception $exception, string $message = 'The process took more than defined.', int $code = 22)
    {

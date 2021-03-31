@@ -4,7 +4,7 @@
 namespace CloudAtlas\Flyclone\Exception;
 
 
-class WriteOperationFailedException extends \RuntimeException implements Exception
+class WriteOperationFailedException extends \RuntimeException
 {
    public function __construct(string $path)
    {
