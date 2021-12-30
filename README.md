@@ -1,7 +1,7 @@
 # CloudAtlas\Flyclone
-PHP wrapper for rclone
+PHP wrapper for [rclone](https://rclone.org/)
 
-Supports [Local](https://rclone.org/local/) disk, [Dropbox](https://rclone.org/dropbox/), [FTP](https://rclone.org/ftp/), [SFTP](https://rclone.org/sftp/), [Google Drive](https://drive.google.com), [MEGA](https://rclone.org/mega/), [S3](https://rclone.org/s3/) (any compatible) and others can be easily added via PR.
+Supports [Local](https://rclone.org/local/) disk, [Dropbox](https://rclone.org/dropbox/), [FTP](https://rclone.org/ftp/), [SFTP](https://rclone.org/sftp/), [Google Drive](https://rclone.org/sftp/), [MEGA](https://rclone.org/mega/), [S3](https://rclone.org/s3/) ([any compatible](https://rclone.org/overview/)) and others can be easily added via PR.
 
 Progress support.
 
@@ -98,6 +98,8 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 - [X] ~~Add timeout support~~
 - [X] ~~Add more commands~~
 - [X] ~~Add tests~~
+  - [ ] Use docker and docker compose for tests
+- [ ] Send meta details like file ID in some storage system like Google Drive
 - [ ] Add phpDoc (help wanted)
 
 ## Contribution
