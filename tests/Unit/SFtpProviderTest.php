@@ -1,27 +1,28 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace CloudAtlas\Flyclone\Test\Unit;
 
 use CloudAtlas\Flyclone\Providers\SFtpProvider;
 use CloudAtlas\Flyclone\Rclone;
+use CloudAtlas\Flyclone\Test\Unit\AbstractProviderTest;
 
 class SFtpProviderTest extends AbstractProviderTest
 {
-   public function setUp()
-   : void
+   public function setUp(): void
    {
       $left_disk_name = 'sftp_disk';
       $this->setLeftProviderName($left_disk_name);
-      // $this->working_directory = "/home/{$_ENV['FTP_USER']}";
-      $this->working_directory = "/root";
+      $working_directory = $_ENV['SFTP_USER'] === 'root' ? "/root" : "/home/{$_ENV['SFTP_USER']}";
+      $this->working_directory = $working_directory . '/' . $this->random_string();
 
       self::assertEquals($left_disk_name, $this->getLeftProviderName());
    }
 
    /**  @test
     */
-   final public function instantiate_left_provider()
-   : SFtpProvider
+   final public function instantiate_left_provider(): SFtpProvider
    {
       $left_side = new SFtpProvider($this->getLeftProviderName(), [
          'HOST' => $_ENV['SFTP_HOST'],
@@ -34,5 +35,4 @@ class SFtpProviderTest extends AbstractProviderTest
 
       return $left_side;
    }
-
 }

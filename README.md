@@ -98,9 +98,15 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 - [X] ~~Add timeout support~~
 - [X] ~~Add more commands~~
 - [X] ~~Add tests~~
-  - [ ] Use docker and docker compose for tests
+  - [x] Use docker and docker compose for tests
 - [ ] Send meta details like file ID in some storage system like Google Drive
-- [ ] Add phpDoc (help wanted)
+
+## Testing
+  Install docker and docker compose, copy `.env.example` to `.env`, then run:
+```shell
+docker compose up --remove-orphans test_offline
+```
+There are others tests (test_all, test_gdrive, etc), but you'll need fill `.env` file properly.
 
 ## Contribution
 > You know how to do that.

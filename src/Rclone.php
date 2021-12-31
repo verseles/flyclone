@@ -25,16 +25,16 @@ class Rclone
 {
 
    private static string $BIN;
-   private Provider $left_side;
-   private ?Provider $right_side;
+   private Provider      $left_side;
+   private ?Provider     $right_side;
 
-   private static int $timeout = 120;
-   private static int $idleTimeout = 100;
-   private static array $flags = [];
-   private static array $envs = [];
+   private static int    $timeout     = 120;
+   private static int    $idleTimeout = 100;
+   private static array  $flags       = [];
+   private static array  $envs        = [];
    private static string $input;
-   private object $progress;
-   private static array $reset = [
+   private object        $progress;
+   private static array  $reset       = [
        'timeout'     => 120,
        'idleTimeout' => 100,
        'flags'       => [],
@@ -50,7 +50,7 @@ class Rclone
        ],
    ];
 
-   public function __construct(Provider $left_side, ?Provider $right_side = NULL)
+   public function __construct ( Provider $left_side, ?Provider $right_side = NULL )
    {
       $this->reset();
 
@@ -58,8 +58,7 @@ class Rclone
       $this->right_side = $right_side ?? $left_side;
    }
 
-   private function reset()
-   : void
+   private function reset (): void
    {
       self::$timeout     = self::$reset[ 'timeout' ];
       self::$idleTimeout = self::$reset[ 'idleTimeout' ];
@@ -70,21 +69,18 @@ class Rclone
       $this->resetProgress();
    }
 
-   public function isLeftSideFolderAgnostic()
-   : bool
+   public function isLeftSideFolderAgnostic (): bool
    {
       return $this->left_side->isFolderAgnostic();
    }
 
-   public function isRightSideFolderAgnostic()
-   : bool
+   public function isRightSideFolderAgnostic (): bool
    {
       return $this->right_side->isFolderAgnostic();
    }
 
 
-   public static function prefix_flags(array $arr, string $prefix = 'RCLONE_')
-   : array
+   public static function prefix_flags ( array $arr, string $prefix = 'RCLONE_' ): array
    {
       $newArr  = [];
       $replace = [ '/^--/m' => '', '/-/m' => '_', ];
@@ -98,14 +94,12 @@ class Rclone
       return $newArr;
    }
 
-   private function allFlags(array $add = [])
-   : array
+   private function allFlags ( array $add = [] ): array
    {
       return array_merge($this->left_side->flags(), $this->right_side->flags(), self::$flags, $add);
    }
 
-   private function allEnvs(array $add = [])
-   : array
+   private function allEnvs ( array $add = [] ): array
    {
       $forced[ 'RCLONE_LOCAL_ONE_FILE_SYSTEM' ] = TRUE;
 
@@ -117,8 +111,7 @@ class Rclone
    }
 
 
-   public static function obscure(string $secret)
-   : string
+   public static function obscure ( string $secret ): string
    {
       $process = new Process([ self::getBIN(), 'obscure', $secret ]);
       $process->setTimeout(3);
@@ -128,8 +121,7 @@ class Rclone
       return trim($process->getOutput());
    }
 
-   private function simpleRun(string $command, array $flags = [], array $envs = [], callable $onProgress = NULL)
-   : string
+   private function simpleRun ( string $command, array $flags = [], array $envs = [], callable $onProgress = NULL ): string
    {
       //      echo "$command\n";
       //      var_dump($flags);
@@ -148,7 +140,7 @@ class Rclone
 
       try {
          if ($onProgress) {
-            $process->mustRun(function ($type, $buffer) use ($onProgress) {
+            $process->mustRun(function ( $type, $buffer ) use ( $onProgress ) {
                $this->parseProgress($type, $buffer, $onProgress);
                $onProgress($type, $buffer);
             });
@@ -209,37 +201,33 @@ class Rclone
       }
    }
 
-   protected function directRun(string $command, $path = NULL, array $flags = [], callable $onProgress = NULL)
-   : bool
+   protected function directRun ( string $command, $path = NULL, array $flags = [], callable $onProgress = NULL ): bool
    {
       $this->simpleRun($command, [
           $this->left_side->backend($path),
-      ], $this->allEnvs($flags), $onProgress);
+      ],               $this->allEnvs($flags), $onProgress);
 
       return TRUE;
    }
 
-   protected function directTwinRun(string $command, $left_path = NULL, $right_path = NULL, array $flags = [], callable $onProgress = NULL)
-   : bool
+   protected function directTwinRun ( string $command, $left_path = NULL, $right_path = NULL, array $flags = [], callable $onProgress = NULL ): bool
    {
-      $this->simpleRun($command, [
-          $this->left_side->backend($left_path),
-          $this->right_side->backend($right_path),
-      ], $this->allEnvs($flags), $onProgress);
+      $this->simpleRun($command,
+                       [ $this->left_side->backend($left_path), $this->right_side->backend($right_path) ],
+                       $this->allEnvs($flags),
+                       $onProgress);
 
       return TRUE;
    }
 
-   private function inputRun(string $command, string $input, array $flags = [], array $envs = [], callable $onProgress = NULL)
-   : bool
+   private function inputRun ( string $command, string $input, array $flags = [], array $envs = [], callable $onProgress = NULL ): bool
    {
       $this->setInput($input);
 
       return (bool) $this->simpleRun($command, $flags, $envs, $onProgress);
    }
 
-   public function version(bool $numeric = FALSE)
-   : string
+   public function version ( bool $numeric = FALSE ): string
    {
       $cmd = $this->simpleRun('version');
 
@@ -248,25 +236,20 @@ class Rclone
       return $numeric ? (float) $version[ 0 ][ 1 ] : $version[ 0 ][ 1 ];
    }
 
-   public static function getBIN()
-   : string
+   public static function getBIN (): string
    {
       return self::$BIN ?? self::guessBIN();
    }
 
-   public static function setBIN(string $BIN)
-   : void
+   public static function setBIN ( string $BIN ): void
    {
       self::$BIN = (string) $BIN;
    }
 
-   public static function guessBIN()
-   : string
+   public static function guessBIN (): string
    {
       $BIN = once(static function () {
-         $executableFinder = new ExecutableFinder();
-
-         return $executableFinder->find('rclone', '/usr/bin/rclone', [
+         return (new ExecutableFinder)->find('rclone', '/usr/bin/rclone', [
              '/usr/local/bin',
              '/usr/bin',
              '/bin',
@@ -280,8 +263,7 @@ class Rclone
       return self::getBIN();
    }
 
-   private function parseProgress(string $type, string $buffer, callable $onProgress = NULL)
-   : void
+   private function parseProgress ( string $type, string $buffer, callable $onProgress = NULL ): void
    {
       // @TODO throw "unreliable" error if $type === ERR
 
@@ -296,8 +278,7 @@ class Rclone
       }
    }
 
-   private function setProgress(array $data)
-   : void
+   private function setProgress ( array $data ): void
    {
       $this->progress = (object) [
           'raw'       => $data[ 0 ],
@@ -309,26 +290,22 @@ class Rclone
       ];
    }
 
-   public function getProgress()
-   : object
+   public function getProgress (): object
    {
       return $this->progress;
    }
 
-   private function resetProgress()
-   : void
+   private function resetProgress (): void
    {
       $this->progress = (object) self::$reset[ 'progress' ];
    }
 
-   public function setInput(string $input)
-   : void
+   public function setInput ( string $input ): void
    {
       self::$input = $input;
    }
 
-   public function setIdleTimeout($idleTimeout)
-   : void
+   public function setIdleTimeout ( $idleTimeout ): void
    {
       self::$idleTimeout = $idleTimeout;
    }
@@ -341,12 +318,11 @@ class Rclone
     * @return array
     * @throws \JsonException
     */
-   public function ls(string $path, array $flags = [])
-   : array
+   public function ls ( string $path, array $flags = [] ): array
    {
       $result = $this->simpleRun('lsjson', [
           $this->left_side->backend($path),
-      ], $this->allEnvs($flags));
+      ],                         $this->allEnvs($flags));
 
       $arr = json_decode($result, FALSE, 10, JSON_THROW_ON_ERROR);
 
@@ -360,39 +336,32 @@ class Rclone
       return $arr;
    }
 
-   public function is_file($path)
-   : object
+   public function is_file ( $path ): object
    {
-      try {
-         $ls = $this->ls($path);
-
-         if (count($ls) !== 1) {
-            return (object) [ 'exists' => FALSE, 'details' => [], 'error' => NULL, ];
-         }
-
-         return (object) [ 'exists' => $ls[ 0 ]->IsDir === FALSE, 'details' => $ls[ 0 ], 'error' => NULL, ];
-      } catch (\Exception $e) {
-         return (object) [ 'exists' => FALSE, 'error' => $e, 'details' => [], ];
-      }
+      return $this->exists($path, 'file');
    }
 
-   public function is_dir($path)
-   : object
+   public function is_dir ( string $path ): object
    {
+      return $this->exists($path, 'dir');
+   }
+
+   /**
+    * @param string $path
+    * @param string $type 'dir' or 'file'
+    *
+    * @return object
+    */
+   public function exists ( string $path, string $type ): object
+   {
+      $dirname  = dirname($path);
+      $basename = basename($path);
+
       try {
-         $parent = dirname($path);
-         $name   = basename($path);
+         $ls    = $this->ls($dirname);
+         $found = array_filter($ls, fn( $i ) => $i->Name === $basename && $i->IsDir === ($type === 'dir'));
 
-         $ls = $this->ls($parent);
-
-         $find = array_filter($ls, fn($i) => $i->Name === $name && $i->IsDir === TRUE);
-         if (count($find) !== 1) {
-            return (object) [ 'exists' => FALSE, 'details' => [], 'error' => '', ];
-         }
-         $found = reset($find);
-
-
-         return (object) [ 'exists' => TRUE, 'details' => $found, ];
+         return (object) [ 'exists' => count($found) === 1, 'details' => $found[ 0 ] ?? [], 'error' => '' ];
       } catch (\Exception $e) {
          return (object) [ 'exists' => FALSE, 'error' => $e, ];
       }
@@ -410,10 +379,13 @@ class Rclone
     *
     * @return bool
     */
-   public function touch(string $path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function touch ( string $path, array $flags = [], callable $onProgress = NULL ): bool
    {
-      return $this->directRun('touch', $path, $flags, $onProgress);
+      // @FIXME https://github.com/cloudatlasid/flyclone/issues/2
+      // return $this->directRun('touch', $path, $flags, $onProgress);
+      $this->rcat($path, '', $flags, $onProgress);
+
+      return true;
    }
 
    /**
@@ -427,8 +399,7 @@ class Rclone
     *
     * @return bool
     */
-   public function mkdir(string $path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function mkdir ( string $path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directRun('mkdir', $path, $flags, $onProgress);
    }
@@ -445,8 +416,7 @@ class Rclone
     *
     * @return bool
     */
-   public function rmdir(string $path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function rmdir ( string $path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directRun('rmdir', $path, $flags, $onProgress);
    }
@@ -462,8 +432,7 @@ class Rclone
     *
     * @return bool
     */
-   public function rmdirs(string $path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function rmdirs ( string $path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directRun('rmdirs', $path, $flags, $onProgress);
    }
@@ -481,8 +450,7 @@ class Rclone
     *
     * @return bool
     */
-   public function purge(string $path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function purge ( string $path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directRun('purge', $path, $flags, $onProgress);
    }
@@ -501,8 +469,7 @@ class Rclone
     *
     * @return bool
     */
-   public function delete(string $path = NULL, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function delete ( string $path = NULL, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directRun('delete', $path, $flags, $onProgress);
    }
@@ -519,71 +486,38 @@ class Rclone
     *
     * @return bool
     */
-   public function deletefile(string $path = NULL, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function deletefile ( string $path = NULL, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directRun('deletefile', $path, $flags, $onProgress);
    }
 
-   public function size(string $path = NULL, array $flags = [], callable $onProgress = NULL)
+   public function size ( string $path = NULL, array $flags = [], callable $onProgress = NULL )
    {
       $result = $this->simpleRun('size', [
           $this->left_side->backend($path),
           '--json',
-      ], $this->allEnvs($flags), $onProgress);
+      ],                         $this->allEnvs($flags), $onProgress);
 
       return json_decode($result, FALSE, 10, JSON_THROW_ON_ERROR);
    }
 
-   public function cat(string $path, array $flags = [], callable $onProgress = NULL)
-   : string
+   public function cat ( string $path, array $flags = [], callable $onProgress = NULL ): string
    {
       return $this->simpleRun('cat', [
           $this->left_side->backend($path),
-      ], $this->allEnvs($flags), $onProgress);
+      ],                      $this->allEnvs($flags), $onProgress);
    }
 
 
-   public function rcat(string $path, string $input, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function rcat ( string $path, string $input, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->inputRun('rcat', $input, [
           $this->left_side->backend($path),
-      ], $this->allEnvs($flags), $onProgress);
+      ],                     $this->allEnvs($flags), $onProgress);
    }
 
-   /**
-    * Write a local file then upload to $path
-    *
-    * @param string        $path
-    * @param string        $input
-    * @param array         $flags
-    * @param callable|null $onProgress
-    *
-    * @return bool
-    * @throws \CloudAtlas\Flyclone\Exception\WriteOperationFailedException
-    */
-   public function write_file(string $path, string $input, array $flags = [], callable $onProgress = NULL)
-   : bool
-   {
-      $temp_filepath = tempnam(sys_get_temp_dir(), 'flyclone_');
 
-      $bytes_writted = file_put_contents($temp_filepath, $input, LOCK_EX);
-
-      if ($bytes_writted === FALSE) {
-         throw new WriteOperationFailedException($temp_filepath);
-      }
-
-      $left_local = new LocalProvider('local');
-      $right_mix  = $this->left_side;
-
-      $rclone = new self($left_local, $right_mix);
-
-      return $rclone->moveto($temp_filepath, $path, $flags, $onProgress);
-   }
-
-   public function upload_file(string $local_path, string $remote_path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function upload_file ( string $local_path, string $remote_path, array $flags = [], callable $onProgress = NULL ): bool
    {
       $left_local = new LocalProvider('local');
       $right_mix  = $this->left_side;
@@ -593,14 +527,12 @@ class Rclone
       return $rclone->moveto($local_path, $remote_path, $flags, $onProgress);
    }
 
-   public function copy(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function copy ( string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directTwinRun('copy', $source_path, $dest_path, $flags, $onProgress);
    }
 
-   public function move(string $source_path, string $dest_DIR_path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function move ( string $source_path, string $dest_DIR_path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directTwinRun('move', $source_path, $dest_DIR_path, $flags, $onProgress);
    }
@@ -620,20 +552,17 @@ class Rclone
     *
     * @return bool
     */
-   public function moveto(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function moveto ( string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directTwinRun('moveto', $source_path, $dest_path, $flags, $onProgress);
    }
 
-   public function sync(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function sync ( string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directTwinRun('sync', $source_path, $dest_path, $flags, $onProgress);
    }
 
-   public function check(string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL)
-   : bool
+   public function check ( string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL ): bool
    {
       return $this->directTwinRun('check', $source_path, $dest_path, $flags, $onProgress);
    }

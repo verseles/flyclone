@@ -11,7 +11,9 @@ class LocalProviderTest extends AbstractProviderTest
    {
       $left_disk_name = 'local_disk';
       $this->setLeftProviderName($left_disk_name);
-      $this->working_directory = sys_get_temp_dir();
+      $working_directory =sys_get_temp_dir() . '/flyclone_' . $this->random_string();
+      mkdir($working_directory, 0777, true);
+      $this->working_directory = $working_directory;
 
       self::assertEquals($left_disk_name, $this->getLeftProviderName());
    }
@@ -40,7 +42,7 @@ class LocalProviderTest extends AbstractProviderTest
    {
       [ $left_side, $temp_filepath ] = $params;
       $content = 'I live at https://github.com/cloudatlasid/flyclone';
-      self::assertFileIsWritable($temp_filepath, 'File not writable');
+      self::assertFileIsWritable($temp_filepath, "File not writable: $temp_filepath");
       $result = file_put_contents($temp_filepath, $content);
 
       self::assertIsInt($result);
@@ -52,4 +54,3 @@ class LocalProviderTest extends AbstractProviderTest
 
 
 }
-

@@ -12,7 +12,7 @@ class DropboxProviderTest extends AbstractProviderTest
    {
       $left_disk_name = 'dropbox_disk';
       $this->setLeftProviderName($left_disk_name);
-      $this->working_directory = '/flyclone';
+      $this->working_directory = '/flyclone/' . $this->random_string();
 
 
       self::assertEquals($left_disk_name, $this->getLeftProviderName());

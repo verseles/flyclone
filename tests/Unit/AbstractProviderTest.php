@@ -53,23 +53,6 @@ abstract class AbstractProviderTest extends TestCase
    /**
     * @test
     * @depends instantiate_with_one_provider
-    */
-   public function list_directory(Rclone $left_side)
-
-   {
-      $dir    = $this->working_directory;
-      $result = $left_side->ls($dir);
-
-      self::assertIsArray($result);
-      self::assertTrue(count($result) > 0, "I need at least one result from $dir");
-      self::assertObjectHasAttribute('Name', $result[ 0 ], 'Unexpected result from ls');
-
-      return $left_side;
-   }
-
-   /**
-    * @test
-    * @depends list_directory
     *
     * @param $left_side Rclone
     */
@@ -86,7 +69,7 @@ abstract class AbstractProviderTest extends TestCase
 
       self::assertTrue($file->exists, 'File not created');
 
-      self::assertEquals(0, $file->details->Size, 'File should be empty by now');
+      self::assertEquals(0, $file->details->Size ?? 9999, 'File should be empty by now');
 
       return [ $left_side, $temp_filepath ];
    }
@@ -104,7 +87,7 @@ abstract class AbstractProviderTest extends TestCase
       /** @var Rclone $left_side */
       [ $left_side, $temp_filepath ] = $params;
 
-      $left_side->write_file($temp_filepath, $content);
+      $left_side->rcat($temp_filepath, $content);
 
       $file_content = $left_side->cat($temp_filepath);
       self::assertEquals($file_content, $content, 'File content are different');
@@ -166,7 +149,7 @@ abstract class AbstractProviderTest extends TestCase
 
    /**
     * @test
-    * @depends list_directory
+    * @depends instantiate_with_one_provider
     */
    public function make_a_directory(Rclone $left_side)
    : array
@@ -215,7 +198,7 @@ abstract class AbstractProviderTest extends TestCase
       $new_file = $first_dir . '/delete-me';
 
       $content = 'JUST DO IT';
-      $left_side->write_file($new_file, $content);
+      $left_side->rcat($new_file, $content);
 
       $file_content = $left_side->cat($new_file);
       self::assertEquals($file_content, $content, 'File content are different');
@@ -232,8 +215,8 @@ abstract class AbstractProviderTest extends TestCase
    {
       /** @var $left_side Rclone */
       [ $left_side, $first_dir, $latest_dir, $latest_file ] = $params;
-      $copy_file = $first_dir . '/' . 'delete-me-too.txt';
-      $left_side->copy($latest_file, $copy_file);
+      $copy_file = $first_dir . '/' . basename($latest_file);
+      $left_side->copy($latest_file, $first_dir);
 
       $check_original = $left_side->is_file($latest_file);
       $check_copy     = $left_side->is_file($copy_file);
@@ -265,6 +248,23 @@ abstract class AbstractProviderTest extends TestCase
       self::assertGreaterThan(0, $check_new_place->details->Size, 'File not moved correctly');
 
       return [ $left_side, $first_dir, $latest_dir, $new_place ];
+   }
+
+   /**
+    * @test
+    * @depends move_latest_file_to_latest_directory
+    */
+   public function list_directory(array $params): Rclone
+   {
+      $left_side = $params[0];
+      $dir    = dirname($this->working_directory);
+      $result = $left_side->ls($dir);
+
+      self::assertIsArray($result);
+      self::assertTrue(count($result) > 0, "I need at least one result from $dir");
+      self::assertObjectHasAttribute('Name', $result[0], 'Unexpected result from ls');
+
+      return $left_side;
    }
 
    /**

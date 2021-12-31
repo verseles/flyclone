@@ -9,10 +9,10 @@
   "authors"           : [
     {
       "name"  : "Hélio",
-      "email" : "insign@gmail.com"
+      "email" : "flyclone@helio.me"
     }
   ],
-  "license"           : "MIT",
+  "license"           : "BY-NC-SA",
   "require"           : {
     "php"             : ">=7.4",
     "ext-json"        : "*",
