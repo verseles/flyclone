@@ -12,7 +12,7 @@
       "email" : "flyclone@helio.me"
     }
   ],
-  "license"           : "BY-NC-SA",
+  "license"           : "CC-BY-NC-SA-4.0",
   "require"           : {
     "php"             : ">=7.4",
     "ext-json"        : "*",
