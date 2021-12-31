@@ -112,4 +112,4 @@ There are others tests (test_all, test_gdrive, etc), but you'll need fill `.env`
 > You know how to do that.
 
 ## License
-MIT - 2021
+CC-BY-NC-SA-4.0 - 2021
