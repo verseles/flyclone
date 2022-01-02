@@ -20,7 +20,7 @@
             <file>tests/Unit/LocalProviderTest.php</file>
             <file>tests/Unit/SFtpProviderTest.php</file>
             <file>tests/Unit/S3ProviderTest.php</file>
-            <!-- <file>tests/Unit/FtpProviderTest.php</file> -->
+            <file>tests/Unit/FtpProviderTest.php</file>
         </testsuite>
     </testsuites>
     <php>

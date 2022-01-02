@@ -27,7 +27,7 @@ services:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit --testsuite offline
-    depends_on: [sftp, s3, composer]
+    depends_on: [sftp, s3, ftp, composer]
   test_local:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
@@ -63,15 +63,17 @@ services:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/FtpProviderTest.php
-  #   depends_on: [ftp, composer]
-  # ftp:
-  #   image: garethflowers/ftp-server
-  #   ports: ["21"]
-  #   volumes:
-  #     - "./tests/Unit/sandbox/ftp/userland:/home/flyclone"
-  #   environment:
-  #     - FTP_USER=flyclone
-  #     - FTP_PASS=d15c0v3r
+    depends_on: [ftp, composer]
+  ftp:
+    image: fauria/vsftpd
+    ports: ["21"]
+    networks: [internal]
+    volumes:
+      - "./tests/Unit/sandbox/ftp/userland:/home/vsftpd"
+    environment:
+      - FTP_USER=flyclone
+      - FTP_PASS=flyclone
+
   test_s3:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
