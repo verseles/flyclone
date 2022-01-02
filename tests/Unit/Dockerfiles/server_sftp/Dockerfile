@@ -6,8 +6,8 @@ EXPOSE 22
 
 RUN apk add openssh
 RUN echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
-RUN adduser -h /home/flyclone -s /bin/sh -D flyclone
-RUN echo -n "flyclone:flyclone" | chpasswd
+RUN adduser -h /home/sftp -s /bin/sh -D sftp
+RUN echo -n "sftp:sftp" | chpasswd
 
 ENTRYPOINT ["/entrypoint.sh"]
 

@@ -17,43 +17,35 @@ services:
   test_all:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
-    volumes:
-      - ".:/app"
-      - "./tests/Unit/sandbox/local/userland:/tmp"
-    env_file: .env
-    networks: [internal]
-    depends_on: [sftp, s3, composer]
-  test_offline: # only local and local servers
+    depends_on: [sftp, s3, ftp]
+  test_offline: # only local and local build servers
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit --testsuite offline
-    depends_on: [sftp, s3, ftp, composer]
+    depends_on: [sftp, s3, ftp]
   test_local:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/LocalProviderTest.php
-    depends_on: [composer]
   test_dropbox:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/DropboxProviderTest.php
-    depends_on: [composer]
   test_mega:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/MegaProviderTest.php
-    depends_on: [composer]
   test_gdrive:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/GDriveProviderTest.php
-    depends_on: [composer]
   test_sftp:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/SFtpProviderTest.php
-    depends_on: [sftp, composer]
+    depends_on: [sftp]
   sftp:
+    container_name: server-sftp
     build: tests/Unit/Dockerfiles/server_sftp
     networks: [internal]
     ports: ["22"]
@@ -63,23 +55,25 @@ services:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/FtpProviderTest.php
-    depends_on: [ftp, composer]
+    depends_on: [ftp]
   ftp:
+    container_name: server-ftp
     image: fauria/vsftpd
     ports: ["21"]
     networks: [internal]
     volumes:
       - "./tests/Unit/sandbox/ftp/userland:/home/vsftpd"
     environment:
-      - FTP_USER=flyclone
-      - FTP_PASS=flyclone
+      - FTP_USER=ftp
+      - FTP_PASS=ftp
 
   test_s3:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/S3ProviderTest.php
-    depends_on: [s3, composer]
+    depends_on: [s3]
   s3:
+    container_name: server-s3
     image: minio/minio
     networks: [internal]
     volumes:
