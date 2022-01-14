@@ -11,7 +11,7 @@ networks:
     
 services:
   composer:
-    image: composer
+    image: composer:2
     volumes: [".:/app"]
     command: install
   test_all:
