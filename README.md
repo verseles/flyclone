@@ -16,8 +16,9 @@ progress support.
 ```shell script
 composer require cloudatlas/flyclone
 ```
+<details>
+<summary>usage</summary>
 
-## usage
 ### list local files
 ```php
 use cloudatlas\flyclone\rclone;
@@ -93,6 +94,10 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
    var_dump($rclone->getprogress());
 });
 ```
+</details>
+
+
+
 ## tips - read before use.
 * of course, you need known how [rclone works](https://rclone.org/docs).
 * rclone class and providers classes always support any flag listed at [rclone documentation](https://rclone.org/flags/), often as 3rd argument. but
