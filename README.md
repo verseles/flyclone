@@ -118,7 +118,7 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
   install docker and docker compose, then run:
 ```shell
 cp .env.example .env
-make test
+make
 ```
 
 > there are others tests (test_all, test_gdrive, etc), but you'll need fill `.env` file properly.

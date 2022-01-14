@@ -1,12 +1,6 @@
 #!/usr/bin/make
 
-# choco install make
-
-.DEFAULT_GOAL := help
-
-help:  ## Display this help
-	@echo "I'll never make a help"
-##@ Initialize work
+.DEFAULT_GOAL := test
 
 init: ## Start a new develop environment
 	make cin
