@@ -16,10 +16,11 @@ progress support.
 ```shell script
 composer require cloudatlas/flyclone
 ```
-<details>
-<summary>usage</summary>
 
-### list local files
+## usage
+<details>
+<summary>list local files</summary>
+
 ```php
 use cloudatlas\flyclone\rclone;
 use cloudatlas\flyclone\providers\localprovider;
@@ -29,7 +30,8 @@ $rclone = new rclone($left_side);
 
 var_dump($rclone->ls('/home/')); // returns array
 ```
-### list files from mega server
+</details>
+<details><summary>list files from mega server</summary>
 
 ```php
 use cloudatlas\flyclone\rclone;
@@ -44,7 +46,8 @@ $rclone = new rclone($left_side);
 
 var_dump($rclone->ls('/docs')); // returns array
 ```
-### copy from local disk to mega
+</details>
+<details><summary>copy from local disk to mega</summary>
 
 ```php
 use cloudatlas\flyclone\rclone;
@@ -62,7 +65,9 @@ $rclone = new rclone($left_side, $right_side);
 
 $rclone->copy('/home/appleinc/index.html', '/docs'); // always true, otherwise throws error
 ```
-### move from local disk to the same local disk
+</details>
+<details><summary>move from local disk to the same local disk</summary>
+
 ```php
 use cloudatlas\flyclone\rclone;
 use cloudatlas\flyclone\providers\localprovider;
@@ -73,8 +78,8 @@ $rclone = new rclone($samedisk);
 
 $rclone->copy('/home/appleinc/index.html', '/home/www/'); // always true, otherwise throws error
 ```
-
-### copy to dropbox with progress every sec
+</details>
+<details><summary>copy to dropbox with progress every sec</summary>
 
 ```php
 use cloudatlas\flyclone\rclone;
@@ -95,8 +100,6 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 });
 ```
 </details>
-
-
 
 ## tips - read before use.
 * of course, you need known how [rclone works](https://rclone.org/docs).
