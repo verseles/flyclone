@@ -13,7 +13,6 @@ use CloudAtlas\Flyclone\Exception\ProcessTimedOutException;
 use CloudAtlas\Flyclone\Exception\SyntaxErrorException;
 use CloudAtlas\Flyclone\Exception\TemporaryErrorException;
 use CloudAtlas\Flyclone\Exception\UnknownErrorException;
-use CloudAtlas\Flyclone\Exception\WriteOperationFailedException;
 use CloudAtlas\Flyclone\Providers\LocalProvider;
 use CloudAtlas\Flyclone\Providers\Provider;
 use Symfony\Component\Process\Exception\ProcessFailedException;
