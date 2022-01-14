@@ -1,5 +1,5 @@
 # cloudatlas\flyclone
-php wrapper for [rclone](https://rclone.org/)
+PHP wrapper for [rclone](https://rclone.org/)
 
 supports [local](https://rclone.org/local/) disk, [dropbox](https://rclone.org/dropbox/), [ftp](https://rclone.org/ftp/), [sftp](https://rclone.org/sftp/), [google drive](https://rclone.org/sftp/), [mega](https://rclone.org/mega/), [s3](https://rclone.org/s3/) ([any compatible](https://rclone.org/overview/)) and others can be easily added via pr.
 
@@ -10,6 +10,7 @@ progress support.
 ![](https://img.shields.io/badge/composer-885630?style=for-the-badge&logo=composer&logoColor=white)
 ![](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)
 ![](https://img.shields.io/badge/GIT-E44C30?style=for-the-badge&logo=git&logoColor=white)
+
 ## installation
 
 ```shell script
@@ -109,7 +110,8 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 ## testing
   install docker and docker compose, copy `.env.example` to `.env`, then run:
 ```shell
-docker compose up --remove-orphans test_offline
+cp .env.example .env
+make test
 ```
 there are others tests (test_all, test_gdrive, etc), but you'll need fill `.env` file properly.
 
@@ -117,4 +119,4 @@ there are others tests (test_all, test_gdrive, etc), but you'll need fill `.env`
 > you know how to do that.
 
 ## license
-cc-by-nc-sa-4.0 - 2021
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](LICENSE.md)
