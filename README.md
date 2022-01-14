@@ -108,12 +108,13 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 - [ ] send meta details like file id in some storage system like google drive
 
 ## testing
-  install docker and docker compose, copy `.env.example` to `.env`, then run:
+  install docker and docker compose, then run:
 ```shell
 cp .env.example .env
 make test
 ```
-there are others tests (test_all, test_gdrive, etc), but you'll need fill `.env` file properly.
+
+> there are others tests (test_all, test_gdrive, etc), but you'll need fill `.env` file properly.
 
 ## contribution
 > you know how to do that.
