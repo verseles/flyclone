@@ -5,7 +5,7 @@ supports [local](https://rclone.org/local/) disk, [dropbox](https://rclone.org/d
 
 progress support.
 
-![](https://img.shields.io/badge/php-777bb4?style=for-the-badge&logo=php&logocolor=white)
+![](https://img.shields.io/badge/php-777bb4?style=for-the-badge&logo=php&logoColor=white)
 ![](http://img.shields.io/badge/-phpstorm-181717?style=for-the-badge&logo=phpstorm&logocolor=white)
 ![](https://img.shields.io/badge/composer-885630?style=for-the-badge&logo=composer&logocolor=white)
 ![](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)
