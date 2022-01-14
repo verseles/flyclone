@@ -18,8 +18,7 @@ composer require cloudatlas/flyclone
 ```
 
 ## usage
-<details>
-<summary>list local files</summary>
+<details open><summary>list local files</summary>
 
 ```php
 use cloudatlas\flyclone\rclone;
