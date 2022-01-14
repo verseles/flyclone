@@ -11,6 +11,7 @@ help:  ## Display this help
 init: ## Start a new develop environment
 	make cin
 test: ## Start containers detached
+	make cin
 	docker-compose run --rm test_offline
 logs: ## Show the output logs
 	docker-compose logs
