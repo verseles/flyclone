@@ -1,7 +1,7 @@
 # cloudatlas\flyclone
 PHP wrapper for [rclone](https://rclone.org/)
 
-supports [local](https://rclone.org/local/) disk, [dropbox](https://rclone.org/dropbox/), [ftp](https://rclone.org/ftp/), [sftp](https://rclone.org/sftp/), [google drive](https://rclone.org/sftp/), [mega](https://rclone.org/mega/), [s3](https://rclone.org/s3/) ([any compatible](https://rclone.org/overview/)) and others can be easily added via pr.
+supports [local](https://rclone.org/local/) disk, [dropbox](https://rclone.org/dropbox/), [ftp](https://rclone.org/ftp/), [sftp](https://rclone.org/sftp/), [google drive](https://rclone.org/sftp/), [mega](https://rclone.org/mega/), [s3](https://rclone.org/s3/), [b2](https://rclone.org/b2/) ([any compatible](https://rclone.org/overview/)) and others can be easily added via pr.
 
 progress support.
 
@@ -21,8 +21,8 @@ composer require cloudatlas/flyclone
 <details open><summary>list local files</summary>
 
 ```php
-use cloudatlas\flyclone\rclone;
-use cloudatlas\flyclone\providers\localprovider;
+use CloudAtlas\Flyclone\rclone;
+use CloudAtlas\Flyclone\Providers\localprovider;
 
 $left_side = new localprovider('mydisk'); // nickname
 $rclone = new rclone($left_side);
@@ -33,8 +33,8 @@ var_dump($rclone->ls('/home/')); // returns array
 <details><summary>list files from mega server</summary>
 
 ```php
-use cloudatlas\flyclone\rclone;
-use cloudatlas\flyclone\providers\megaprovider;
+use CloudAtlas\Flyclone\rclone;
+use CloudAtlas\Flyclone\Providers\megaprovider;
 
 $left_side = new megaprovider('myserver',[
     'user'=>'johnivy@pear.com',
@@ -49,9 +49,9 @@ var_dump($rclone->ls('/docs')); // returns array
 <details><summary>copy from local disk to mega</summary>
 
 ```php
-use cloudatlas\flyclone\rclone;
-use cloudatlas\flyclone\providers\localprovider;
-use cloudatlas\flyclone\providers\megaprovider;
+use CloudAtlas\Flyclone\rclone;
+use CloudAtlas\Flyclone\Providers\localprovider;
+use CloudAtlas\Flyclone\Providers\megaprovider;
 
 $left_side = new localprovider('mydisk'); // name
 
@@ -68,8 +68,8 @@ $rclone->copy('/home/appleinc/index.html', '/docs'); // always true, otherwise t
 <details><summary>move from local disk to the same local disk</summary>
 
 ```php
-use cloudatlas\flyclone\rclone;
-use cloudatlas\flyclone\providers\localprovider;
+use CloudAtlas\Flyclone\rclone;
+use CloudAtlas\Flyclone\Providers\localprovider;
 
 $samedisk = new localprovider('mydisk'); // name
 
@@ -81,9 +81,9 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/'); // always true, otherw
 <details><summary>copy to dropbox with progress every sec</summary>
 
 ```php
-use cloudatlas\flyclone\rclone;
-use cloudatlas\flyclone\providers\localprovider;
-use cloudatlas\flyclone\providers\dropboxprovider;
+use CloudAtlas\Flyclone\rclone;
+use CloudAtlas\Flyclone\Providers\localprovider;
+use CloudAtlas\Flyclone\Providers\dropboxprovider;
 
 $left_side = new localprovider('mydisk'); // nickname
 $right_side = new dropboxprovider('myremote', [
