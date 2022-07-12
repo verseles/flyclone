@@ -8,7 +8,7 @@ x-commons: &commons
 
 networks:
   internal:
-    
+
 services:
   composer:
     image: composer:2
@@ -50,7 +50,7 @@ services:
     networks: [internal]
     ports: ["22"]
     volumes:
-      - "./tests/Unit/sandbox/sftp/userland:/home/flyclone"
+      - "./tests/Unit/sandbox/sftp/userland:/home/sftp"
   test_ftp:
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
