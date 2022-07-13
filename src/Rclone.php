@@ -53,8 +53,9 @@ class Rclone
    {
       $this->reset();
 
-      $this->left_side  = $left_side;
-      $this->right_side = $right_side ?? $left_side;
+		$this->setLeftSide($left_side);
+
+		$this->setRightSide($right_side ?? $left_side);
    }
 
    private function reset (): void
@@ -70,12 +71,12 @@ class Rclone
 
    public function isLeftSideFolderAgnostic (): bool
    {
-      return $this->left_side->isFolderAgnostic();
+      return $this->getLeftSide()->isFolderAgnostic();
    }
 
    public function isRightSideFolderAgnostic (): bool
    {
-      return $this->right_side->isFolderAgnostic();
+      return $this->getRightSide()->isFolderAgnostic();
    }
 
 
@@ -358,8 +359,7 @@ class Rclone
 
       try {
          $ls    = $this->ls($dirname);
-         $found = array_filter($ls, fn( $i ) => $i->Name === $basename && $i->IsDir === ($type === 'dir'));
-
+         $found = array_filter($ls, static fn( $i ) => $i->Name === $basename && $i->IsDir === ($type === 'dir'));
          return (object) [ 'exists' => count($found) === 1, 'details' => $found[ 0 ] ?? [], 'error' => '' ];
       } catch (\Exception $e) {
          return (object) [ 'exists' => FALSE, 'error' => $e, ];
@@ -565,4 +565,36 @@ class Rclone
    {
       return $this->directTwinRun('check', $source_path, $dest_path, $flags, $onProgress);
    }
+
+  /**
+	* @return Provider
+	*/
+  public function getLeftSide (): Provider
+  {
+	 return $this->left_side;
+  }
+
+  /**
+	* @param Provider $left_side
+	*/
+  public function setLeftSide ( Provider $left_side ): void
+  {
+	 $this->left_side = $left_side;
+  }
+
+  /**
+	* @return Provider
+	*/
+  public function getRightSide (): Provider
+  {
+	 return $this->right_side;
+  }
+
+  /**
+	* @param Provider $right_side
+	*/
+  public function setRightSide ( Provider $right_side ): void
+  {
+	 $this->right_side = $right_side;
+  }
 }

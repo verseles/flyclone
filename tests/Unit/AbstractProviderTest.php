@@ -10,6 +10,8 @@ use PHPUnit\Framework\TestCase;
 
 abstract class AbstractProviderTest extends TestCase
 {
+   use Helpers;
+
    protected string $leftProviderName = 'undefined_disk';
    protected string $working_directory = '/tmp';
 
@@ -56,7 +58,7 @@ abstract class AbstractProviderTest extends TestCase
     *
     * @param $left_side Rclone
     */
-   public function touch_a_file($left_side)
+   public function touch_a_file( Rclone $left_side)
    : array
    {
       $temp_filepath = $this->working_directory . '/flyclone_' . $this->random_string();
@@ -283,12 +285,5 @@ abstract class AbstractProviderTest extends TestCase
       self::assertFalse($check_dir->exists, 'The directory should not exist anymore');
 
       return $params;
-   }
-
-
-   public function random_string($length = 7)
-   : string
-   {
-      return substr(md5(mt_rand()), 0, $length);
    }
 }

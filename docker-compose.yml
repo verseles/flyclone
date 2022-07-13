@@ -11,53 +11,62 @@ networks:
 
 services:
   composer:
+    container_name: fc-composer
     image: composer:2
     volumes: [".:/app"]
     command: install
   test_all:
+    container_name: fc-test-all
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     depends_on: [sftp, s3, ftp]
   test_offline: # only local and local build servers
+    container_name: fc-test-offline
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit --testsuite offline
     depends_on: [sftp, s3, ftp]
   test_local:
+    container_name: fc-test-local
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/LocalProviderTest.php
   test_dropbox:
+    container_name: fc-test-dropbox
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/DropboxProviderTest.php
   test_mega:
+    container_name: fc-test-mega
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/MegaProviderTest.php
   test_gdrive:
+    container_name: fc-test-gdrive
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/GDriveProviderTest.php
   test_sftp:
+    container_name: fc-test-sftp
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/SFtpProviderTest.php
     depends_on: [sftp]
   sftp:
-    container_name: server-sftp
+    container_name: fc-server-sftp
     build: tests/Unit/Dockerfiles/server_sftp
     networks: [internal]
     ports: ["22"]
     volumes:
       - "./tests/Unit/sandbox/sftp/userland:/home/sftp"
   test_ftp:
+    container_name: fc-test-ftp
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/FtpProviderTest.php
     depends_on: [ftp]
   ftp:
-    container_name: server-ftp
+    container_name: fc-server-ftp
     image: fauria/vsftpd
     ports: ["21"]
     networks: [internal]
@@ -68,12 +77,13 @@ services:
       - FTP_PASS=ftp
 
   test_s3:
+    container_name: fc-test-s3
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     command: phpunit ./tests/Unit/S3ProviderTest.php
     depends_on: [s3]
   s3:
-    container_name: server-s3
+    container_name: fc-server-s3
     image: minio/minio
     networks: [internal]
     volumes:
@@ -84,3 +94,9 @@ services:
       - MINIO_BROWSER=off
     ports: ["9000"]
     command: server /data
+  test_sftp_s3:
+    container_name: fc-test-sftp-s3
+    <<: *commons
+    build: tests/Unit/Dockerfiles/tests
+    command: phpunit ./tests/Unit/SFtpToS3ProviderTest.php
+    depends_on: [sftp, s3]

@@ -21,6 +21,10 @@
             <file>tests/Unit/SFtpProviderTest.php</file>
             <file>tests/Unit/S3ProviderTest.php</file>
             <file>tests/Unit/FtpProviderTest.php</file>
+            <file>tests/Unit/FromS3ToSFtpProviderTest.php</file>
+            <file>tests/Unit/FromSFtpToS3ProviderTest.php</file>
+            <file>tests/Unit/FromLocalToS3ProviderTest.php</file>
+            <file>tests/Unit/FromS3ToLocalProviderTest.php</file>
         </testsuite>
     </testsuites>
     <php>

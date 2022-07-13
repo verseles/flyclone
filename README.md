@@ -111,7 +111,7 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($t
 - [x] ~~add timeout support~~
 - [x] ~~add more commands~~
 - [x] ~~add tests~~
-  - [x] use docker and docker compose for tests
+  - [x] ~~use docker and docker compose for tests~~
 - [ ] send meta details like file id in some storage system like google drive
 
 ## testing
