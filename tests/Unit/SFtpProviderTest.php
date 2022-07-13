@@ -6,7 +6,6 @@ namespace CloudAtlas\Flyclone\Test\Unit;
 
 use CloudAtlas\Flyclone\Providers\SFtpProvider;
 use CloudAtlas\Flyclone\Rclone;
-use CloudAtlas\Flyclone\Test\Unit\AbstractProviderTest;
 
 class SFtpProviderTest extends AbstractProviderTest
 {
