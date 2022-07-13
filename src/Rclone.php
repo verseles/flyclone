@@ -360,7 +360,7 @@ class Rclone
       try {
          $ls    = $this->ls($dirname);
          $found = array_filter($ls, static fn( $i ) => $i->Name === $basename && $i->IsDir === ($type === 'dir'));
-         return (object) [ 'exists' => count($found) === 1, 'details' => $found[ 0 ] ?? [], 'error' => '' ];
+         return (object) [ 'exists' => count($found) === 1, 'details' => array_change_key_case($found[ 0 ]) ?? [], 'error' => '' ];
       } catch (\Exception $e) {
          return (object) [ 'exists' => FALSE, 'error' => $e, ];
       }
