@@ -17,6 +17,7 @@ jobs:
     steps:
       - name: Flyclone Test GH Action
         uses: cloudatlasid/flyclone-test-gh-action@v2
+        run: make
 
       - uses: actions/checkout@v3
 
