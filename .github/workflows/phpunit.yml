@@ -15,8 +15,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Flyclone Test GH Action
-        uses: cloudatlasid/flyclone-test-gh-action@v2
+      - uses: cloudatlasid/flyclone-test-gh-action@v2
+
+        name: Flyclone Test GH Action
         run: make
 
       - uses: actions/checkout@v3
