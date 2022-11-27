@@ -22,11 +22,11 @@ composer require cloudatlas/flyclone
 <details open><summary>list local files</summary>
 
 ```php
-use CloudAtlas\Flyclone\rclone;
-use CloudAtlas\Flyclone\Providers\localprovider;
+use CloudAtlas\Flyclone\Rclone;
+use CloudAtlas\Flyclone\Providers\LocalProvider;
 
-$left_side = new localprovider('mydisk'); // nickname
-$rclone = new rclone($left_side);
+$left_side = new LocalProvider('mydisk'); // nickname
+$rclone = new Rclone($left_side);
 
 var_dump($rclone->ls('/home/')); // returns array
 ```
@@ -34,15 +34,15 @@ var_dump($rclone->ls('/home/')); // returns array
 <details><summary>list files from mega server</summary>
 
 ```php
-use CloudAtlas\Flyclone\rclone;
-use CloudAtlas\Flyclone\Providers\megaprovider;
+use CloudAtlas\Flyclone\Rclone;
+use CloudAtlas\Flyclone\Providers\MegaProvider;
 
-$left_side = new megaprovider('myserver',[
+$left_side = new MegaProvider('myserver',[
     'user'=>'johnivy@pear.com',
-    'pass'=> rclone::obscure('applesux')
+    'pass'=> Rclone::obscure('applesux')
 ]);
 
-$rclone = new rclone($left_side);
+$rclone = new Rclone($left_side);
 
 var_dump($rclone->ls('/docs')); // returns array
 ```
@@ -50,18 +50,18 @@ var_dump($rclone->ls('/docs')); // returns array
 <details><summary>copy from local disk to mega</summary>
 
 ```php
-use CloudAtlas\Flyclone\rclone;
-use CloudAtlas\Flyclone\Providers\localprovider;
-use CloudAtlas\Flyclone\Providers\megaprovider;
+use CloudAtlas\Flyclone\Rclone;
+use CloudAtlas\Flyclone\Providers\LocalProvider;
+use CloudAtlas\Flyclone\Providers\MegaProvider;
 
-$left_side = new localprovider('mydisk'); // name
+$left_side = new LocalProvider('mydisk'); // name
 
-$right_side = new megaprovider('myremote',[
+$right_side = new MegaProvider('myremote',[
     'user'=>'your@email.com',
-    'pass'=> rclone::obscure('4ppl35u*')
+    'pass'=> Rclone::obscure('4ppl35u*')
 ]);
 
-$rclone = new rclone($left_side, $right_side);
+$rclone = new Rclone($left_side, $right_side);
 
 $rclone->copy('/home/appleinc/index.html', '/docs'); // always true, otherwise throws error
 ```
@@ -69,12 +69,12 @@ $rclone->copy('/home/appleinc/index.html', '/docs'); // always true, otherwise t
 <details><summary>move from local disk to the same local disk</summary>
 
 ```php
-use CloudAtlas\Flyclone\rclone;
-use CloudAtlas\Flyclone\Providers\localprovider;
+use CloudAtlas\Flyclone\Rclone;
+use CloudAtlas\Flyclone\Providers\LocalProvider;
 
-$samedisk = new localprovider('mydisk'); // name
+$samedisk = new LocalProvider('mydisk'); // name
 
-$rclone = new rclone($samedisk);
+$rclone = new Rclone($samedisk);
 
 $rclone->copy('/home/appleinc/index.html', '/home/www/'); // always true, otherwise throws error
 ```
@@ -82,21 +82,21 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/'); // always true, otherw
 <details><summary>copy to dropbox with progress every sec</summary>
 
 ```php
-use CloudAtlas\Flyclone\rclone;
-use CloudAtlas\Flyclone\Providers\localprovider;
-use CloudAtlas\Flyclone\Providers\dropboxprovider;
+use CloudAtlas\Flyclone\Rclone;
+use CloudAtlas\Flyclone\Providers\LocalProvider;
+use CloudAtlas\Flyclone\Providers\DropboxProvider;
 
-$left_side = new localprovider('mydisk'); // nickname
-$right_side = new dropboxprovider('myremote', [
+$left_side = new LocalProvider('mydisk'); // nickname
+$right_side = new DropboxProvider('myremote', [
     'client_id'     => 'your_dropbox_client_id',
     'client_secret' => 'your_dropbox_client_secret',
     'token'         => 'your_dropbox_token',
 ]);
 
-$rclone = new rclone($left_side, $right_side);
+$rclone = new Rclone($left_side, $right_side);
 
 $rclone->copy('/home/appleinc/index.html', '/home/www/', [], static function ($type, $buffer) use ($rclone) {
-   var_dump($rclone->getprogress());
+   var_dump($rclone->getProgress());
 });
 ```
 </details>
