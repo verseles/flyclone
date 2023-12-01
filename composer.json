@@ -1,5 +1,5 @@
 {
-  "name"              : "Verseles/flyclone",
+  "name"              : "verseles/flyclone",
   "description"       : "PHP wrapper for rclone",
   "type"              : "library",
   "keywords"          : [
