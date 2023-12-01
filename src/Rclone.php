@@ -1,20 +1,20 @@
 <?php
 
 
-namespace CloudAtlas\Flyclone;
+namespace Verseles\Flyclone;
 
-use CloudAtlas\Flyclone\Exception\DirectoryNotFoundException;
-use CloudAtlas\Flyclone\Exception\FatalErrorException;
-use CloudAtlas\Flyclone\Exception\FileNotFoundException;
-use CloudAtlas\Flyclone\Exception\LessSeriousErrorException;
-use CloudAtlas\Flyclone\Exception\MaxTransferReachedException;
-use CloudAtlas\Flyclone\Exception\NoFilesTransferredException;
-use CloudAtlas\Flyclone\Exception\ProcessTimedOutException;
-use CloudAtlas\Flyclone\Exception\SyntaxErrorException;
-use CloudAtlas\Flyclone\Exception\TemporaryErrorException;
-use CloudAtlas\Flyclone\Exception\UnknownErrorException;
-use CloudAtlas\Flyclone\Providers\LocalProvider;
-use CloudAtlas\Flyclone\Providers\Provider;
+use Verseles\Flyclone\Exception\DirectoryNotFoundException;
+use Verseles\Flyclone\Exception\FatalErrorException;
+use Verseles\Flyclone\Exception\FileNotFoundException;
+use Verseles\Flyclone\Exception\LessSeriousErrorException;
+use Verseles\Flyclone\Exception\MaxTransferReachedException;
+use Verseles\Flyclone\Exception\NoFilesTransferredException;
+use Verseles\Flyclone\Exception\ProcessTimedOutException;
+use Verseles\Flyclone\Exception\SyntaxErrorException;
+use Verseles\Flyclone\Exception\TemporaryErrorException;
+use Verseles\Flyclone\Exception\UnknownErrorException;
+use Verseles\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Providers\Provider;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyProcessTimedOutExceptionAlias;
 use Symfony\Component\Process\ExecutableFinder;
@@ -445,7 +445,7 @@ class Rclone
 	*/
   public function touch ( string $path, array $flags = [], callable $onProgress = NULL ): bool
   {
-	 // @FIXME https://github.com/cloudatlasid/flyclone/issues/2
+	 // @FIXME https://github.com/Verselesid/flyclone/issues/2
 	 // return $this->directRun('touch', $path, $flags, $onProgress);
 	 $this->rcat($path, '', $flags, $onProgress);
 

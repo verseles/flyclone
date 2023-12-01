@@ -1,11 +1,11 @@
 <?php
 
 
-namespace CloudAtlas\Flyclone\Test\Unit;
+namespace Verseles\Flyclone\Test\Unit;
 
 
-use CloudAtlas\Flyclone\Providers\Provider;
-use CloudAtlas\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\Provider;
+use Verseles\Flyclone\Rclone;
 use PHPUnit\Framework\Exception;
 use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;

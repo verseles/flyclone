@@ -1,7 +1,7 @@
 <?php
 
 
-namespace CloudAtlas\Flyclone\Exception;
+namespace Verseles\Flyclone\Exception;
 
 
 class ProcessTimedOutException extends RcloneException

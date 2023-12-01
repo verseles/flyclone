@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CloudAtlas\Flyclone\Test\Unit;
+namespace Verseles\Flyclone\Test\Unit;
 
-use CloudAtlas\Flyclone\Providers\S3Provider;
-use CloudAtlas\Flyclone\Providers\SFtpProvider;
-use CloudAtlas\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\S3Provider;
+use Verseles\Flyclone\Providers\SFtpProvider;
+use Verseles\Flyclone\Rclone;
 
 class FromSFtpToS3ProviderTest extends AbstractTwoProvidersTest
 {

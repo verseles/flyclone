@@ -1,9 +1,9 @@
 <?php declare(strict_types=1);
 
-namespace CloudAtlas\Flyclone\Test\Unit;
+namespace Verseles\Flyclone\Test\Unit;
 
-use CloudAtlas\Flyclone\Providers\MegaProvider;
-use CloudAtlas\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\MegaProvider;
+use Verseles\Flyclone\Rclone;
 
 class MegaProviderTest extends AbstractProviderTest
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace CloudAtlas\Flyclone\Exception;
+namespace Verseles\Flyclone\Exception;
 
 class RcloneException extends \RuntimeException
 {

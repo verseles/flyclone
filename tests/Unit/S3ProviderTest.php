@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace CloudAtlas\Flyclone\Test\Unit;
+namespace Verseles\Flyclone\Test\Unit;
 
-use CloudAtlas\Flyclone\Providers\S3Provider;
+use Verseles\Flyclone\Providers\S3Provider;
 
 class S3ProviderTest extends AbstractProviderTest
 {

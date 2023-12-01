@@ -1,5 +1,5 @@
 {
-  "name"              : "cloudatlas/flyclone",
+  "name"              : "Verseles/flyclone",
   "description"       : "PHP wrapper for rclone",
   "type"              : "library",
   "keywords"          : [
@@ -21,12 +21,12 @@
   },
   "autoload"          : {
     "psr-4" : {
-      "CloudAtlas\\Flyclone\\" : "src"
+      "Verseles\\Flyclone\\" : "src"
     }
   },
   "autoload-dev"      : {
     "psr-4" : {
-      "CloudAtlas\\Flyclone\\Test\\" : "tests"
+      "Verseles\\Flyclone\\Test\\" : "tests"
     }
   },
   "scripts"           : {

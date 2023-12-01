@@ -1,9 +1,9 @@
 <?php declare(strict_types=1);
 
-namespace CloudAtlas\Flyclone\Test\Unit;
+namespace Verseles\Flyclone\Test\Unit;
 
-use CloudAtlas\Flyclone\Providers\FtpProvider;
-use CloudAtlas\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\FtpProvider;
+use Verseles\Flyclone\Rclone;
 
 class FtpProviderTest extends AbstractProviderTest
 {

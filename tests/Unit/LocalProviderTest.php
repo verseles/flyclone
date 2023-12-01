@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace CloudAtlas\Flyclone\Test\Unit;
+namespace Verseles\Flyclone\Test\Unit;
 
-use CloudAtlas\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Providers\LocalProvider;
 
 class LocalProviderTest extends AbstractProviderTest
 {
@@ -41,7 +41,7 @@ class LocalProviderTest extends AbstractProviderTest
    : array
    {
       [ $left_side, $temp_filepath ] = $params;
-      $content = 'I live at https://github.com/cloudatlasid/flyclone';
+      $content = 'I live at https://github.com/Verselesid/flyclone';
       self::assertFileIsWritable($temp_filepath, "File not writable: $temp_filepath");
       $result = file_put_contents($temp_filepath, $content);
 

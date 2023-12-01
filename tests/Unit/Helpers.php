@@ -1,6 +1,6 @@
 <?php
 
-namespace CloudAtlas\Flyclone\Test\Unit;
+namespace Verseles\Flyclone\Test\Unit;
 
 trait Helpers
 {

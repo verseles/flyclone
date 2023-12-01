@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace CloudAtlas\Flyclone\Test\Unit;
+namespace Verseles\Flyclone\Test\Unit;
 
-use CloudAtlas\Flyclone\Providers\DropboxProvider;
+use Verseles\Flyclone\Providers\DropboxProvider;
 
 class DropboxProviderTest extends AbstractProviderTest
 {

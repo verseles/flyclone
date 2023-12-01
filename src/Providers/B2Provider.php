@@ -1,7 +1,7 @@
 <?php
 
 
-namespace CloudAtlas\Flyclone\Providers;
+namespace Verseles\Flyclone\Providers;
 
 
 class B2Provider extends Provider

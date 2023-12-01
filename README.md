@@ -1,4 +1,4 @@
-# cloudatlas\flyclone
+# Verseles\flyclone
 PHP wrapper for [rclone](https://rclone.org/)
 
 supports [local](https://rclone.org/local/) disk, [dropbox](https://rclone.org/dropbox/), [ftp](https://rclone.org/ftp/), [sftp](https://rclone.org/sftp/), [google drive](https://rclone.org/sftp/), [mega](https://rclone.org/mega/), [s3](https://rclone.org/s3/), [b2](https://rclone.org/b2/) ([any compatible](https://rclone.org/overview/)) and others can be easily added via pr.
@@ -6,7 +6,7 @@ supports [local](https://rclone.org/local/) disk, [dropbox](https://rclone.org/d
 progress support.
 
 ![](https://img.shields.io/badge/php-777bb4?style=for-the-badge&logo=php&logoColor=white)
-![](https://img.shields.io/github/checks-status/cloudatlasid/flyclone/master?label=TESTS&style=for-the-badge)
+![](https://img.shields.io/github/checks-status/Verselesid/flyclone/master?label=TESTS&style=for-the-badge)
 ![](http://img.shields.io/badge/-phpstorm-7256fe?style=for-the-badge&logo=phpstorm&logoColor=white)
 ![](https://img.shields.io/badge/composer-885630?style=for-the-badge&logo=composer&logoColor=white)
 ![](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)
@@ -15,15 +15,15 @@ progress support.
 ## installation
 
 ```shell script
-composer require cloudatlas/flyclone
+composer require Verseles/flyclone
 ```
 
 ## usage
 <details open><summary>list local files</summary>
 
 ```php
-use CloudAtlas\Flyclone\Rclone;
-use CloudAtlas\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\LocalProvider;
 
 $left_side = new LocalProvider('mydisk'); // nickname
 $rclone = new Rclone($left_side);
@@ -34,8 +34,8 @@ var_dump($rclone->ls('/home/')); // returns array
 <details><summary>list files from mega server</summary>
 
 ```php
-use CloudAtlas\Flyclone\Rclone;
-use CloudAtlas\Flyclone\Providers\MegaProvider;
+use Verseles\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\MegaProvider;
 
 $left_side = new MegaProvider('myserver',[
     'user'=>'johnivy@pear.com',
@@ -50,9 +50,9 @@ var_dump($rclone->ls('/docs')); // returns array
 <details><summary>copy from local disk to mega</summary>
 
 ```php
-use CloudAtlas\Flyclone\Rclone;
-use CloudAtlas\Flyclone\Providers\LocalProvider;
-use CloudAtlas\Flyclone\Providers\MegaProvider;
+use Verseles\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Providers\MegaProvider;
 
 $left_side = new LocalProvider('mydisk'); // name
 
@@ -69,8 +69,8 @@ $rclone->copy('/home/appleinc/index.html', '/docs'); // always true, otherwise t
 <details><summary>move from local disk to the same local disk</summary>
 
 ```php
-use CloudAtlas\Flyclone\Rclone;
-use CloudAtlas\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\LocalProvider;
 
 $samedisk = new LocalProvider('mydisk'); // name
 
@@ -82,9 +82,9 @@ $rclone->copy('/home/appleinc/index.html', '/home/www/'); // always true, otherw
 <details><summary>copy to dropbox with progress every sec</summary>
 
 ```php
-use CloudAtlas\Flyclone\Rclone;
-use CloudAtlas\Flyclone\Providers\LocalProvider;
-use CloudAtlas\Flyclone\Providers\DropboxProvider;
+use Verseles\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Providers\DropboxProvider;
 
 $left_side = new LocalProvider('mydisk'); // nickname
 $right_side = new DropboxProvider('myremote', [

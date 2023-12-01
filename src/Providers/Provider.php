@@ -1,10 +1,10 @@
 <?php
 
 
-namespace CloudAtlas\Flyclone\Providers;
+namespace Verseles\Flyclone\Providers;
 
 
-use CloudAtlas\Flyclone\Rclone;
+use Verseles\Flyclone\Rclone;
 
 class Provider extends AbstractProvider
 {
