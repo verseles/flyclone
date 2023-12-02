@@ -12,15 +12,15 @@ networks:
 services:
   composer:
     container_name: fc-composer
+    <<: *commons
     image: composer:2
-    volumes: [".:/app"]
     command: install
   test_all:
     container_name: fc-test-all
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
     depends_on: [sftp, s3, ftp]
-  test_offline: # only local and local build servers
+  test_offline: # only local and local built servers
     container_name: fc-test-offline
     <<: *commons
     build: tests/Unit/Dockerfiles/tests
@@ -53,12 +53,13 @@ services:
     command: phpunit ./tests/Unit/SFtpProviderTest.php
     depends_on: [sftp]
   sftp:
-    container_name: fc-server-sftp
-    build: tests/Unit/Dockerfiles/server_sftp
+    image: jmcombs/sftp
+    <<: *commons
     networks: [internal]
     ports: ["22"]
     volumes:
-      - "./tests/Unit/sandbox/sftp/userland:/home/sftp"
+      - "./tests/Unit/sandbox/sftp/userland:/home/sftp/"
+    command: sftp:sftp:1001
   test_ftp:
     container_name: fc-test-ftp
     <<: *commons
@@ -67,15 +68,12 @@ services:
     depends_on: [ftp]
   ftp:
     container_name: fc-server-ftp
-    image: fauria/vsftpd
+    <<: *commons
+    image: garethflowers/ftp-server
     ports: ["21"]
     networks: [internal]
     volumes:
-      - "./tests/Unit/sandbox/ftp/userland:/home/vsftpd"
-    environment:
-      - FTP_USER=ftp
-      - FTP_PASS=ftp
-
+      - "./tests/Unit/sandbox/ftp/userland:/root/flyclone/"
   test_s3:
     container_name: fc-test-s3
     <<: *commons
@@ -84,15 +82,12 @@ services:
     depends_on: [s3]
   s3:
     container_name: fc-server-s3
-    image: minio/minio
+    image: quay.io/minio/minio:latest
+    <<: *commons
     networks: [internal]
     volumes:
       - "./tests/Unit/sandbox/s3/userland:/data"
-    environment:
-      - MINIO_ROOT_USER=flyclone
-      - MINIO_ROOT_PASSWORD=flyclone
-      - MINIO_BROWSER=off
-    ports: ["9000"]
+    ports: ["9000:9000"]
     command: server /data
   test_sftp_s3:
     container_name: fc-test-sftp-s3

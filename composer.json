@@ -42,7 +42,7 @@
   "minimum-stability" : "dev",
   "prefer-stable"     : true,
   "require-dev"       : {
-    "phpunit/phpunit" : "^9.5.11",
+    "phpunit/phpunit" : "^10",
     "enlightn/security-checker": "^1.9"
   }
 }

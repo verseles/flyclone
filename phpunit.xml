@@ -1,33 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         backupGlobals="false" backupStaticAttributes="false" colors="true" testdox="true" verbose="true"
-         convertErrorsToExceptions="true" convertNoticesToExceptions="true" convertWarningsToExceptions="true"
-         processIsolation="false" stopOnFailure="true"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
-         timeoutForLargeTests="120"
->
-    <coverage>
-        <include>
-            <directory suffix=".php">src/</directory>
-        </include>
-    </coverage>
-    <testsuites>
-        <testsuite name="all">
-            <directory>tests</directory>
-        </testsuite>
-        <testsuite name="offline">
-            <file>tests/Unit/LocalProviderTest.php</file>
-            <file>tests/Unit/SFtpProviderTest.php</file>
-            <file>tests/Unit/S3ProviderTest.php</file>
-            <file>tests/Unit/FtpProviderTest.php</file>
-            <file>tests/Unit/FromS3ToSFtpProviderTest.php</file>
-            <file>tests/Unit/FromSFtpToS3ProviderTest.php</file>
-            <file>tests/Unit/FromLocalToS3ProviderTest.php</file>
-            <file>tests/Unit/FromS3ToLocalProviderTest.php</file>
-        </testsuite>
-    </testsuites>
-    <php>
-        <env name="APP_ENV" value="testing"/>
-    </php>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" colors="true" testdox="true" processIsolation="false" stopOnFailure="true" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.4/phpunit.xsd" bootstrap="vendor/autoload.php" cacheDirectory=".phpunit.cache">
+  <coverage/>
+  <testsuites>
+    <testsuite name="all">
+      <directory>tests</directory>
+    </testsuite>
+    <testsuite name="offline">
+      <file>tests/Unit/LocalProviderTest.php</file>
+      <file>tests/Unit/SFtpProviderTest.php</file>
+      <file>tests/Unit/S3ProviderTest.php</file>
+      <file>tests/Unit/FtpProviderTest.php</file>
+      <file>tests/Unit/FromS3ToSFtpProviderTest.php</file>
+      <file>tests/Unit/FromSFtpToS3ProviderTest.php</file>
+      <file>tests/Unit/FromLocalToS3ProviderTest.php</file>
+      <file>tests/Unit/FromS3ToLocalProviderTest.php</file>
+    </testsuite>
+  </testsuites>
+  <php>
+    <env name="APP_ENV" value="testing"/>
+  </php>
+  <source>
+    <include>
+      <directory suffix=".php">src/</directory>
+    </include>
+  </source>
 </phpunit>

@@ -264,7 +264,7 @@ abstract class AbstractProviderTest extends TestCase
 
       self::assertIsArray($result);
       self::assertTrue(count($result) > 0, "I need at least one result from $dir");
-      self::assertObjectHasAttribute('Name', $result[0], 'Unexpected result from ls');
+      self::assertObjectHasProperty('Name', $result[0], 'Unexpected result from ls');
 
       return $left_side;
    }

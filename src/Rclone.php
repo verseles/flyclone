@@ -445,9 +445,9 @@ class Rclone
 	*/
   public function touch ( string $path, array $flags = [], callable $onProgress = NULL ): bool
   {
-	 // @FIXME https://github.com/Verselesid/flyclone/issues/2
-	 // return $this->directRun('touch', $path, $flags, $onProgress);
-	 $this->rcat($path, '', $flags, $onProgress);
+	 // @FIXME https://github.com/verseles/flyclone/issues/2
+	  return $this->directRun('touch', $path, $flags, $onProgress);
+//	 $this->rcat($path, '', $flags, $onProgress);
 
 	 return TRUE;
   }

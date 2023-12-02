@@ -13,7 +13,7 @@ class FtpProviderTest extends AbstractProviderTest
    {
       $left_disk_name = 'ftp_disk';
       $this->setLeftProviderName($left_disk_name);
-      $this->working_directory = '/';
+      $this->working_directory = $_ENV[ 'FTP_USER' ] === 'root' ? '/root' : '/home/' . $_ENV[ 'FTP_USER' ] . '/';
 
 
       self::assertEquals($left_disk_name, $this->getLeftProviderName());

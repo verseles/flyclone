@@ -4,8 +4,9 @@ composer.phar
 composer.lock
 .DS_Store
 Thumbs.db
-/.idea
-/.vscode
-/.phpunit.result.cache
-/.cache
-/tests/Unit/sandbox
+.idea
+.vscode
+.phpunit.result.cache
+.phpunit.cache
+.cache
+tests/Unit/sandbox
