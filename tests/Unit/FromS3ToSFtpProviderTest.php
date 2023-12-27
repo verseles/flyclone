@@ -9,7 +9,6 @@ use Verseles\Flyclone\Providers\SFtpProvider;
 use Verseles\Flyclone\Rclone;
 use PHPUnit\Framework\Exception;
 use PHPUnit\Framework\ExpectationFailedException;
-use SebastianBergmann\RecursionContext\InvalidArgumentException;
 
 class FromS3ToSFtpProviderTest extends AbstractTwoProvidersTest
 {
@@ -23,7 +22,7 @@ class FromS3ToSFtpProviderTest extends AbstractTwoProvidersTest
 
 	 $right_disk_name = 'sftp_disk';
 	 $this->setRightProviderName($right_disk_name);
-	 $working_directory = $_ENV[ 'SFTP_USER' ] === 'root' ? "/root" : "/home/{$_ENV['SFTP_USER']}";
+	 $working_directory = '/upload';
 	 $this->setRightWorkingDirectory($working_directory . '/' . $this->random_string());
 	 self::assertEquals($right_disk_name, $this->getRightProviderName());
   }

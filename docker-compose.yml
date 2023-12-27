@@ -1,97 +1,83 @@
-version: '3'
+version  : '3'
 x-commons: &commons
-  networks: [internal]
+  networks: [ internal ]
   env_file: .env
-  volumes:
+  volumes :
     - ".:/app"
-    - "./tests/Unit/sandbox/local/userland:/tmp"
 
-networks:
+networks :
   internal:
 
-services:
-  composer:
-    container_name: fc-composer
-    <<: *commons
-    image: composer:2
+services :
+  composer    :
+    <<     : *commons
+    image  : composer:2
     command: install
-  test_all:
-    container_name: fc-test-all
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
-    depends_on: [sftp, s3, ftp]
-  test_offline: # only local and local built servers
-    container_name: fc-test-offline
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
-    command: phpunit --testsuite offline
-    depends_on: [sftp, s3, ftp]
-  test_local:
-    container_name: fc-test-local
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
+  sftp        :
+    image   : jmcombs/sftp
+    <<      : *commons
+    networks: [ internal ]
+    ports   : [ "22:22" ]
+    command : sftp:sftp:::upload
+  s3          :
+    image   : quay.io/minio/minio:latest
+    <<      : *commons
+    networks: [ internal ]
+    ports   : [ "9000:9000" ]
+    command : server /data
+  ftp         :
+    <<      : *commons
+    image   : garethflowers/ftp-server
+    ports   : [ "21:21" ]
+    networks: [ internal ]
+  test_local  :
+    <<     : *commons
+    build  : tests/Unit
     command: phpunit ./tests/Unit/LocalProviderTest.php
   test_dropbox:
-    container_name: fc-test-dropbox
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
+    <<     : *commons
+    build  : tests/Unit
     command: phpunit ./tests/Unit/DropboxProviderTest.php
-  test_mega:
-    container_name: fc-test-mega
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
+  test_mega   :
+    <<     : *commons
+    build  : tests/Unit
     command: phpunit ./tests/Unit/MegaProviderTest.php
-  test_gdrive:
-    container_name: fc-test-gdrive
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
+  test_gdrive :
+    <<     : *commons
+    build  : tests/Unit
     command: phpunit ./tests/Unit/GDriveProviderTest.php
-  test_sftp:
-    container_name: fc-test-sftp
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
-    command: phpunit ./tests/Unit/SFtpProviderTest.php
-    depends_on: [sftp]
-  sftp:
-    image: jmcombs/sftp
-    <<: *commons
-    networks: [internal]
-    ports: ["22"]
-    volumes:
-      - "./tests/Unit/sandbox/sftp/userland:/home/sftp/"
-    command: sftp:sftp:1001
-  test_ftp:
-    container_name: fc-test-ftp
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
-    command: phpunit ./tests/Unit/FtpProviderTest.php
-    depends_on: [ftp]
-  ftp:
-    container_name: fc-server-ftp
-    <<: *commons
-    image: garethflowers/ftp-server
-    ports: ["21"]
-    networks: [internal]
-    volumes:
-      - "./tests/Unit/sandbox/ftp/userland:/root/flyclone/"
-  test_s3:
-    container_name: fc-test-s3
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
-    command: phpunit ./tests/Unit/S3ProviderTest.php
-    depends_on: [s3]
-  s3:
-    container_name: fc-server-s3
-    image: quay.io/minio/minio:latest
-    <<: *commons
-    networks: [internal]
-    volumes:
-      - "./tests/Unit/sandbox/s3/userland:/data"
-    ports: ["9000:9000"]
-    command: server /data
-  test_sftp_s3:
-    container_name: fc-test-sftp-s3
-    <<: *commons
-    build: tests/Unit/Dockerfiles/tests
-    command: phpunit ./tests/Unit/SFtpToS3ProviderTest.php
-    depends_on: [sftp, s3]
+  test_sftp   :
+    <<        : *commons
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/SFtpProviderTest.php
+    depends_on: [ sftp ]
+  test_ftp    :
+    <<        : *commons
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FtpProviderTest.php
+    depends_on: [ ftp ]
+  test_s3     :
+    <<        : *commons
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/S3ProviderTest.php
+    depends_on: [ s3 ]
+  test_sftp_to_s3:
+    <<        : *commons
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FromSftpToS3ProviderTest.php
+    depends_on: [ sftp, s3 ]
+  test_s3_to_local:
+    <<        : *commons
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FromS3ToLocalProviderTest.php
+    depends_on: [ s3 ]
+  test_s3_to_sftp:
+    <<        : *commons
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FromS3ToSftpProviderTest.php
+    depends_on: [ s3, sftp ]
+  test_local_to_s3:
+    <<        : *commons
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FromLocalToS3ProviderTest.php
+    depends_on: [ s3 ]

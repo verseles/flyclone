@@ -13,14 +13,14 @@ class SFtpProviderTest extends AbstractProviderTest
    {
       $left_disk_name = 'sftp_disk';
       $this->setLeftProviderName($left_disk_name);
-      $working_directory = $_ENV['SFTP_USER'] === 'root' ? "/root" : "/home/{$_ENV['SFTP_USER']}";
+      $working_directory = '/upload';
+
       $this->working_directory = $working_directory . '/' . $this->random_string();
 
       self::assertEquals($left_disk_name, $this->getLeftProviderName());
    }
 
-   /**  @test
-    */
+   /**  @test */
    final public function instantiate_left_provider(): SFtpProvider
    {
       $left_side = new SFtpProvider($this->getLeftProviderName(), [

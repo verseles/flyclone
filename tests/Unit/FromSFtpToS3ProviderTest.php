@@ -14,7 +14,7 @@ class FromSFtpToS3ProviderTest extends AbstractTwoProvidersTest
   {
 	 $left_disk_name = 'sftp_disk';
 	 $this->setLeftProviderName($left_disk_name);
-	 $working_directory       = $_ENV[ 'SFTP_USER' ] === 'root' ? "/root" : "/home/{$_ENV['SFTP_USER']}";
+	 $working_directory       = '/upload';
 	 $this->setLeftWorkingDirectory($working_directory . '/' . $this->random_string());
 	 self::assertEquals($left_disk_name, $this->getLeftProviderName());
 

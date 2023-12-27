@@ -33,14 +33,16 @@ abstract class AbstractProviderTest extends TestCase
       return $this->leftProviderName;
    }
 
-
+    /**
+    * @test
+    * @return Provider
+    */
    abstract public function instantiate_left_provider()
    : Provider;
 
    /**
     * @test
-    * @depends      instantiate_left_provider
-    * @noinspection PhpUnitTestsInspection
+    * @depends instantiate_left_provider
     */
    public function instantiate_with_one_provider($left_side)
    : Rclone
@@ -68,6 +70,8 @@ abstract class AbstractProviderTest extends TestCase
       self::assertTrue($result);
 
       $file = $left_side->is_file($temp_filepath);
+
+      var_dump($file);
 
       self::assertTrue($file->exists, 'File not created');
 

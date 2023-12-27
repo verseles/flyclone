@@ -23,7 +23,7 @@ class FromS3ToLocalProviderTest extends AbstractTwoProvidersTest
 
 	 $right_disk_name = 'local_disk';
 	 $this->setRightProviderName($right_disk_name);
-	 $working_directory =sys_get_temp_dir() . '/flyclone_' . $this->random_string();
+	 $working_directory = sys_get_temp_dir() . '/flyclone_' . $this->random_string();
 	 mkdir($working_directory, 0777, true);
 	 $this->setRightWorkingDirectory($working_directory);
 	 self::assertEquals($right_disk_name, $this->getRightProviderName());

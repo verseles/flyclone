@@ -19,7 +19,8 @@ class LocalProviderTest extends AbstractProviderTest
     self::assertEquals($left_disk_name, $this->getLeftProviderName());
   }
 
-  /**  @test
+  /**
+   * @test
    */
   public function instantiate_left_provider(): LocalProvider
   {
@@ -30,11 +31,14 @@ class LocalProviderTest extends AbstractProviderTest
     return $left_side;
   }
 
+ /**
+  * @test
+  * @depends instantiate_with_one_provider
+  */
   public function touch_a_file_on_left_side(Rclone $left_side): array
-  {
-    return parent::touch_a_file($left_side);
-  }
-
+ {
+   return parent::touch_a_file($left_side);
+ }
 
   /**
    * @test
