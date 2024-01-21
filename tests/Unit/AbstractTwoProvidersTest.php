@@ -144,7 +144,7 @@ abstract class AbstractTwoProvidersTest extends TestCase
 	 $right_side      = new Rclone($two_sides->getRightSide());
 	 $check_new_place = $right_side->is_file($new_place);
 	 self::assertTrue($check_new_place->exists, 'File not moved');
-	 if (!$two_sides->isRightSideFolderAgnostic()) {
+	 if (!$two_sides->isRightSideDirAgnostic()) {
 		self::assertGreaterThan(0, $check_new_place->details->Size, 'File not moved correctly');
 	 }
 

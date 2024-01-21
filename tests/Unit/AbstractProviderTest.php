@@ -167,7 +167,7 @@ abstract class AbstractProviderTest extends TestCase
 
       $left_side->mkdir($dir);
       $check_dir = $left_side->is_dir($dir);
-      self::assertTrue($check_dir->exists || $left_side->isLeftSideFolderAgnostic(), 'Directory should exist by now');
+      self::assertTrue($check_dir->exists || $left_side->isLeftSideDirAgnostic(), 'Directory should exist by now');
 
       return [ $left_side, $dir ];
    }
@@ -186,7 +186,7 @@ abstract class AbstractProviderTest extends TestCase
 
       $left_side->mkdir($new_dir);
       $check_dir = $left_side->is_dir($new_dir);
-      self::assertTrue($check_dir->exists || $left_side->isLeftSideFolderAgnostic(), 'Directory should exist by now');
+      self::assertTrue($check_dir->exists || $left_side->isLeftSideDirAgnostic(), 'Directory should exist by now');
 
       return [ $left_side, $dir, $new_dir ];
    }

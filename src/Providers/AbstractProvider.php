@@ -7,7 +7,14 @@ use Verseles\Flyclone\Rclone;
 
 abstract class AbstractProvider
 {
-   protected bool $folderAgnostic = FALSE;
+  /** @var bool TRUE if the provider does not support empty folders  */
+  protected bool $dirAgnostic = FALSE;
+
+  /** @var bool TRUE if the bucket provider is shown as a directory */
+  protected bool $bucketAsDir = FALSE;
+
+  /** @var bool TRUE if the provider lists all files at once */
+  protected bool $listsAsTree = FALSE;
 
    public function provider()
    : string
@@ -43,10 +50,17 @@ abstract class AbstractProvider
       return $this->name() . ':' . $path;
    }
 
-   public function isFolderAgnostic()
-   : bool
+   public function isDirAgnostic() : bool
    {
-      return $this->folderAgnostic;
+      return $this->dirAgnostic;
+   }
+
+   public function isBucketAsDir() : bool {
+      return $this->bucketAsDir;
+   }
+
+   public function isListsAsTree() : bool {
+      return $this->listsAsTree;
    }
 
 }

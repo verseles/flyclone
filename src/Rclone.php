@@ -143,14 +143,34 @@ class Rclone
 	 self::$input = $input;
   }
 
-  public function isLeftSideFolderAgnostic (): bool
+  public function isLeftSideDirAgnostic (): bool
   {
-	 return $this->getLeftSide()->isFolderAgnostic();
+	 return $this->getLeftSide()->isDirAgnostic();
   }
 
-  public function isRightSideFolderAgnostic (): bool
+  public function isRightSideDirAgnostic (): bool
   {
-	 return $this->getRightSide()->isFolderAgnostic();
+	 return $this->getRightSide()->isDirAgnostic();
+  }
+
+  public function isLeftSideBucketAsDir (): bool
+  {
+    return $this->getLeftSide()->isBucketAsDir();
+  }
+
+  public function isRightSideBucketAsDir (): bool
+  {
+    return $this->getRightSide()->isBucketAsDir();
+  }
+
+  public function isLeftSideListsAsTree (): bool
+  {
+    return $this->getLeftSide()->isListsAsTree();
+  }
+
+  public function isRightSideListsAsTree (): bool
+  {
+    return $this->getRightSide()->isListsAsTree();
   }
 
 
