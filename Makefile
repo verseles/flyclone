@@ -5,16 +5,9 @@
 init: ## Start a new develop environment
 	make cin
 test: ## Start containers detached
-	make test_offline
+	CMD="run-script test-local" make composer
 test_offline:
-	docker-compose run --rm test_local
-	docker-compose run --rm test_s3
-	docker-compose run --rm test_ftp
-	docker-compose run --rm test_sftp
-	docker-compose run --rm test_sftp_to_s3
-	docker-compose run --rm test_s3_to_local
-	docker-compose run --rm test_s3_to_sftp
-	docker-compose run --rm test_local_to_s3
+	CMD="run-script test" make composer
 logs: ## Show the output logs
 	docker-compose logs
 log: ## Open the logs and follow the news

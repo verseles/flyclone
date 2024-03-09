@@ -615,6 +615,10 @@ class Rclone
   {
 	 return $this->directTwinRun('copy', $source_path, $dest_path, $flags, $onProgress);
   }
+  public function copyto ( string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL ): bool
+  {
+	 return $this->directTwinRun('copyto', $source_path, $dest_path, $flags, $onProgress);
+  }
 
   public function move ( string $source_path, string $dest_DIR_path, array $flags = [], callable $onProgress = NULL ): bool
   {

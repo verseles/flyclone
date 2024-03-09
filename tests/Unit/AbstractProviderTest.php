@@ -71,8 +71,6 @@ abstract class AbstractProviderTest extends TestCase
 
       $file = $left_side->is_file($temp_filepath);
 
-      var_dump($file);
-
       self::assertTrue($file->exists, 'File not created');
 
       self::assertEquals(0, $file->details->Size ?? 9999, 'File should be empty by now');

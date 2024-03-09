@@ -5,6 +5,9 @@
     <testsuite name="all">
       <directory>tests</directory>
     </testsuite>
+    <testsuite name="offline_no_docker">
+      <file>tests/Unit/LocalProviderTest.php</file>
+    </testsuite>
     <testsuite name="offline">
       <file>tests/Unit/LocalProviderTest.php</file>
       <file>tests/Unit/SFtpProviderTest.php</file>
