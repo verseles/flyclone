@@ -611,9 +611,9 @@ class Rclone
 	 return $rclone->moveto($local_path, $remote_path, $flags, $onProgress);
   }
 
-  public function copy ( string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL ): bool
+  public function copy (string $source_path, string $dest_DIR_path, array $flags = [], callable $onProgress = NULL ): bool
   {
-	 return $this->directTwinRun('copy', $source_path, $dest_path, $flags, $onProgress);
+	 return $this->directTwinRun('copy', $source_path, $dest_DIR_path, $flags, $onProgress);
   }
   public function copyto ( string $source_path, string $dest_path, array $flags = [], callable $onProgress = NULL ): bool
   {
