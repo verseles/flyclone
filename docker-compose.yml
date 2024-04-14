@@ -4,6 +4,7 @@ x-commons: &commons
   env_file: .env
   volumes :
     - ".:/app"
+    - "./tests/Unit/sandbox:/tmp"
 
 networks :
   internal:

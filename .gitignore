@@ -1,4 +1,5 @@
 .env
+ai.txt
 /vendor
 composer.phar
 composer.lock

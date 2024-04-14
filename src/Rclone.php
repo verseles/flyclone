@@ -447,7 +447,7 @@ class Rclone
       $ls    = $this->ls($dirname);
       $found = array_filter($ls, static fn( $i ) => $i->Name === $basename && $i->IsDir === ($type === 'dir'));
 
-      return (object) [ 'exists' => count($found) === 1, 'details' => $found[ 0 ] ?? [], 'error' => '' ];
+      return (object) [ 'exists' => count($found) === 1, 'details' => reset($found) ?? [], 'error' => '' ];
     } catch (\Exception $e) {
       return (object) [ 'exists' => FALSE, 'error' => $e, ];
     }
@@ -605,12 +605,37 @@ class Rclone
 
   public function upload_file ( string $local_path, string $remote_path, array $flags = [], callable $onProgress = NULL ): bool
   {
-    $left_local = new LocalProvider('local');
-    $right_mix  = $this->left_side;
-
-    $rclone = new self($left_local, $right_mix);
+    $rclone = new self(left_side: new LocalProvider('local'), right_side: $this->left_side);
 
     return $rclone->moveto($local_path, $remote_path, $flags, $onProgress);
+  }
+
+  /**
+   * Downloads a file from a remote path to local storage.
+   *
+   * @param string $remote_path The path of the file on the remote server.
+   * @param ?string $local_path The local path where the file should be saved. If not provided, a temporary directory will be used.
+   * @param array $flags Additional flags for the download operation.
+   * @param ?callable $onProgress A callback function to track download progress.
+   *
+   * @return string|false The local path where the file is saved, or false if the download fails.
+   */
+  public function download_to_local(string $remote_path, ?string $local_path = null, array $flags = [], ?callable $onProgress = null): string|false
+  {
+    if ($local_path === null) {
+      $local_path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('flyclone_download_');
+      mkdir($local_path, 0777, true);
+    }
+
+    $rclone = new self(left_side: $this->left_side, right_side: new LocalProvider('local'));
+
+    $success = $rclone->copy($remote_path, $local_path, $flags, $onProgress);
+
+    if (!$success) {
+      return false;
+    }
+
+    return $local_path;
   }
 
   public function copy ( string $source_path, string $dest_DIR_path, array $flags = [], callable $onProgress = NULL ): bool
