@@ -1,12 +1,16 @@
 #!/usr/bin/make
 
 test: ## Start containers detached
-	CMD="run-script test-local" make composer
+	make test-offline
 init: ## Start a new develop environment
 	make cin
 test-offline:
-	docker compose run --rm test_sftp_to_s3
-	docker compose run --rm test_s3_to_sftp
+	docker compose run test_local
+	docker compose run test_sftp
+	docker compose run test_ftp
+	docker compose run test_s3
+	docker compose run test_sftp_to_s3
+	docker compose run test_s3_to_sftp
 logs: ## Show the output logs
 	docker compose logs
 log: ## Open the logs and follow the news

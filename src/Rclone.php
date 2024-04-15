@@ -631,11 +631,7 @@ class Rclone
 
     $success = $rclone->copy($remote_path, $local_path, $flags, $onProgress);
 
-    if (!$success) {
-      return false;
-    }
-
-    return $local_path;
+    return !$success ? false : $local_path;
   }
 
   public function copy ( string $source_path, string $dest_DIR_path, array $flags = [], callable $onProgress = NULL ): bool
