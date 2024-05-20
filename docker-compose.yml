@@ -1,4 +1,3 @@
-version  : '3'
 x-commons: &commons
   networks: [ internal ]
   env_file: .env

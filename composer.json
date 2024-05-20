@@ -16,7 +16,7 @@
   "require"           : {
     "php"             : ">=8.0",
     "ext-json"        : "*",
-    "symfony/process" : "^v6.0.2",
+    "symfony/process" : "^7",
     "spatie/once"     : "^3.0.1"
   },
   "autoload"          : {
@@ -44,7 +44,7 @@
   "minimum-stability" : "dev",
   "prefer-stable"     : true,
   "require-dev"       : {
-    "phpunit/phpunit" : "^10",
+    "phpunit/phpunit" : "^11",
     "enlightn/security-checker": "^1.9"
   }
 }
