@@ -197,6 +197,7 @@ class Rclone
   private function allEnvs ( array $add = [] ): array
   {
     $forced[ 'RCLONE_LOCAL_ONE_FILE_SYSTEM' ] = TRUE;
+    $forced[ 'RCLONE_CONFIG' ] = '/dev/null';
 
     $fluent = self::prefix_flags(self::getEnvs());
     $add    = self::prefix_flags($add);
