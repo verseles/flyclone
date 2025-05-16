@@ -3,85 +3,90 @@ x-commons: &commons
   env_file: .env
   volumes :
     - ".:/app"
-    - "./tests/Unit/sandbox:/tmp"
+    - "./tests/Unit/sandbox:/tmp" # Diretório sandbox para testes que podem precisar de um local no host
 
 networks :
-  internal:
+  internal: # Rede interna para comunicação entre os contêineres de serviço
 
 services :
-  composer    :
-    <<     : *commons
-    image  : composer:2
-    command: install
-  sftp        :
-    image   : jmcombs/sftp
-    <<      : *commons
+  composer            :
+    <<     : *commons # Herda configurações comuns
+    image  : composer:2 # Imagem oficial do Composer v2
+    command: install # Comando padrão para instalar dependências
+  sftp                :
+    image   : jmcombs/sftp # Imagem para servidor SFTP
+    <<      : *commons # Herda configurações comuns
     networks: [ internal ]
-    ports   : [ "2222:22" ]
-    command : sftp:sftp:::upload
-  s3          :
-    image   : quay.io/minio/minio:latest
-    <<      : *commons
+    ports   : [ "2222:22" ] # Mapeia a porta 2222 do host para a 22 do contêiner
+    command : sftp:sftp:::upload # Configura usuário 'sftp', senha 'sftp', sem restrição de diretório, com diretório home em /upload
+  s3                  :
+    image   : quay.io/minio/minio:latest # Imagem para servidor S3 compatível (MinIO)
+    <<      : *commons # Herda configurações comuns
     networks: [ internal ]
-    ports   : [ "9000:9000" ]
-    command : server /data
-  ftp         :
-    <<      : *commons
-    image   : garethflowers/ftp-server
-    ports   : [ "2121:21" ]
+    ports   : [ "9000:9000" ] # Mapeia a porta 9000 para acesso ao MinIO
+    command : server /data # Inicia o servidor MinIO com o diretório de dados /data
+  ftp                 :
+    <<      : *commons # Herda configurações comuns
+    image   : garethflowers/ftp-server # Imagem para servidor FTP
+    ports   : [ "2121:21" ] # Mapeia a porta 2121 do host para a 21 do contêiner
     networks: [ internal ]
-  test_local  :
-    <<     : *commons
+  test_local          :
+    <<     : *commons # Herda configurações comuns
+    build  : tests/Unit # Constrói a imagem a partir do Dockerfile em tests/Unit
+    command: phpunit --stderr ./tests/Unit/LocalProviderTest.php # Comando para rodar testes do LocalProvider, com --stderr para exibir detalhes de depreciações
+  test_dropbox        :
+    <<     : *commons # Herda configurações comuns
     build  : tests/Unit
-    command: phpunit ./tests/Unit/LocalProviderTest.php
-  test_dropbox:
-    <<     : *commons
+    command: phpunit ./tests/Unit/DropboxProviderTest.php # Comando para rodar testes do DropboxProvider
+  test_mega           :
+    <<     : *commons # Herda configurações comuns
     build  : tests/Unit
-    command: phpunit ./tests/Unit/DropboxProviderTest.php
-  test_mega   :
-    <<     : *commons
+    command: phpunit ./tests/Unit/MegaProviderTest.php # Comando para rodar testes do MegaProvider
+  test_gdrive         :
+    <<     : *commons # Herda configurações comuns
     build  : tests/Unit
-    command: phpunit ./tests/Unit/MegaProviderTest.php
-  test_gdrive :
-    <<     : *commons
+    command: phpunit ./tests/Unit/GDriveProviderTest.php # Comando para rodar testes do GDriveProvider
+  test_sftp           :
+    <<        : *commons # Herda configurações comuns
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/SFtpProviderTest.php # Comando para rodar testes do SFtpProvider
+    depends_on: [ sftp ] # Garante que o serviço sftp esteja pronto antes de rodar os testes
+  test_ftp            :
+    <<        : *commons # Herda configurações comuns
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FtpProviderTest.php # Comando para rodar testes do FtpProvider
+    depends_on: [ ftp ] # Garante que o serviço ftp esteja pronto
+  test_s3             :
+    <<        : *commons # Herda configurações comuns
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/S3ProviderTest.php # Comando para rodar testes do S3Provider
+    depends_on: [ s3 ] # Garante que o serviço s3 (MinIO) esteja pronto
+  test_upload_download:
+    <<        : *commons # Herda configurações comuns
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/UploadDownloadOperationsTest.php # Comando para rodar o novo teste
+    depends_on: [ sftp ] # Depende do serviço sftp para estar operacional
+  test_sftp_to_s3     :
+    <<        : *commons # Herda configurações comuns
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FromSFtpToS3ProviderTest.php # Teste de transferência SFTP para S3
+    depends_on: [ sftp, s3 ] # Depende dos serviços sftp e s3
+  test_s3_to_local    :
+    <<        : *commons # Herda configurações comuns
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FromS3ToLocalProviderTest.php # Teste de transferência S3 para Local
+    depends_on: [ s3 ] # Depende do serviço s3
+  test_s3_to_sftp     :
+    <<        : *commons # Herda configurações comuns
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FromS3ToSFtpProviderTest.php # Teste de transferência S3 para SFTP
+    depends_on: [ s3, sftp ] # Depende dos serviços s3 e sftp
+  test_local_to_s3    :
+    <<        : *commons # Herda configurações comuns
+    build     : tests/Unit
+    command   : phpunit ./tests/Unit/FromLocalToS3ProviderTest.php # Teste de transferência Local para S3
+    depends_on: [ s3 ] # Depende do serviço s3
+  cleanup_tests       :
+    <<     : *commons # Herda configurações comuns
     build  : tests/Unit
-    command: phpunit ./tests/Unit/GDriveProviderTest.php
-  test_sftp   :
-    <<        : *commons
-    build     : tests/Unit
-    command   : phpunit ./tests/Unit/SFtpProviderTest.php
-    depends_on: [ sftp ]
-  test_ftp    :
-    <<        : *commons
-    build     : tests/Unit
-    command   : phpunit ./tests/Unit/FtpProviderTest.php
-    depends_on: [ ftp ]
-  test_s3     :
-    <<        : *commons
-    build     : tests/Unit
-    command   : phpunit ./tests/Unit/S3ProviderTest.php
-    depends_on: [ s3 ]
-  test_sftp_to_s3:
-    <<        : *commons
-    build     : tests/Unit
-    command   : phpunit ./tests/Unit/FromSFtpToS3ProviderTest.php
-    depends_on: [ sftp, s3 ]
-  test_s3_to_local:
-    <<        : *commons
-    build     : tests/Unit
-    command   : phpunit ./tests/Unit/FromS3ToLocalProviderTest.php
-    depends_on: [ s3 ]
-  test_s3_to_sftp:
-    <<        : *commons
-    build     : tests/Unit
-    command   : phpunit ./tests/Unit/FromS3ToSFtpProviderTest.php
-    depends_on: [ s3, sftp ]
-  test_local_to_s3:
-    <<        : *commons
-    build     : tests/Unit
-    command   : phpunit ./tests/Unit/FromLocalToS3ProviderTest.php
-    depends_on: [ s3 ]
-  cleanup_tests:
-    <<        : *commons
-    build     : tests/Unit
-    command   : sh -c "rm -rf ./tests/Unit/sandbox/*"
+    command: sh -c "rm -rf ./tests/Unit/sandbox/*" # Comando para limpar o diretório sandbox
