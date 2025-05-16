@@ -1,5 +1,5 @@
 .env
-ai.txt
+output.txt
 /vendor
 composer.phar
 composer.lock
