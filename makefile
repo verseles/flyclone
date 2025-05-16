@@ -17,6 +17,7 @@ test-offline:
 	docker compose run --remove-orphans test_s3
 	docker compose run --remove-orphans test_sftp_to_s3
 	docker compose run --remove-orphans test_s3_to_sftp
+	docker compose run --remove-orphans test_upload_download
 	docker compose run --remove-orphans cleanup_tests
 logs: ## Show the output logs
 	docker compose logs
@@ -33,4 +34,6 @@ cin:
 cup:
 	CMD=update make composer
 tog:
+	# First copy ./makefile to ./makefile.txt, replancing existing makefile.txt if exists
+	cp ./makefile ./makefile.txt
 	tog ./* --ignore-folders=vendor,node_modules,.git

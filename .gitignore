@@ -1,5 +1,6 @@
 .env
 output.txt
+makefile.txt
 /vendor
 composer.phar
 composer.lock

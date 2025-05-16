@@ -1,30 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" colors="true" testdox="true" processIsolation="false" stopOnFailure="true" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.4/phpunit.xsd" bootstrap="vendor/autoload.php" cacheDirectory=".phpunit.cache">
-  <coverage/>
-  <testsuites>
-    <testsuite name="all">
-      <directory>tests</directory>
-    </testsuite>
-    <testsuite name="offline_no_docker">
-      <file>tests/Unit/LocalProviderTest.php</file>
-    </testsuite>
-    <testsuite name="offline">
-      <file>tests/Unit/LocalProviderTest.php</file>
-      <file>tests/Unit/SFtpProviderTest.php</file>
-      <file>tests/Unit/S3ProviderTest.php</file>
-      <file>tests/Unit/FtpProviderTest.php</file>
-      <file>tests/Unit/FromS3ToSFtpProviderTest.php</file>
-      <file>tests/Unit/FromSFtpToS3ProviderTest.php</file>
-      <file>tests/Unit/FromLocalToS3ProviderTest.php</file>
-      <file>tests/Unit/FromS3ToLocalProviderTest.php</file>
-    </testsuite>
-  </testsuites>
-  <php>
-    <env name="APP_ENV" value="testing"/>
-  </php>
-  <source>
-    <include>
-      <directory suffix=".php">src/</directory>
-    </include>
-  </source>
+<phpunit
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        colors="true"
+        testdox="true"
+        processIsolation="false"
+        stopOnFailure="true"
+        xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.4/phpunit.xsd"
+        bootstrap="vendor/autoload.php"
+        cacheDirectory=".phpunit.cache"
+        failOnDeprecation="true"
+        failOnNotice="true"
+        failOnWarning="true"
+        failOnRisky="true"
+        displayDetailsOnTestsThatTriggerDeprecations="true"
+        displayDetailsOnTestsThatTriggerNotices="true"
+        displayDetailsOnTestsThatTriggerWarnings="true"
+        displayDetailsOnTestsThatTriggerErrors="true"
+>
+    <coverage/>
+    <testsuites>
+        <testsuite name="all">
+            <directory>tests</directory>
+        </testsuite>
+        <testsuite name="offline_no_docker">
+            <file>tests/Unit/LocalProviderTest.php</file>
+        </testsuite>
+        <testsuite name="offline">
+            <file>tests/Unit/LocalProviderTest.php</file>
+            <file>tests/Unit/SFtpProviderTest.php</file>
+            <file>tests/Unit/S3ProviderTest.php</file>
+            <file>tests/Unit/FtpProviderTest.php</file>
+            <file>tests/Unit/FromS3ToSFtpProviderTest.php</file>
+            <file>tests/Unit/FromSFtpToS3ProviderTest.php</file>
+            <file>tests/Unit/FromLocalToS3ProviderTest.php</file>
+            <file>tests/Unit/FromS3ToLocalProviderTest.php</file>
+            <file>tests/Unit/UploadDownloadOperationsTest.php</file>
+        </testsuite>
+    </testsuites>
+    <php>
+        <!-- Define o ambiente da aplicação para testes -->
+        <env name="APP_ENV" value="testing"/>
+        <!-- Configurações INI do PHP para a execução dos testes -->
+        <!-- Garante que os erros sejam exibidos; no CLI, normalmente vão para stderr -->
+        <ini name="display_errors" value="On"/>
+        <!-- Configura o PHP para reportar todos os tipos de erros, incluindo E_DEPRECATED -->
+        <ini name="error_reporting" value="-1"/>
+    </php>
+    <source>
+        <include>
+            <directory suffix=".php">src/</directory>
+        </include>
+    </source>
 </phpunit>

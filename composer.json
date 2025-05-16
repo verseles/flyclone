@@ -14,7 +14,7 @@
   ],
   "license"           : "CC-BY-NC-SA-4.0",
   "require"           : {
-    "php"             : ">=8.0",
+    "php"             : ">=8.4",
     "ext-json"        : "*",
     "symfony/process" : "^7",
     "spatie/once"     : "^3.0.1"
