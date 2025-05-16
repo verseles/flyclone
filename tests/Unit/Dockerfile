@@ -1,4 +1,4 @@
-FROM jitesoft/phpunit:latest
+FROM jitesoft/phpunit:8.4
 COPY --from=rclone/rclone /usr/local/bin/rclone /usr/bin/
 
 LABEL MAINTAINER="Hélio <flyclone@helio.me>"
