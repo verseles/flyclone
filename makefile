@@ -6,13 +6,18 @@ test: ## Start containers detached
 	make test-offline
 init: ## Start a new develop environment
 	make cin
+test-fast:
+	docker compose run --remove-orphans test_local
+	docker compose run --remove-orphans test_sftp
+	docker compose run --remove-orphans cleanup_tests
 test-offline:
 	docker compose run --remove-orphans test_local
 	docker compose run --remove-orphans test_sftp
-	docker compose run --remove-orphans test_ftp
+	#docker compose run --remove-orphans test_ftp # TODO: fix docker image
 	docker compose run --remove-orphans test_s3
 	docker compose run --remove-orphans test_sftp_to_s3
 	docker compose run --remove-orphans test_s3_to_sftp
+	docker compose run --remove-orphans cleanup_tests
 logs: ## Show the output logs
 	docker compose logs
 log: ## Open the logs and follow the news
