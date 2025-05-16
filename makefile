@@ -1,16 +1,18 @@
 #!/usr/bin/make
 
+.DEFAULT_GOAL := test
+
 test: ## Start containers detached
 	make test-offline
 init: ## Start a new develop environment
 	make cin
 test-offline:
-	docker compose run test_local
-	docker compose run test_sftp
-	docker compose run test_ftp
-	docker compose run test_s3
-	docker compose run test_sftp_to_s3
-	docker compose run test_s3_to_sftp
+	docker compose run --remove-orphans test_local
+	docker compose run --remove-orphans test_sftp
+	docker compose run --remove-orphans test_ftp
+	docker compose run --remove-orphans test_s3
+	docker compose run --remove-orphans test_sftp_to_s3
+	docker compose run --remove-orphans test_s3_to_sftp
 logs: ## Show the output logs
 	docker compose logs
 log: ## Open the logs and follow the news
@@ -25,5 +27,5 @@ cin:
 	CMD=install make composer
 cup:
 	CMD=update make composer
-ai:
-	tog --output=ai.txt --folder-recursive=./src --ignore-folders=src/Exception
+tog:
+	tog ./* --ignore-folders=vendor,node_modules,.git
