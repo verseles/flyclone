@@ -23,51 +23,51 @@ use Symfony\Component\Process\Process;
 class Rclone
 {
   
-  private static string $BIN; // Caminho para o executável rclone.
-  private Provider      $left_side; // O provedor 'origem' para as operações rclone.
-  private Provider      $right_side; // O provedor 'destino'. Pode ser o mesmo que left_side.
+  private static string $BIN; // Path to the rclone executable.
+  private Provider      $left_side; // The 'source' provider for rclone operations.
+  private Provider      $right_side; // The 'destination' provider. Can be the same as left_side.
   
-  private static int    $timeout     = 120; // Timeout padrão para processos rclone em segundos.
-  private static int    $idleTimeout = 100; // Timeout de inatividade padrão para processos rclone em segundos.
-  private static array  $flags       = [];  // Flags globais do rclone a serem aplicadas a todos os comandos.
-  private static array  $envs        = [];  // Variáveis de ambiente personalizadas (geralmente parâmetros rclone).
-  private static string $input       = '';  // String de entrada a ser passada para comandos rclone (ex: para rcat).
-  private object        $progress;          // Objeto para armazenar informações de progresso do rclone.
-  private static array  $reset       = [    // Valores padrão para redefinir propriedades estáticas.
+  private static int    $timeout     = 120; // Default timeout for rclone processes in seconds.
+  private static int    $idleTimeout = 100; // Default idle timeout for rclone processes in seconds.
+  private static array  $flags       = [];  // Global rclone flags to be applied to all commands.
+  private static array  $envs        = [];  // Custom environment variables (usually rclone parameters).
+  private static string $input       = '';  // Input string to be passed to rclone commands (e.g., for rcat).
+  private object        $progress;          // Object to store rclone progress information.
+  private static array  $reset       = [    // Default values for resetting static properties.
                                             'timeout' => 120,
                                             'idleTimeout' => 100,
                                             'flags' => [],
                                             'envs' => [],
                                             'input' => '',
-                                            'progress' => [ // Estrutura padrão para o objeto de progresso.
+                                            'progress' => [ // Default structure for the progress object.
                                                             'raw' => '',
-                                                            'dataSent' => 0,
-                                                            'dataTotal' => 0,
+                                                            'dataSent' => '0 B', // Initialize with string value
+                                                            'dataTotal' => '0 B', // Initialize with string value
                                                             'sent' => 0,
-                                                            'speed' => 0,
-                                                            'eta' => 0,
-                                                            'xfr' => '1/1',
+                                                            'speed' => '0 B/s', // Initialize with string value
+                                                            'eta' => '-', // Initialize with string value
+                                                            'xfr' => '0/0',      // Initialize with string value
                                             ],
   ];
   
   /**
-   * Construtor para Rclone.
+   * Constructor for Rclone.
    *
-   * @param Provider      $left_side  O provedor primário (origem).
-   * @param Provider|null $right_side O provedor secundário (destino). Se null, assume $left_side.
+   * @param Provider      $left_side  The primary (source) provider.
+   * @param Provider|null $right_side The secondary (destination) provider. If null, defaults to $left_side.
    */
   public function __construct(Provider $left_side, ?Provider $right_side = NULL)
   {
-    $this->reset(); // Inicializa/redefine as propriedades estáticas para os padrões.
+    $this->reset(); // Initialize/reset static properties to defaults.
     
     $this->setLeftSide($left_side);
-    // Se nenhum provedor right_side for fornecido, as operações rclone terão como alvo o próprio provedor left_side (ex: mover arquivos dentro do mesmo remoto).
+    // If no right_side provider is given, rclone operations will target the left_side provider itself (e.g., moving files within the same remote).
     $this->setRightSide($right_side ?? $left_side);
   }
   
   /**
-   * Redefine as propriedades de configuração estáticas para seus valores padrão.
-   * Também redefine o objeto de progresso.
+   * Resets static configuration properties to their default values.
+   * Also resets the progress object.
    */
   private function reset() : void
   {
@@ -77,13 +77,13 @@ class Rclone
     self::setEnvs(self::$reset['envs']);
     self::setInput(self::$reset['input']);
     
-    $this->resetProgress(); // Redefine o objeto de rastreamento de progresso.
+    $this->resetProgress(); // Resets the progress tracking object.
   }
   
   /**
-   * Obtém o valor atual do timeout do processo.
+   * Gets the current process timeout value.
    *
-   * @return int Timeout em segundos.
+   * @return int Timeout in seconds.
    */
   public static function getTimeout() : int
   {
@@ -91,9 +91,9 @@ class Rclone
   }
   
   /**
-   * Define o valor do timeout do processo.
+   * Sets the process timeout value.
    *
-   * @param int $timeout Timeout em segundos.
+   * @param int $timeout Timeout in seconds.
    */
   public static function setTimeout(int $timeout) : void
   {
@@ -101,9 +101,9 @@ class Rclone
   }
   
   /**
-   * Obtém o valor atual do timeout de inatividade do processo.
+   * Gets the current process idle timeout value.
    *
-   * @return int Timeout de inatividade em segundos.
+   * @return int Idle timeout in seconds.
    */
   public static function getIdleTimeout() : int
   {
@@ -111,9 +111,9 @@ class Rclone
   }
   
   /**
-   * Define o valor do timeout de inatividade do processo.
+   * Sets the process idle timeout value.
    *
-   * @param int $idleTimeout Timeout de inatividade em segundos.
+   * @param int $idleTimeout Idle timeout in seconds.
    */
   public static function setIdleTimeout(int $idleTimeout) : void
   {
@@ -121,9 +121,9 @@ class Rclone
   }
   
   /**
-   * Obtém as flags rclone definidas globalmente.
+   * Gets the globally set rclone flags.
    *
-   * @return array Array de flags.
+   * @return array Array of flags.
    */
   public static function getFlags() : array
   {
@@ -131,10 +131,10 @@ class Rclone
   }
   
   /**
-   * Define flags globais do rclone. Estas flags são aplicadas à maioria dos comandos rclone.
-   * Exemplo: ['retries' => 3, 'verbose' => true]
+   * Sets global rclone flags. These flags are applied to most rclone commands.
+   * Example: ['retries' => 3, 'verbose' => true]
    *
-   * @param array $flags Array de flags. Booleano true será convertido para "true", false para "false".
+   * @param array $flags Array of flags. Boolean true will be converted to "true", false to "false".
    */
   public static function setFlags(array $flags) : void
   {
@@ -142,9 +142,9 @@ class Rclone
   }
   
   /**
-   * Obtém as variáveis de ambiente personalizadas.
+   * Gets the custom environment variables.
    *
-   * @return array Array de variáveis de ambiente.
+   * @return array Array of environment variables.
    */
   public static function getEnvs() : array
   {
@@ -152,11 +152,11 @@ class Rclone
   }
   
   /**
-   * Define variáveis de ambiente personalizadas, tipicamente usadas para parâmetros rclone.
-   * Estas são usualmente prefixadas com 'RCLONE_' quando passadas para o processo.
-   * Exemplo: ['BUFFER_SIZE' => '64M'] se tornaria 'RCLONE_BUFFER_SIZE=64M' se o prefixo padrão for usado.
+   * Sets custom environment variables, typically used for rclone parameters.
+   * These are usually prefixed with 'RCLONE_' when passed to the process.
+   * Example: ['BUFFER_SIZE' => '64M'] would become 'RCLONE_BUFFER_SIZE=64M' if default prefix is used.
    *
-   * @param array $envs Array de variáveis de ambiente. Booleano true será convertido para "true", false para "false".
+   * @param array $envs Array of environment variables. Boolean true will be converted to "true", false to "false".
    */
   public static function setEnvs(array $envs) : void
   {
@@ -164,9 +164,9 @@ class Rclone
   }
   
   /**
-   * Obtém a string de entrada para comandos rclone como 'rcat'.
+   * Gets the input string for rclone commands like 'rcat'.
    *
-   * @return string A string de entrada.
+   * @return string The input string.
    */
   public static function getInput() : string
   {
@@ -174,9 +174,9 @@ class Rclone
   }
   
   /**
-   * Define a string de entrada para comandos rclone.
+   * Sets the input string for rclone commands.
    *
-   * @param string $input A string de entrada.
+   * @param string $input The input string.
    */
   public static function setInput(string $input) : void
   {
@@ -184,9 +184,9 @@ class Rclone
   }
   
   /**
-   * Verifica se o provedor do lado esquerdo é agnóstico a diretórios (não suporta diretórios vazios).
+   * Checks if the left-side provider is directory-agnostic (does not support empty directories).
    *
-   * @return bool True se for agnóstico a diretórios, false caso contrário.
+   * @return bool True if directory-agnostic, false otherwise.
    */
   public function isLeftSideDirAgnostic() : bool
   {
@@ -194,9 +194,9 @@ class Rclone
   }
   
   /**
-   * Verifica se o provedor do lado direito é agnóstico a diretórios.
+   * Checks if the right-side provider is directory-agnostic.
    *
-   * @return bool True se for agnóstico a diretórios, false caso contrário.
+   * @return bool True if directory-agnostic, false otherwise.
    */
   public function isRightSideDirAgnostic() : bool
   {
@@ -204,9 +204,9 @@ class Rclone
   }
   
   /**
-   * Verifica se o provedor do lado esquerdo trata buckets como diretórios.
+   * Checks if the left-side provider treats buckets as directories.
    *
-   * @return bool True se buckets são tratados como diretórios, false caso contrário.
+   * @return bool True if buckets are treated as directories, false otherwise.
    */
   public function isLeftSideBucketAsDir() : bool
   {
@@ -214,9 +214,9 @@ class Rclone
   }
   
   /**
-   * Verifica se o provedor do lado direito trata buckets como diretórios.
+   * Checks if the right-side provider treats buckets as directories.
    *
-   * @return bool True se buckets são tratados como diretórios, false caso contrário.
+   * @return bool True if buckets are treated as directories, false otherwise.
    */
   public function isRightSideBucketAsDir() : bool
   {
@@ -224,9 +224,9 @@ class Rclone
   }
   
   /**
-   * Verifica se o provedor do lado esquerdo lista conteúdos como uma árvore plana (todos os itens de uma vez).
+   * Checks if the left-side provider lists contents as a flat tree (all items at once).
    *
-   * @return bool True se lista como uma árvore, false caso contrário.
+   * @return bool True if it lists as a tree, false otherwise.
    */
   public function isLeftSideListsAsTree() : bool
   {
@@ -234,9 +234,9 @@ class Rclone
   }
   
   /**
-   * Verifica se o provedor do lado direito lista conteúdos como uma árvore plana.
+   * Checks if the right-side provider lists contents as a flat tree.
    *
-   * @return bool True se lista como uma árvore, false caso contrário.
+   * @return bool True if it lists as a tree, false otherwise.
    */
   public function isRightSideListsAsTree() : bool
   {
@@ -245,36 +245,36 @@ class Rclone
   
   
   /**
-   * Adiciona um prefixo às chaves do array e transforma as chaves para compatibilidade com rclone.
-   * Converte valores booleanos para strings "true" ou "false". Todos os valores são convertidos para string.
-   * Exemplo: ['my-flag' => true] com prefixo 'RCLONE_' torna-se ['RCLONE_MY_FLAG' => 'true']
+   * Prefixes array keys and transforms keys for rclone compatibility.
+   * Converts boolean values to "true" or "false" strings. All values are cast to string.
+   * Example: ['my-flag' => true] with prefix 'RCLONE_' becomes ['RCLONE_MY_FLAG' => 'true']
    *
-   * @param array  $arr    O array de entrada de flags ou parâmetros.
-   * @param string $prefix O prefixo a ser adicionado a cada chave (padrão: 'RCLONE_').
+   * @param array  $arr    The input array of flags or parameters.
+   * @param string $prefix The prefix to add to each key (default: 'RCLONE_').
    *
-   * @return array O array processado com chaves prefixadas e valores convertidos para string.
+   * @return array The processed array with prefixed keys and string-cast values.
    */
   public static function prefix_flags(array $arr, string $prefix = 'RCLONE_') : array
   {
     $newArr = [];
-    // Padrões para transformar chaves originais:
-    // 1. Remover '--' iniciais (ex: '--retries' -> 'retries')
-    // 2. Substituir hífens '-' por underscores '_' (ex: 'max-depth' -> 'max_depth')
+    // Patterns to transform original keys:
+    // 1. Remove leading '--' (e.g., '--retries' -> 'retries')
+    // 2. Replace hyphens '-' with underscores '_' (e.g., 'max-depth' -> 'max_depth')
     $replace_patterns = ['/^--/m' => '', '/-/m' => '_',];
     
     foreach ($arr as $key => $value) {
-      // Aplicar transformações à chave
+      // Apply transformations to the key
       $processed_key = preg_replace(array_keys($replace_patterns), array_values($replace_patterns), (string) $key);
-      $processed_key = strtoupper($processed_key); // Converter chave para maiúsculas (ex: 'max_depth' -> 'MAX_DEPTH')
+      $processed_key = strtoupper($processed_key); // Convert key to uppercase (e.g., 'max_depth' -> 'MAX_DEPTH')
       
-      // Converter valores booleanos para suas representações em string "true" ou "false"
+      // Convert boolean values to their "true" or "false" string representations
       if (is_bool($value)) {
         $processed_value = $value ? 'true' : 'false';
       } else {
-        // Garantir que todos os outros valores sejam convertidos para string para variáveis de ambiente
+        // Ensure all other values are cast to string for environment variables
         $processed_value = (string) $value;
       }
-      // Construir a nova chave com o prefixo e atribuir o valor processado
+      // Build the new key with the prefix and assign the processed value
       $newArr[$prefix . $processed_key] = $processed_value;
     }
     
@@ -282,47 +282,47 @@ class Rclone
   }
   
   /**
-   * Consolida todas as variáveis de ambiente para o processo rclone.
-   * Isso inclui variáveis forçadas, flags específicas do provedor, flags globais,
-   * variáveis de ambiente personalizadas e flags específicas da operação.
-   * A ordem da mesclagem determina a precedência (mesclagens posteriores sobrescrevem as anteriores).
-   * Precedência: Específicas da Operação > Envs Personalizadas > Flags Globais > Flags do Provedor > Vars Forçadas.
+   * Consolidates all environment variables for the rclone process.
+   * This includes forced variables, provider-specific flags, global flags,
+   * custom environment variables, and operation-specific flags.
+   * The order of merging determines precedence (later merges override earlier ones).
+   * Precedence: Operation-Specific > Custom Envs > Global Flags > Provider Flags > Forced Vars.
    *
-   * @param array $additional_operation_flags Flags específicas para a operação rclone atual (ex: para copy, move).
+   * @param array $additional_operation_flags Flags specific to the current rclone operation (e.g., for copy, move).
    *
-   * @return array Um array de variáveis de ambiente a ser passado para o Symfony Process.
+   * @return array An array of environment variables to be passed to Symfony Process.
    */
   private function allEnvs(array $additional_operation_flags = []) : array
   {
-    // 1. Variáveis de ambiente forçadas (menor precedência).
-    // O booleano 'true' é usado explicitamente, pois rclone espera strings "true"/"false".
+    // 1. Forced environment variables (lowest precedence).
+    // Boolean 'true' is used explicitly, as rclone expects "true"/"false" strings.
     $env_vars = [
-      'RCLONE_LOCAL_ONE_FILE_SYSTEM' => 'true', // Garante que rclone permaneça em um sistema de arquivos para operações locais.
-      'RCLONE_CONFIG' => '/dev/null',   // Instrui rclone a não usar nenhum arquivo de configuração externo.
+      'RCLONE_LOCAL_ONE_FILE_SYSTEM' => 'true', // Ensures rclone stays on one filesystem for local ops.
+      'RCLONE_CONFIG' => '/dev/null',   // Instructs rclone not to use any external config file.
     ];
     
-    // 2. Flags específicas do provedor.
-    // São prefixadas como 'RCLONE_CONFIG_MYREMOTENAME_OPTION'.
-    // Provider::flags() usa internamente Rclone::prefix_flags(), então a conversão de booleano é tratada.
+    // 2. Provider-specific flags.
+    // These are prefixed like 'RCLONE_CONFIG_MYREMOTENAME_OPTION'.
+    // Provider::flags() internally uses Rclone::prefix_flags(), so boolean conversion is handled.
     $env_vars = array_merge($env_vars, $this->left_side->flags());
-    // $this->right_side é garantido estar definido pelo construtor ($right_side ?? $left_side)
+    // $this->right_side is guaranteed to be set by the constructor ($right_side ?? $left_side)
     $env_vars = array_merge($env_vars, $this->right_side->flags());
     
     
-    // 3. Flags globais (definidas via Rclone::setFlags()).
-    // São flags gerais do rclone, prefixadas com 'RCLONE_'.
-    // Rclone::prefix_flags() trata a transformação da chave e a conversão de booleano para string.
+    // 3. Global flags (set via Rclone::setFlags()).
+    // These are general rclone flags, prefixed with 'RCLONE_'.
+    // Rclone::prefix_flags() handles key transformation and boolean-to-string conversion.
     $env_vars = array_merge($env_vars, self::prefix_flags(self::getFlags(), 'RCLONE_'));
     
-    // 4. Variáveis de ambiente personalizadas (definidas via Rclone::setEnvs()).
-    // Assume-se que são parâmetros rclone que precisam do prefixo 'RCLONE_'.
-    // Rclone::prefix_flags() trata a transformação da chave e a conversão de booleano para string.
+    // 4. Custom environment variables (set via Rclone::setEnvs()).
+    // These are assumed to be rclone parameters that need the 'RCLONE_' prefix.
+    // Rclone::prefix_flags() handles key transformation and boolean-to-string conversion.
     $env_vars = array_merge($env_vars, self::prefix_flags(self::getEnvs(), 'RCLONE_'));
     
-    // 5. Flags específicas da operação (passadas como $additional_operation_flags) (maior precedência).
-    // São flags específicas para o comando rclone sendo executado (ex: 'copy', 'sync').
-    // Prefixadas com 'RCLONE_'.
-    // Rclone::prefix_flags() trata a transformação da chave e a conversão de booleano para string.
+    // 5. Operation-specific flags (passed as $additional_operation_flags) (highest precedence).
+    // These are flags specific to the rclone command being run (e.g., 'copy', 'sync').
+    // Prefixed with 'RCLONE_'.
+    // Rclone::prefix_flags() handles key transformation and boolean-to-string conversion.
     $env_vars = array_merge($env_vars, self::prefix_flags($additional_operation_flags, 'RCLONE_'));
     
     return $env_vars;
@@ -330,32 +330,32 @@ class Rclone
   
   
   /**
-   * Ofusca uma senha ou segredo usando 'rclone obscure'.
+   * Obscures a password or secret using 'rclone obscure'.
    *
-   * @param string $secret O segredo a ser ofuscado.
+   * @param string $secret The secret to obscure.
    *
-   * @return string O segredo ofuscado.
+   * @return string The obscured secret.
    */
   public static function obscure(string $secret) : string
   {
     $process = new Process([self::getBIN(), 'obscure', $secret]);
-    $process->setTimeout(3); // Timeout curto para uma operação rápida.
+    $process->setTimeout(3); // Short timeout for a quick operation.
     
-    $process->mustRun(); // Lança exceção em caso de falha.
+    $process->mustRun(); // Throws exception on failure.
     
-    return trim($process->getOutput()); // Retorna a string ofuscada.
+    return trim($process->getOutput()); // Returns the obscured string.
   }
   
   /**
-   * Executa um comando rclone e trata sua saída e possíveis erros.
+   * Executes an rclone command and handles its output and potential errors.
    *
-   * @param string        $command         O comando rclone a ser executado (ex: 'lsjson', 'copy').
-   * @param array         $args            Argumentos para o comando rclone (ex: caminhos de origem e destino).
-   * @param array         $operation_flags Flags adicionais específicas para esta operação.
-   * @param callable|null $onProgress      Callback opcional para atualizações de progresso em tempo real.
-   *                                       Recebe ($type, $buffer) do Symfony Process.
+   * @param string        $command         The rclone command to execute (e.g., 'lsjson', 'copy').
+   * @param array         $args            Arguments for the rclone command (e.g., source and destination paths).
+   * @param array         $operation_flags Additional flags specific to this operation.
+   * @param callable|null $onProgress      Optional callback for real-time progress updates.
+   *                                       Receives ($type, $buffer) from Symfony Process.
    *
-   * @return string A saída padrão trimada do rclone.
+   * @return string The trimmed standard output from rclone.
    * @throws SyntaxErrorException
    * @throws DirectoryNotFoundException
    * @throws FileNotFoundException
@@ -369,16 +369,21 @@ class Rclone
    */
   private function simpleRun(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = NULL) : string
   {
-    $env_options = $operation_flags; // Começa com flags específicas da operação.
+    $env_options = $operation_flags; // Start with operation-specific flags.
     if ($onProgress) {
-      // Habilita a saída de progresso do rclone se um callback for fornecido.
-      $env_options += ['RCLONE_STATS_ONE_LINE' => 'true', 'RCLONE_PROGRESS' => 'true'];
+      // Enable rclone progress output if a callback is provided.
+      // RCLONE_STATS forces updates at the specified interval.
+      $env_options += [
+        'RCLONE_STATS_ONE_LINE' => 'true',
+        'RCLONE_PROGRESS' => 'true',
+        'RCLONE_STATS' => '250ms', // Request progress updates every 250 milliseconds.
+      ];
     }
     
-    // Consolida todas as variáveis de ambiente (provedor, global, customizada, específica da operação).
+    // Consolidate all environment variables (provider, global, custom, operation-specific).
     $final_envs = $this->allEnvs($env_options);
     
-    // Constrói os argumentos completos da linha de comando rclone.
+    // Build the full rclone command line arguments.
     $process_args = array_merge([self::getBIN(), $command], $args);
     
     $process = new Process($process_args, sys_get_temp_dir(), $final_envs);
@@ -386,100 +391,117 @@ class Rclone
     $process->setTimeout(self::getTimeout());
     $process->setIdleTimeout(self::getIdleTimeout());
     if (!empty(self::getInput())) {
-      $process->setInput(self::getInput()); // Define a entrada para comandos como 'rcat'.
+      $process->setInput(self::getInput()); // Set input for commands like 'rcat'.
     }
     
     try {
       if ($onProgress) {
-        // Executa com callback de progresso.
+        // Execute with progress callback.
         $process->mustRun(function ($type, $buffer) use ($onProgress) {
-          $this->parseProgress($type, $buffer); // Analisa o progresso internamente.
-          $onProgress($type, $buffer); // Chama o callback fornecido pelo usuário.
+          $this->parseProgress($type, $buffer); // Parse progress internally.
+          $onProgress($type, $buffer); // Call the user-supplied callback.
         });
       } else {
-        // Executa sem callback de progresso.
+        // Execute without progress callback.
         $process->mustRun();
       }
-      $this->reset(); // Redefine as configurações estáticas após execução bem-sucedida.
+      $this->reset(); // Reset static settings after successful execution.
       
       $output = $process->getOutput();
       
       return trim($output);
     }
     catch (ProcessFailedException $exception) {
-      // Tenta analisar o código de saída e a mensagem de erro do rclone.
+      // Attempt to parse rclone's exit code and error message.
+      // This regex tries to find "Exit Code: X" and the error output block.
+      // It is less robust than directly getting these from the Process object if possible,
+      // but works with the ProcessFailedException's message format.
       $regex = '/Exit\sCode:\s(\d+?).*Error\sOutput:.*?={10,20}\s(.*)/mis';
       preg_match_all($regex, $exception->getMessage(), $matches, PREG_SET_ORDER, 0);
       
-      if (isset($matches[0]) && count($matches[0]) === 3) {
-        [, $code, $msg] = $matches[0];
-        $msg = trim($msg);
-        // Mapeia códigos de saída rclone para exceções específicas.
-        switch ((int) $code) {
-          case 1:
-            throw new SyntaxErrorException($exception, $msg, (int) $code);
-          // case 2 é capturado pelo UnknownErrorException padrão
-          case 3:
-            throw new DirectoryNotFoundException($exception, $msg, (int) $code);
-          case 4:
-            throw new FileNotFoundException($exception, $msg, (int) $code);
-          case 5:
-            throw new TemporaryErrorException($exception, $msg, (int) $code);
-          case 6:
-            throw new LessSeriousErrorException($exception, $msg, (int) $code);
-          case 7:
-            throw new FatalErrorException($exception, $msg, (int) $code);
-          case 8:
-            throw new MaxTransferReachedException($exception, $msg, (int) $code);
-          case 9:
-            throw new NoFilesTransferredException($exception, $msg, (int) $code);
-          default:
-            throw new UnknownErrorException($exception, "Rclone error (Code: $code): $msg", (int) $code);
-        }
-      } else {
-        // Se a análise falhar, lança um UnknownErrorException genérico.
-        throw new UnknownErrorException($exception, 'Rclone process failed: ' . $exception->getMessage());
+      $processExitCode = $exception->getProcess()->getExitCode();
+      $processErrorOutput = trim($exception->getProcess()->getErrorOutput());
+      
+      // Prefer direct process info if available, otherwise fallback to regex on message.
+      $code = $processExitCode ?? null;
+      $msg = !empty($processErrorOutput) ? $processErrorOutput : null;
+      
+      if ($code === null && isset($matches[0]) && count($matches[0]) === 3) {
+        [, $parsedCode, $parsedMsg] = $matches[0];
+        $code = (int) $parsedCode;
+        $msg = trim($parsedMsg);
+      } elseif ($code === null) {
+        // If neither direct info nor regex provides a code, default to an unknown error scenario.
+        throw new UnknownErrorException($exception, 'Rclone process failed with unknown exit code: ' . $exception->getMessage());
+      }
+      
+      // If msg is still null/empty after attempts, use a generic part of the exception message.
+      if (empty($msg)) {
+        $msg = 'Rclone process failed. Output: ' . $exception->getProcess()->getOutput();
+      }
+      
+      // Map rclone exit codes to specific exceptions.
+      switch ((int) $code) {
+        case 1:
+          throw new SyntaxErrorException($exception, $msg, (int) $code);
+        // case 2 is caught by the default UnknownErrorException
+        case 3:
+          throw new DirectoryNotFoundException($exception, $msg, (int) $code);
+        case 4:
+          throw new FileNotFoundException($exception, $msg, (int) $code);
+        case 5:
+          throw new TemporaryErrorException($exception, $msg, (int) $code);
+        case 6:
+          throw new LessSeriousErrorException($exception, $msg, (int) $code);
+        case 7:
+          throw new FatalErrorException($exception, $msg, (int) $code);
+        case 8:
+          throw new MaxTransferReachedException($exception, $msg, (int) $code);
+        case 9:
+          throw new NoFilesTransferredException($exception, $msg, (int) $code);
+        default:
+          throw new UnknownErrorException($exception, "Rclone error (Code: $code): $msg", (int) $code);
       }
     }
     catch (SymfonyProcessTimedOutExceptionAlias $exception) {
-      // Trata a exceção de timeout do processo do Symfony.
+      // Handle Symfony's process timeout exception.
       throw new ProcessTimedOutException($exception);
     }
     catch (\Exception $exception) {
-      // Captura quaisquer outras exceções inesperadas.
+      // Catch any other unexpected exceptions.
       throw new UnknownErrorException($exception, 'An unexpected error occurred: ' . $exception->getMessage());
     }
   }
   
   /**
-   * Executa um comando rclone direcionado a um único caminho de provedor.
+   * Executes an rclone command targeting a single provider path.
    *
-   * @param string        $command    O comando rclone.
-   * @param string|null   $path       O caminho no provedor do lado esquerdo.
-   * @param array         $flags      Flags adicionais para a operação.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $command    The rclone command.
+   * @param string|null   $path       The path on the left-side provider.
+   * @param array         $flags      Additional flags for the operation.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   protected function directRun(string $command, $path = NULL, array $flags = [], ?callable $onProgress = NULL) : bool
   {
     $this->simpleRun($command, [
-      $this->left_side->backend($path), // Constrói o caminho como 'myremote:path/to/file'
+      $this->left_side->backend($path), // Builds the path like 'myremote:path/to/file'
     ],               $flags, $onProgress);
     
     return TRUE;
   }
   
   /**
-   * Executa um comando rclone envolvendo dois caminhos de provedor (origem e destino).
+   * Executes an rclone command involving two provider paths (source and destination).
    *
-   * @param string        $command    O comando rclone.
-   * @param string|null   $left_path  Caminho no provedor do lado esquerdo.
-   * @param string|null   $right_path Caminho no provedor do lado direito.
-   * @param array         $flags      Flags adicionais para a operação.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $command    The rclone command.
+   * @param string|null   $left_path  Path on the left-side provider.
+   * @param string|null   $right_path Path on the right-side provider.
+   * @param array         $flags      Additional flags for the operation.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   protected function directTwinRun(string $command, ?string $left_path = NULL, ?string $right_path = NULL, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -492,59 +514,59 @@ class Rclone
   }
   
   /**
-   * Executa um comando rclone que recebe entrada via STDIN (ex: rcat).
+   * Executes an rclone command that takes input via STDIN (e.g., rcat).
    *
-   * @param string        $command    O comando rclone.
-   * @param string        $input      A string a ser passada para STDIN.
-   * @param array         $args       Argumentos para o comando rclone (tipicamente o caminho de destino).
-   * @param array         $flags      Flags adicionais para a operação.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $command    The rclone command.
+   * @param string        $input      The string to pass to STDIN.
+   * @param array         $args       Arguments for the rclone command (typically the destination path).
+   * @param array         $flags      Additional flags for the operation.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   private function inputRun(string $command, string $input, array $args = [], array $flags = [], ?callable $onProgress = NULL) : bool
   {
-    $this->setInput($input); // Define a string de entrada.
+    $this->setInput($input); // Set the input string.
     
-    // Os argumentos do comando geralmente incluem o caminho de destino para rcat.
+    // Command arguments usually include the destination path for rcat.
     return (bool) $this->simpleRun($command, $args, $flags, $onProgress);
   }
   
   /**
-   * Obtém a versão do rclone.
+   * Gets the rclone version.
    *
-   * @param bool $numeric Se true, tenta retornar uma versão numérica (float). Caso contrário, retorna string.
+   * @param bool $numeric If true, attempts to return a numeric (float) version. Otherwise, returns string.
    *
-   * @return string|float A versão do rclone.
+   * @return string|float The rclone version.
    */
   public function version(bool $numeric = FALSE) : string|float
   {
-    $cmd_output = $this->simpleRun('version'); // Executa 'rclone version'.
+    $cmd_output = $this->simpleRun('version'); // Executes 'rclone version'.
     
-    // Analisa a string de versão como "rclone v1.2.3"
+    // Parses version string like "rclone v1.2.3"
     preg_match_all('/rclone\sv(.+)/m', $cmd_output, $version_matches, PREG_SET_ORDER, 0);
     
     if (isset($version_matches[0][1])) {
       $version_string = $version_matches[0][1];
       return $numeric ? (float) $version_string : $version_string;
     }
-    return $numeric ? 0.0 : ''; // Não deve acontecer com uma instalação válida do rclone.
+    return $numeric ? 0.0 : ''; // Should not happen with a valid rclone installation.
   }
   
   /**
-   * Obtém o caminho para o binário rclone.
+   * Gets the path to the rclone binary.
    *
-   * @return string Caminho para o rclone.
+   * @return string Path to rclone.
    */
   public static function getBIN() : string
   {
-    return self::$BIN ?? self::guessBIN(); // Usa o caminho em cache ou o adivinha.
+    return self::$BIN ?? self::guessBIN(); // Uses cached path or guesses it.
   }
   
   /**
-   * Define o caminho para o binário rclone.
+   * Sets the path to the rclone binary.
    *
-   * @param string $BIN Caminho para o rclone.
+   * @param string $BIN Path to rclone.
    */
   public static function setBIN(string $BIN) : void
   {
@@ -552,15 +574,15 @@ class Rclone
   }
   
   /**
-   * Tenta encontrar o binário rclone em caminhos comuns do sistema.
-   * Usa spatie/once para garantir que execute apenas uma vez.
+   * Tries to find the rclone binary in common system paths.
+   * Uses spatie/once to ensure it runs only once.
    *
-   * @return string Caminho para o rclone.
-   * @throws \RuntimeException Se o binário rclone não for encontrado.
+   * @return string Path to rclone.
+   * @throws \RuntimeException If rclone binary is not found.
    */
   public static function guessBIN() : string
   {
-    // spatie/once garante que esta operação pesada de busca execute apenas uma vez.
+    // spatie/once ensures this heavy search operation runs only once.
     $BIN_path = once(static function () {
       $finder = new ExecutableFinder();
       $rclone_path = $finder->find('rclone', '/usr/bin/rclone', [
@@ -568,81 +590,85 @@ class Rclone
         '/usr/bin',
         '/bin',
         '/usr/local/sbin',
-        '/var/lib/snapd/snap/bin', // Caminho comum para instalações via snap
+        '/var/lib/snapd/snap/bin', // Common path for snap installations
       ]);
       if ($rclone_path === NULL) {
-        throw new \RuntimeException('Binário rclone não encontrado. Por favor, garanta que o rclone está instalado e no seu PATH, ou defina o caminho manualmente usando Rclone::setBIN().');
+        throw new \RuntimeException('Rclone binary not found. Please ensure rclone is installed and in your PATH, or set the path manually using Rclone::setBIN().');
       }
       return $rclone_path;
     });
     
-    self::setBIN($BIN_path); // Armazena em cache o caminho encontrado.
+    self::setBIN($BIN_path); // Cache the found path.
     
     return self::getBIN();
   }
   
   /**
-   * Analisa a saída de progresso do rclone.
-   * Este método é chamado internamente quando um callback de progresso está ativo.
+   * Parses rclone progress output.
+   * This method is called internally when a progress callback is active.
    *
-   * @param string $type   O tipo de saída (Process::OUT ou Process::ERR).
-   * @param string $buffer O conteúdo do buffer de saída.
+   * @param string $type   The type of output (Process::OUT or Process::ERR).
+   * @param string $buffer The output buffer content.
    */
   private function parseProgress(string $type, string $buffer) : void
   {
-    // A saída de progresso do Rclone é esperada em STDOUT (Process::OUT).
-    // Linha de exemplo: "Transferred: 1.234 GiB / 2.000 GiB, 61%, 12.345 MiB/s, ETA 1m2s"
-    // Ou com verificações/erros: "Checks: 100 / 100, 100% | Transferred: 0 / 0, - | Errors: 1 (retrying may help)"
-    // Esta regex foca na parte da transferência.
+    // Rclone progress output is expected on STDOUT (Process::OUT).
+    // Example line: "Transferred: 1.234 GiB / 2.000 GiB, 61%, 12.345 MiB/s, ETA 1m2s"
+    // Or with checks/errors: "Checks: 100 / 100, 100% | Transferred: 0 / 0, - | Errors: 1 (retrying may help)"
+    // These regexes focus on the transfer part.
     if ($type === Process::OUT) {
-      // Regex para capturar estatísticas de transferência.
-      $regex = '/([\d.]+\s[a-zA-Z]+)\s+?\/\s+([\d.]+\s[a-zA-Z]+),\s+?(\d+)\%,\s+?([\d.]+\s[a-zA-Z]+\/s),\s+?ETA\s+?([\w]+)/mixu';
-      // Regex alternativa para quando 'xfr#' está presente (ex: durante transferências de múltiplos arquivos)
-      $regex_xfr = '/([\d.]+\s[a-zA-Z]+)\s+?\/\s+([\d.]+\s[a-zA-Z]+),\s+?(\d+)\%,\s+?([\d.]+\s[a-zA-Z]+\/s),\s+?ETA\s+?([\w]+)\s\(xfr\#(\d+\/\d+)\)/mixu';
+      // Regex for transfer stats. Made more robust for units (KiB, MiB, GiB, TiB, B) and ETA (can be '-', 'Ns', etc.).
+      // iu modifiers: case-insensitive, unicode.
+      $regex_base = '([\d.]+\s[KMGT]?i?B)\s*\/\s*([\d.]+\s[KMGT]?i?B),\s*(\d+)\%,\s*([\d.]+\s[KMGT]?i?B\/s),\s*ETA\s*(\S+)';
+      $regex = '/' . $regex_base . '/iu';
+      $regex_xfr = '/' . $regex_base . '\s*\(xfr#(\d+\/\d+)\)/iu';
       
-      preg_match_all($regex_xfr, $buffer, $matches_xfr, PREG_SET_ORDER, 0);
+      $matches_xfr = [];
+      $matches = [];
       
-      if (isset($matches_xfr[0]) && count($matches_xfr[0]) >= 7) {
-        // dataSent, dataTotal, sent (percentagem), speed, eta, xfr_count
-        $this->setProgressData($matches_xfr[0][0], $matches_xfr[0][1], $matches_xfr[0][2], (int) $matches_xfr[0][3], $matches_xfr[0][4], $matches_xfr[0][5], $matches_xfr[0][6]);
+      preg_match($regex_xfr, $buffer, $matches_xfr); // Using preg_match as we expect at most one progress line per buffer chunk.
+      
+      if (isset($matches_xfr[0]) && count($matches_xfr) >= 7) {
+        // raw, dataSent, dataTotal, sent (percentage), speed, eta, xfr_count
+        $this->setProgressData($matches_xfr[0], $matches_xfr[1], $matches_xfr[2], (int) $matches_xfr[3], $matches_xfr[4], $matches_xfr[5], $matches_xfr[6]);
       } else {
-        preg_match_all($regex, $buffer, $matches, PREG_SET_ORDER, 0);
-        if (isset($matches[0]) && count($matches[0]) >= 6) {
-          // raw, dataSent, dataTotal, sent (percentagem), speed, eta
-          $this->setProgressData($matches[0][0], $matches[0][1], $matches[0][2], (int) $matches[0][3], $matches[0][4], $matches[0][5]);
+        preg_match($regex, $buffer, $matches);
+        if (isset($matches[0]) && count($matches) >= 6) {
+          // raw, dataSent, dataTotal, sent (percentage), speed, eta
+          $this->setProgressData($matches[0], $matches[1], $matches[2], (int) $matches[3], $matches[4], $matches[5]);
         }
       }
     }
   }
   
   /**
-   * Define o objeto de progresso interno com dados analisados.
+   * Sets the internal progress object with parsed data.
    *
-   * @param string      $raw            A string de progresso bruta.
-   * @param string      $dataSent       Quantidade de dados enviados (ex: "1.2 GiB").
-   * @param string      $dataTotal      Quantidade total de dados (ex: "2.0 GiB").
-   * @param int         $sentPercentage Percentagem concluída.
-   * @param string      $speed          Velocidade de transferência atual (ex: "10 MiB/s").
-   * @param string      $eta            Tempo estimado restante (ex: "1m2s").
-   * @param string|null $xfr            Contagem atual de arquivos em transferência (ex: "1/10").
+   * @param string      $raw            The raw progress string.
+   * @param string      $dataSent       Amount of data sent (e.g., "1.2 GiB").
+   * @param string      $dataTotal      Total amount of data (e.g., "2.0 GiB").
+   * @param int         $sentPercentage Percentage completed.
+   * @param string      $speed          Current transfer speed (e.g., "10 MiB/s").
+   * @param string      $eta            Estimated time remaining (e.g., "1m2s", "-", "0s").
+   * @param string|null $xfr            Current transferring files count (e.g., "1/10"). Defaults to '1/1'.
    */
   private function setProgressData(string $raw, string $dataSent, string $dataTotal, int $sentPercentage, string $speed, string $eta, ?string $xfr = '1/1') : void
   {
     $this->progress = (object) [
-      'raw' => $raw,
-      'dataSent' => $dataSent,
-      'dataTotal' => $dataTotal,
-      'sent' => $sentPercentage, // Armazenando como percentagem inteira
-      'speed' => $speed,
-      'eta' => $eta,
-      'xfr' => $xfr ?? '1/1', // Padrão se não fornecido (ex: transferência de arquivo único)
+      'raw' => trim($raw), // Trim the raw string
+      'dataSent' => trim($dataSent),
+      'dataTotal' => trim($dataTotal),
+      'sent' => $sentPercentage, // Storing as integer percentage
+      'speed' => trim($speed),
+      'eta' => trim($eta),
+      'xfr' => $xfr ?? '1/1', // Default if not provided (e.g., single file transfer)
     ];
   }
   
   /**
-   * Obtém o objeto de progresso atual.
+   * Gets the current progress object.
    *
-   * @return object O objeto de progresso.
+   * @return object The progress object.
    */
   public function getProgress() : object
   {
@@ -650,24 +676,24 @@ class Rclone
   }
   
   /**
-   * Redefine o objeto de progresso para seu estado padrão.
+   * Resets the progress object to its default state.
    */
   private function resetProgress() : void
   {
-    // Inicializa com valores padrão/vazios de self::$reset['progress']
+    // Initialize with default/empty values from self::$reset['progress']
     $this->progress = (object) self::$reset['progress'];
   }
   
   
   /**
-   * Lista os objetos no caminho de origem. (rclone lsjson)
+   * Lists objects at the source path. (rclone lsjson)
    *
-   * @param string $path  Caminho a ser listado.
-   * @param array  $flags Flags adicionais.
+   * @param string $path  Path to list.
+   * @param array  $flags Additional flags.
    *
-   * @return array Array de objetos, cada um representando um arquivo ou diretório.
-   *               ModTime é convertido para timestamp UNIX.
-   * @throws \JsonException Se a decodificação JSON falhar.
+   * @return array Array of objects, each representing a file or directory.
+   *               ModTime is converted to UNIX timestamp.
+   * @throws \JsonException If JSON decoding fails.
    */
   public function ls(string $path, array $flags = []) : array
   {
@@ -675,12 +701,12 @@ class Rclone
     
     $items_array = json_decode($result_json, FALSE, 512, JSON_THROW_ON_ERROR);
     
-    // Processa ModTime para cada item
+    // Process ModTime for each item
     foreach ($items_array as $item) {
       if (isset($item->ModTime) && is_string($item->ModTime)) {
-        // O formato ModTime do rclone é como "2023-08-15T10:20:30.123456789Z"
-        // PHP strtotime lida bem com este formato, especialmente RFC3339_EXTENDED.
-        // Removendo nanossegundos excessivos para maior compatibilidade, se necessário.
+        // Rclone's ModTime format is like "2023-08-15T10:20:30.123456789Z"
+        // PHP strtotime handles this format well, especially RFC3339_EXTENDED.
+        // Removing excessive nanoseconds for broader compatibility if necessary.
         $time_string = preg_replace('/\.(\d{6})\d*Z$/', '.$1Z', $item->ModTime);
         $timestamp = strtotime($time_string);
         $item->ModTime = ($timestamp !== FALSE) ? $timestamp : NULL;
@@ -690,11 +716,11 @@ class Rclone
   }
   
   /**
-   * Verifica se um caminho existe e é um arquivo.
+   * Checks if a path exists and is a file.
    *
-   * @param string $path Caminho a ser verificado.
+   * @param string $path Path to check.
    *
-   * @return object Objeto com propriedades 'exists' (bool), 'details' (object|array), e 'error' (string|\Exception).
+   * @return object Object with 'exists' (bool), 'details' (object|array), and 'error' (string|\Exception) properties.
    */
   public function is_file(string $path) : object
   {
@@ -702,11 +728,11 @@ class Rclone
   }
   
   /**
-   * Verifica se um caminho existe e é um diretório.
+   * Checks if a path exists and is a directory.
    *
-   * @param string $path Caminho a ser verificado.
+   * @param string $path Path to check.
    *
-   * @return object Objeto com propriedades 'exists' (bool), 'details' (object|array), e 'error' (string|\Exception).
+   * @return object Object with 'exists' (bool), 'details' (object|array), and 'error' (string|\Exception) properties.
    */
   public function is_dir(string $path) : object
   {
@@ -714,29 +740,29 @@ class Rclone
   }
   
   /**
-   * Verifica se um caminho existe e é do tipo especificado ('file' ou 'dir').
-   * Este método lista o diretório pai e depois filtra pelo item específico.
+   * Checks if a path exists and is of the specified type ('file' or 'dir').
+   * This method lists the parent directory and then filters for the specific item.
    *
-   * @param string $path O caminho a ser verificado.
-   * @param string $type O tipo a ser verificado ('file' ou 'dir').
+   * @param string $path The path to check.
+   * @param string $type The type to check for ('file' or 'dir').
    *
-   * @return object Um objeto com propriedades:
-   *                - bool 'exists': True se o item existe e corresponde ao tipo.
-   *                - mixed 'details': Os detalhes do item de 'lsjson' se existir, caso contrário, array vazio.
-   *                - mixed 'error': O objeto de exceção se ocorreu um erro durante 'ls', caso contrário, string vazia.
+   * @return object An object with properties:
+   *                - bool 'exists': True if the item exists and matches the type.
+   *                - mixed 'details': The item's details from 'lsjson' if it exists, else empty array.
+   *                - mixed 'error': The Exception object if an error occurred during 'ls', else empty string.
    */
   public function exists(string $path, string $type) : object
   {
     $dirname = dirname($path);
-    // Se dirname é '.', significa que o caminho está na raiz do remoto.
-    // rclone lsjson remote: precisa apenas de 'remote:' para a raiz, não 'remote:.'
+    // If dirname is '.', it means the path is at the remote's root.
+    // rclone lsjson remote: needs just 'remote:' for root, not 'remote:.'
     if ($dirname === '.') {
-      $dirname = ''; // Para listagem da raiz
+      $dirname = ''; // For root listing
     }
     $basename = basename($path);
     
     try {
-      $listing = $this->ls($dirname); // Lista o conteúdo do diretório pai.
+      $listing = $this->ls($dirname); // List parent directory contents.
       $found_item = array_filter($listing, static fn($item) => isset($item->Name) && $item->Name === $basename &&
         isset($item->IsDir) && $item->IsDir === ($type === 'dir'),
       );
@@ -749,22 +775,22 @@ class Rclone
       ];
     }
     catch (\Exception $e) {
-      // Se ls falhar (ex: diretório pai não encontrado), o item não existe ou está inacessível.
+      // If ls fails (e.g., parent directory not found), the item doesn't exist or is inaccessible.
       return (object) ['exists' => FALSE, 'details' => [], 'error' => $e];
     }
   }
   
   
   /**
-   * Cria novo arquivo ou altera o tempo de modificação do arquivo. (rclone touch)
+   * Creates new file or change file modification time. (rclone touch)
    *
    * @see https://rclone.org/commands/rclone_touch/
    *
-   * @param string        $path       Caminho para dar touch.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $path       Path to touch.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function touch(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -772,15 +798,15 @@ class Rclone
   }
   
   /**
-   * Cria o caminho se ele ainda não existir. (rclone mkdir)
+   * Creates the path if it doesn't exist. (rclone mkdir)
    *
    * @see https://rclone.org/commands/rclone_mkdir/
    *
-   * @param string        $path       Caminho a ser criado.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $path       Path to create.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function mkdir(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -788,16 +814,16 @@ class Rclone
   }
   
   /**
-   * Remove um diretório vazio. (rclone rmdir)
-   * Não removerá o caminho se ele tiver algum objeto nele.
+   * Removes an empty directory. (rclone rmdir)
+   * Will not remove the path if it has any objects in it.
    *
    * @see https://rclone.org/commands/rclone_rmdir/
    *
-   * @param string        $path       Caminho a ser removido.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $path       Path to remove.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function rmdir(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -805,15 +831,15 @@ class Rclone
   }
   
   /**
-   * Remove diretórios vazios sob o caminho. (rclone rmdirs)
+   * Removes empty directories under the path. (rclone rmdirs)
    *
    * @see https://rclone.org/commands/rclone_rmdirs/
    *
-   * @param string        $path       Caminho raiz para procurar diretórios vazios.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $path       Root path to search for empty directories.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function rmdirs(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -821,16 +847,16 @@ class Rclone
   }
   
   /**
-   * Remove o caminho e todo o seu conteúdo. (rclone purge)
-   * Não obedece a filtros de inclusão/exclusão.
+   * Removes the path and all its contents. (rclone purge)
+   * Does not obey include/exclude filters.
    *
    * @see https://rclone.org/commands/rclone_purge/
    *
-   * @param string        $path       Caminho a ser purgado.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $path       Path to purge.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function purge(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -838,16 +864,16 @@ class Rclone
   }
   
   /**
-   * Remove os arquivos no caminho. (rclone delete)
-   * Obedece a filtros de inclusão/exclusão. Deixa a estrutura de diretórios.
+   * Removes the files in path. (rclone delete)
+   * Obeys include/exclude filters. Leaves directory structure.
    *
    * @see https://rclone.org/commands/rclone_delete/
    *
-   * @param string|null   $path       Caminho contendo arquivos a serem deletados.
-   * @param array         $flags      Flags adicionais (ex: --include, --exclude).
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string|null   $path       Path containing files to delete.
+   * @param array         $flags      Additional flags (e.g. --include, --exclude).
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function delete(?string $path = NULL, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -855,16 +881,16 @@ class Rclone
   }
   
   /**
-   * Remove um único arquivo do remoto. (rclone deletefile)
-   * Não obedece a filtros. Não pode remover um diretório.
+   * Removes a single file from remote. (rclone deletefile)
+   * Does not obey filters. Cannot remove a directory.
    *
    * @see https://rclone.org/commands/rclone_deletefile/
    *
-   * @param string        $path       Caminho para o arquivo a ser deletado.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $path       Path to the file to delete.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function deletefile(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -872,18 +898,18 @@ class Rclone
   }
   
   /**
-   * Imprime o tamanho total e o número de objetos em remote:path. (rclone size)
+   * Prints the total size and number of objects in remote:path. (rclone size)
    *
-   * @param string|null   $path       Caminho para obter o tamanho.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string|null   $path       Path to get size of.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return object Objeto com propriedades 'count' e 'bytes'.
-   * @throws \JsonException Se a decodificação JSON falhar.
+   * @return object Object with 'count' and 'bytes' properties.
+   * @throws \JsonException If JSON decoding fails.
    */
   public function size(?string $path = NULL, array $flags = [], ?callable $onProgress = NULL) : object
   {
-    // Garante que a flag --json seja adicionada para saída parseável.
+    // Ensure --json flag is added for parsable output.
     $size_flags = array_merge($flags, ['json' => 'true']);
     $result_json = $this->simpleRun('size', [$this->left_side->backend($path)], $size_flags, $onProgress);
     
@@ -891,15 +917,15 @@ class Rclone
   }
   
   /**
-   * Concatena quaisquer arquivos e os envia para stdout. (rclone cat)
+   * Concatenates any files and sends them to stdout. (rclone cat)
    *
    * @see https://rclone.org/commands/rclone_cat/
    *
-   * @param string        $path       Caminho para o arquivo.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $path       Path to the file.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return string O conteúdo do arquivo.
+   * @return string The file content.
    */
   public function cat(string $path, array $flags = [], ?callable $onProgress = NULL) : string
   {
@@ -908,107 +934,107 @@ class Rclone
   
   
   /**
-   * Copia a entrada padrão para remote:path. (rclone rcat)
+   * Copies standard input to remote:path. (rclone rcat)
    *
    * @see https://rclone.org/commands/rclone_rcat/
    *
-   * @param string        $path       Caminho de destino no remoto.
-   * @param string        $input      Conteúdo a ser enviado.
-   * @param array         $flags      Flags adicionais.
-   * @param callable|null $onProgress Callback de progresso opcional.
+   * @param string        $path       Destination path on remote.
+   * @param string        $input      Content to send.
+   * @param array         $flags      Additional flags.
+   * @param callable|null $onProgress Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function rcat(string $path, string $input, array $flags = [], ?callable $onProgress = NULL) : bool
   {
-    // Argumentos para rcat tipicamente incluem apenas o caminho de destino.
+    // Arguments for rcat typically include only the destination path.
     return $this->inputRun('rcat', $input, [$this->left_side->backend($path)], $flags, $onProgress);
   }
   
   
   /**
-   * Faz upload de um único arquivo local para um caminho remoto usando o comando 'moveto' para eficiência.
-   * Isso efetivamente move o arquivo local para o remoto (copia e depois deleta o original local).
+   * Uploads a single local file to a remote path using the 'moveto' command for efficiency.
+   * This effectively moves the local file to the remote (copies then deletes local original).
    *
-   * @param string        $local_path  Caminho para o arquivo local.
-   * @param string        $remote_path Caminho de destino no remoto (left_side da instância Rclone atual).
-   * @param array         $flags       Flags adicionais.
-   * @param callable|null $onProgress  Callback de progresso opcional.
+   * @param string        $local_path  Path to the local file.
+   * @param string        $remote_path Destination path on the remote (current Rclone instance's left_side).
+   * @param array         $flags       Additional flags.
+   * @param callable|null $onProgress  Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function upload_file(string $local_path, string $remote_path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
-    // Cria uma configuração Rclone temporária: provedor local como origem, left_side da Rclone atual como destino.
+    // Create a temporary Rclone setup: local provider as source, current Rclone's left_side as destination.
     $uploader = new self(left_side: new LocalProvider('local_temp_upload'), right_side: $this->left_side);
     
-    // Usa moveto para transferência direta. O rclone 'moveto' de 'local:' para um remoto deleta o arquivo local original.
+    // Use moveto for direct transfer. Rclone 'moveto' from 'local:' to a remote deletes the original local file.
     return $uploader->moveto($local_path, $remote_path, $flags, $onProgress);
   }
   
   /**
-   * Faz download de um arquivo de um caminho remoto para o armazenamento local.
+   * Downloads a file from a remote path to local storage.
    *
-   * @param string    $remote_path            O caminho do arquivo no servidor remoto (left_side da instância Rclone atual).
-   * @param ?string   $local_destination_path O caminho local onde o arquivo deve ser salvo.
-   *                                          Se for um diretório, o nome original do arquivo é usado.
-   *                                          Se null, um diretório temporário com o nome original do arquivo é usado.
-   * @param array     $flags                  Flags adicionais para a operação de download.
-   * @param ?callable $onProgress             Uma função de callback para rastrear o progresso do download.
+   * @param string    $remote_path            The path of the file on the remote server (current Rclone instance's left_side).
+   * @param ?string   $local_destination_path The local path where the file should be saved.
+   *                                          If a directory, original filename is used.
+   *                                          If null, a temporary directory with original filename is used.
+   * @param array     $flags                  Additional flags for the download operation.
+   * @param ?callable $onProgress             A callback function to track download progress.
    *
-   * @return string|false O caminho local absoluto onde o arquivo foi salvo, ou false se o download falhar.
+   * @return string|false The absolute local path where the file was saved, or false if download fails.
    */
   public function download_to_local(string $remote_path, ?string $local_destination_path = NULL, array $flags = [], ?callable $onProgress = NULL) : string|false
   {
     $remote_filename = basename($remote_path);
     
     if ($local_destination_path === NULL) {
-      // Cria um diretório temporário e anexa o nome do arquivo remoto.
+      // Create a temporary directory and append the remote filename.
       $temp_dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'flyclone_download_' . uniqid();
       if (!mkdir($temp_dir, 0777, TRUE) && !is_dir($temp_dir)) {
         // @codeCoverageIgnoreStart
-        // Este caso é difícil de testar confiavelmente sem manipular permissões do sistema.
-        return FALSE; // Falha ao criar diretório temporário
+        // This case is hard to test reliably without manipulating system permissions.
+        return FALSE; // Failed to create temp directory
         // @codeCoverageIgnoreEnd
       }
       $final_local_path = $temp_dir . DIRECTORY_SEPARATOR . $remote_filename;
     } elseif (is_dir($local_destination_path)) {
-      // Se um diretório for fornecido, anexa o nome do arquivo remoto.
+      // If a directory is provided, append the remote filename.
       $final_local_path = rtrim($local_destination_path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $remote_filename;
     } else {
-      // Um caminho de arquivo específico é fornecido. Garante que o diretório pai exista.
+      // A specific file path is provided. Ensure parent directory exists.
       $parent_dir = dirname($local_destination_path);
       if (!is_dir($parent_dir)) {
         if (!mkdir($parent_dir, 0777, TRUE) && !is_dir($parent_dir)) {
           // @codeCoverageIgnoreStart
-          return FALSE; // Falha ao criar diretório pai
+          return FALSE; // Failed to create parent directory
           // @codeCoverageIgnoreEnd
         }
       }
       $final_local_path = $local_destination_path;
     }
     
-    // Configuração Rclone temporária: left_side da Rclone atual como origem, provedor local como destino.
+    // Temporary Rclone setup: current Rclone's left_side as source, local provider as destination.
     $downloader = new self(left_side: $this->left_side, right_side: new LocalProvider('local_temp_download'));
     
-    // Usa copyto para transferência direta de arquivo para arquivo.
+    // Use copyto for direct file-to-file transfer.
     $success = $downloader->copyto($remote_path, $final_local_path, $flags, $onProgress);
     
     return $success ? $final_local_path : FALSE;
   }
   
   /**
-   * Copia arquivos da origem para o destino, pulando os já copiados. (rclone copy)
-   * Origem é um arquivo/diretório em left_side, dest_DIR_path é um diretório em right_side.
+   * Copies files from source to dest, skipping already copied. (rclone copy)
+   * Source is a file/directory on left_side, dest_DIR_path is a directory on right_side.
    *
    * @see https://rclone.org/commands/rclone_copy/
    *
-   * @param string        $source_path   Caminho de origem (arquivo ou diretório).
-   * @param string        $dest_DIR_path Caminho do diretório de destino.
-   * @param array         $flags         Flags adicionais.
-   * @param callable|null $onProgress    Callback de progresso opcional.
+   * @param string        $source_path   Source path (file or directory).
+   * @param string        $dest_DIR_path Destination directory path.
+   * @param array         $flags         Additional flags.
+   * @param callable|null $onProgress    Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function copy(string $source_path, string $dest_DIR_path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -1016,17 +1042,17 @@ class Rclone
   }
   
   /**
-   * Copia um único arquivo ou diretório da origem para um caminho de arquivo/diretório de destino específico. (rclone copyto)
-   * Se a origem for um arquivo, dest_path é um arquivo. Se a origem for um dir, dest_path é um dir.
+   * Copies a single file or directory from source to a specific destination file/directory path. (rclone copyto)
+   * If src is a file, dst is a file. If src is a dir, dst is a dir.
    *
    * @see https://rclone.org/commands/rclone_copyto/
    *
-   * @param string        $source_path Caminho do arquivo ou diretório de origem.
-   * @param string        $dest_path   Caminho do arquivo ou diretório de destino.
-   * @param array         $flags       Flags adicionais.
-   * @param callable|null $onProgress  Callback de progresso opcional.
+   * @param string        $source_path Source file or directory path.
+   * @param string        $dest_path   Destination file or directory path.
+   * @param array         $flags       Additional flags.
+   * @param callable|null $onProgress  Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function copyto(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -1034,18 +1060,18 @@ class Rclone
   }
   
   /**
-   * Move arquivos da origem para o destino. (rclone move)
-   * Origem é um arquivo/diretório em left_side, dest_DIR_path é um diretório em right_side.
-   * Deleta arquivos originais da origem após transferência bem-sucedida.
+   * Moves files from source to dest. (rclone move)
+   * Source is a file/directory on left_side, dest_DIR_path is a directory on right_side.
+   * Deletes original files from source after successful transfer.
    *
    * @see https://rclone.org/commands/rclone_move/
    *
-   * @param string        $source_path   Caminho de origem (arquivo ou diretório).
-   * @param string        $dest_DIR_path Caminho do diretório de destino.
-   * @param array         $flags         Flags adicionais.
-   * @param callable|null $onProgress    Callback de progresso opcional.
+   * @param string        $source_path   Source path (file or directory).
+   * @param string        $dest_DIR_path Destination directory path.
+   * @param array         $flags         Additional flags.
+   * @param callable|null $onProgress    Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function move(string $source_path, string $dest_DIR_path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -1053,19 +1079,19 @@ class Rclone
   }
   
   /**
-   * Move arquivo ou diretório da origem para um caminho de arquivo/diretório de destino específico. (rclone moveto)
-   * Se source:path for um arquivo ou diretório, ele o move para um arquivo ou diretório chamado dest:path.
-   * Isso pode ser usado para renomear arquivos ou enviar arquivos únicos com nomes diferentes dos existentes.
-   * Deleta o original da origem após transferência bem-sucedida.
+   * Moves file or directory from source to a specific destination file/directory path. (rclone moveto)
+   * If source:path is a file or directory, it moves it to a file or directory named dest:path.
+   * This can be used to rename files or upload single files with names different from existing ones.
+   * Deletes original from source after successful transfer.
    *
    * @see https://rclone.org/commands/rclone_moveto/
    *
-   * @param string        $source_path Caminho do arquivo ou diretório de origem.
-   * @param string        $dest_path   Caminho do arquivo ou diretório de destino.
-   * @param array         $flags       Flags adicionais.
-   * @param callable|null $onProgress  Callback de progresso opcional.
+   * @param string        $source_path Source file or directory path.
+   * @param string        $dest_path   Destination file or directory path.
+   * @param array         $flags       Additional flags.
+   * @param callable|null $onProgress  Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function moveto(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -1073,16 +1099,16 @@ class Rclone
   }
   
   /**
-   * Torna a origem e o destino idênticos, modificando apenas o destino. (rclone sync)
+   * Makes source and dest identical, modifying destination only. (rclone sync)
    *
    * @see https://rclone.org/commands/rclone_sync/
    *
-   * @param string        $source_path Caminho do diretório de origem.
-   * @param string        $dest_path   Caminho do diretório de destino.
-   * @param array         $flags       Flags adicionais.
-   * @param callable|null $onProgress  Callback de progresso opcional.
+   * @param string        $source_path Source directory path.
+   * @param string        $dest_path   Destination directory path.
+   * @param array         $flags       Additional flags.
+   * @param callable|null $onProgress  Optional progress callback.
    *
-   * @return bool True em caso de sucesso.
+   * @return bool True on success.
    */
   public function sync(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
@@ -1090,33 +1116,33 @@ class Rclone
   }
   
   /**
-   * Verifica se os arquivos na origem e no destino correspondem. (rclone check)
+   * Checks the files in the source and destination match. (rclone check)
    *
    * @see https://rclone.org/commands/rclone_check/
    *
-   * @param string        $source_path Caminho do diretório de origem.
-   * @param string        $dest_path   Caminho do diretório de destino.
-   * @param array         $flags       Flags adicionais.
-   * @param callable|null $onProgress  Callback de progresso opcional.
+   * @param string        $source_path Source directory path.
+   * @param string        $dest_path   Destination directory path.
+   * @param array         $flags       Additional flags.
+   * @param callable|null $onProgress  Optional progress callback.
    *
-   * @return bool True se a verificação for bem-sucedida (geralmente significa que não há diferenças ou erros com base nas flags).
-   *              Nota: rclone 'check' tem códigos de saída específicos para diferenças encontradas. Este método
-   *              lançará uma exceção se rclone sair com um código diferente de zero, a menos que flags específicas
-   *              de tratamento de erro como --one-way e --differ sejam usadas e resultem em um código de saída 0.
+   * @return bool True if check succeeds (typically means no differences or errors based on flags).
+   *              Note: rclone 'check' has specific exit codes for differences found. This method
+   *              will throw an exception if rclone exits non-zero, unless specific
+   *              error handling flags like --one-way and --differ are used and result in exit code 0.
    */
   public function check(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = NULL) : bool
   {
-    // Rclone 'check' pode sair com códigos diferentes de zero se diferenças forem encontradas.
-    // O método 'simpleRun' lançará uma exceção para códigos de saída diferentes de zero.
-    // Para 'check', uma execução bem-sucedida (código de saída 0) significa que nenhuma diferença foi encontrada (ou ignorada pelas flags).
+    // Rclone 'check' can exit non-zero if differences are found.
+    // The 'simpleRun' method will throw an exception for non-zero exit codes.
+    // For 'check', a successful run (exit code 0) means no differences were found (or ignored by flags).
     $this->directTwinRun('check', $source_path, $dest_path, $flags, $onProgress);
-    return TRUE; // Se directTwinRun não lançar exceção, significa que rclone saiu com 0.
+    return TRUE; // If directTwinRun doesn't throw, it means rclone exited with 0.
   }
   
   /**
-   * Obtém o provedor do lado esquerdo (origem).
+   * Gets the left-side (source) provider.
    *
-   * @return Provider A instância do provedor do lado esquerdo.
+   * @return Provider The left-side provider instance.
    */
   public function getLeftSide() : Provider
   {
@@ -1124,9 +1150,9 @@ class Rclone
   }
   
   /**
-   * Define o provedor do lado esquerdo (origem).
+   * Sets the left-side (source) provider.
    *
-   * @param Provider $left_side A instância do provedor.
+   * @param Provider $left_side The provider instance.
    */
   public function setLeftSide(Provider $left_side) : void
   {
@@ -1134,9 +1160,9 @@ class Rclone
   }
   
   /**
-   * Obtém o provedor do lado direito (destino).
+   * Gets the right-side (destination) provider.
    *
-   * @return Provider A instância do provedor do lado direito.
+   * @return Provider The right-side provider instance.
    */
   public function getRightSide() : Provider
   {
@@ -1144,9 +1170,9 @@ class Rclone
   }
   
   /**
-   * Define o provedor do lado direito (destino).
+   * Sets the right-side (destination) provider.
    *
-   * @param Provider $right_side A instância do provedor.
+   * @param Provider $right_side The provider instance.
    */
   public function setRightSide(Provider $right_side) : void
   {
