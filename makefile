@@ -36,4 +36,4 @@ cup:
 tog:
 	# First copy ./makefile to ./makefile.txt, replancing existing makefile.txt if exists
 	cp ./makefile ./makefile.txt
-	tog ./* --ignore-folders=vendor,node_modules,.git
+	tog ./* --ignore-folders=vendor,node_modules,.git,sandbox
