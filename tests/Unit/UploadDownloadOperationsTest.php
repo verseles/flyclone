@@ -4,23 +4,24 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Test\Unit;
 
-use Verseles\Flyclone\Providers\SFtpProvider;
+use Verseles\Flyclone\Providers\LocalProvider;
 
-// Usaremos SFTP como o provedor "remoto"
+// Needed for simulating local side in progress tests
+use Verseles\Flyclone\Providers\SFtpProvider;
 use Verseles\Flyclone\Rclone;
 use PHPUnit\Framework\ExpectationFailedException;
 use SebastianBergmann\RecursionContext\InvalidArgumentException;
 
 /**
- * Testa as operações de upload_file e download_to_local da classe Rclone.
- * Este teste utiliza SFTPProvider como o provedor "remoto" (configurado como left_side na instância Rclone)
- * para simular interações com um servidor externo.
+ * Tests the upload_file and download_to_local operations of the Rclone class.
+ * This test suite uses SFtpProvider as the "remote" provider (configured as left_side in the Rclone instance)
+ * to simulate interactions with an external server.
  */
-class UploadDownloadOperationsTest extends AbstractProviderTest
+class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits ProgressTrackingTrait
 {
   /**
-   * Configura o ambiente de teste antes de cada método de teste.
-   * Define o nome do provedor e o diretório de trabalho para o SFTP.
+   * Sets up the test environment before each test method.
+   * Defines the provider name and working directory for SFTP.
    *
    * @return void
    * @throws ExpectationFailedException
@@ -28,30 +29,30 @@ class UploadDownloadOperationsTest extends AbstractProviderTest
    */
   public function setUp() : void
   {
-    // Define o nome do disco para o provedor SFTP. Este será o 'left_side' da instância Rclone.
+    // Set the disk name for the SFTP provider. This will be the 'left_side' of the Rclone instance.
     $this->setLeftProviderName('sftp_updown_disk');
-    // Define o diretório de trabalho base no servidor SFTP para este conjunto de testes.
-    // Um nome aleatório é usado para evitar conflitos entre execuções de teste.
+    // Set the base working directory on the SFTP server for this test suite.
+    // A random string is used to avoid conflicts between test runs.
     $this->working_directory = '/upload/flyclone_tests_updown/' . $this->random_string();
     
-    // Garante que o nome do provedor foi configurado corretamente.
+    // Ensure the provider name was configured correctly.
     self::assertEquals('sftp_updown_disk', $this->getLeftProviderName());
   }
   
   /**
-   * Instancia o provedor SFTP que será usado como o 'left_side' (remoto) na instância Rclone.
-   * As credenciais e configurações do SFTP são obtidas de variáveis de ambiente.
-   * Este método é um produtor de dependência para outros testes.
+   * Instantiates the SFTP provider that will be used as the 'left_side' (remote) in the Rclone instance.
+   * SFTP credentials and settings are obtained from environment variables.
+   * This method is a dependency provider for other tests.
    *
    * @test
-   * @return SFtpProvider A instância configurada do SFtpProvider.
+   * @return SFtpProvider The configured instance of SfTpProvider.
    */
   public function instantiate_left_provider() : SFtpProvider
   {
     $sftpProvider = new SFtpProvider($this->getLeftProviderName(), [
       'HOST' => $_ENV['SFTP_HOST'],
       'USER' => $_ENV['SFTP_USER'],
-      'PASS' => Rclone::obscure($_ENV['SFTP_PASS']), // A senha é ofuscada usando Rclone::obscure
+      'PASS' => Rclone::obscure($_ENV['SFTP_PASS']), // Password is obscured using Rclone::obscure
       'PORT' => $_ENV['SFTP_PORT'],
     ]);
     
@@ -60,12 +61,12 @@ class UploadDownloadOperationsTest extends AbstractProviderTest
   }
   
   /**
-   * Testa o ciclo completo de upload de um arquivo local para o SFTP e, em seguida,
-   * o download desse arquivo do SFTP para um novo local.
+   * Tests the complete cycle of uploading a local file to SFTP and then
+   * downloading that file from SFTP to a new local location.
    *
-   * @param Rclone $rcloneRemote Instância de Rclone configurada com SFTPProvider como left_side.
-   *                             Esta instância é fornecida pelo método `instantiate_with_one_provider`
-   *                             da classe pai `AbstractProviderTest`.
+   * @param Rclone $rcloneRemote Rclone instance configured with SFTPProvider as left_side.
+   *                             This instance is provided by the `instantiate_with_one_provider`
+   *                             method from the parent `AbstractProviderTest` class.
    *
    * @test
    * @depends instantiate_with_one_provider
@@ -73,80 +74,175 @@ class UploadDownloadOperationsTest extends AbstractProviderTest
    * @throws ExpectationFailedException
    * @throws InvalidArgumentException
    */
-  public function test_upload_and_download_file(Rclone $rcloneRemote) : void
+  public function test_upload_and_download_file_operations(Rclone $rcloneRemote) : void
   {
-    // Etapa 0: Garantir que o diretório de trabalho no SFTP exista.
-    // O método mkdir criará o diretório se ele não existir.
+    // Step 0: Ensure the working directory on SFTP exists.
+    // The mkdir method will create the directory if it doesn't exist.
     $rcloneRemote->mkdir($this->working_directory);
     $dirCheck = $rcloneRemote->is_dir($this->working_directory);
-    self::assertTrue($dirCheck->exists, "Diretório de trabalho '{$this->working_directory}' não pôde ser criado ou verificado no SFTP.");
+    self::assertTrue($dirCheck->exists, "Working directory '{$this->working_directory}' could not be created or verified on SFTP.");
     
-    // Etapa 1: Criar um arquivo local temporário com conteúdo.
+    // Step 1: Create a temporary local file with content.
     $localTempUploadDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'flyclone_upload_temp_' . $this->random_string();
-    // Cria o diretório temporário local para o arquivo de upload.
+    // Create the local temporary directory for the upload file.
     if (!mkdir($localTempUploadDir, 0777, TRUE) && !is_dir($localTempUploadDir)) {
       // @codeCoverageIgnoreStart
-      self::fail("Não foi possível criar o diretório temporário local para upload: {$localTempUploadDir}");
+      self::fail("Could not create local temporary directory for upload: {$localTempUploadDir}");
       // @codeCoverageIgnoreEnd
     }
     $localFilePath = $localTempUploadDir . DIRECTORY_SEPARATOR . 'test_upload_content.txt';
-    $originalContent = 'Conteúdo específico para teste de upload e download - ' . $this->random_string(10);
-    // Escreve o conteúdo no arquivo local.
+    $originalContent = 'Specific content for upload and download test - ' . $this->random_string(10);
+    // Write content to the local file.
     file_put_contents($localFilePath, $originalContent);
-    self::assertFileExists($localFilePath, 'Arquivo local para upload não foi criado.');
+    self::assertFileExists($localFilePath, 'Local file for upload was not created.');
     
-    // Etapa 2: Definir o caminho do arquivo remoto no SFTP.
+    // Step 2: Define the remote file path on SFTP.
     $remoteFilePath = $this->working_directory . DIRECTORY_SEPARATOR . 'uploaded_via_flyclone.txt';
     
-    // Etapa 3: Fazer upload do arquivo local para o "remoto" (SFTP).
-    // O método `upload_file` utiliza `moveto`, que remove o arquivo local original após o sucesso.
+    // Step 3: Upload the local file to the "remote" (SFTP).
+    // The `upload_file` method uses `moveto`, which removes the original local file upon success.
     $uploadSuccess = $rcloneRemote->upload_file($localFilePath, $remoteFilePath);
-    self::assertTrue($uploadSuccess, 'Falha ao fazer upload do arquivo para o SFTP.');
-    // Verifica se o arquivo local original foi removido, como esperado pelo `moveto`.
-    self::assertFileDoesNotExist($localFilePath, 'Arquivo local original ainda existe após upload_file (deveria ter sido movido).');
+    self::assertTrue($uploadSuccess, 'Failed to upload file to SFTP.');
+    // Verify that the original local file was removed, as expected by `moveto`.
+    self::assertFileDoesNotExist($localFilePath, 'Original local file still exists after upload_file (should have been moved).');
     
-    // Etapa 4: Verificar se o arquivo existe no SFTP e se o conteúdo está correto.
+    // Step 4: Verify that the file exists on SFTP and its content is correct.
     $fileExistsOnRemote = $rcloneRemote->is_file($remoteFilePath);
-    self::assertTrue($fileExistsOnRemote->exists, 'Arquivo não encontrado no SFTP após upload.');
-    // Lê o conteúdo do arquivo no SFTP.
+    self::assertTrue($fileExistsOnRemote->exists, 'File not found on SFTP after upload.');
+    // Read the content of the file on SFTP.
     $remoteContent = $rcloneRemote->cat($remoteFilePath);
-    self::assertEquals($originalContent, $remoteContent, 'Conteúdo do arquivo no SFTP difere do original.');
+    self::assertEquals($originalContent, $remoteContent, 'Content of the file on SFTP differs from the original.');
     
-    // Etapa 5: Fazer download do arquivo do SFTP para um novo local temporário.
+    // Step 5: Download the file from SFTP to a new temporary local location.
     $localTempDownloadDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'flyclone_download_temp_' . $this->random_string();
-    // O método `download_to_local` criará o diretório pai se não existir.
+    // The `download_to_local` method will create the parent directory if it doesn't exist.
     $downloadedLocalFilePath = $localTempDownloadDir . DIRECTORY_SEPARATOR . 'downloaded_from_sftp.txt';
     
     $downloadResultPath = $rcloneRemote->download_to_local($remoteFilePath, $downloadedLocalFilePath);
-    self::assertNotFalse($downloadResultPath, 'Falha ao fazer download do arquivo do SFTP.');
-    self::assertEquals($downloadedLocalFilePath, $downloadResultPath, 'Caminho do arquivo baixado não é o esperado.');
-    self::assertFileExists($downloadedLocalFilePath, 'Arquivo baixado não encontrado localmente.');
+    self::assertNotFalse($downloadResultPath, 'Failed to download file from SFTP.');
+    self::assertEquals($downloadedLocalFilePath, $downloadResultPath, 'Downloaded file path is not as expected.');
+    self::assertFileExists($downloadedLocalFilePath, 'Downloaded file not found locally.');
     
-    // Etapa 6: Verificar se o conteúdo do arquivo baixado é idêntico ao original.
+    // Step 6: Verify that the content of the downloaded file is identical to the original.
     $downloadedContent = file_get_contents($downloadedLocalFilePath);
-    self::assertEquals($originalContent, $downloadedContent, 'Conteúdo do arquivo baixado difere do original.');
+    self::assertEquals($originalContent, $downloadedContent, 'Content of the downloaded file differs from the original.');
     
-    // Etapa 7: Limpeza dos artefatos do teste.
-    // Remover diretório temporário local de upload (o arquivo já foi movido).
+    // Step 7: Cleanup of test artifacts.
+    // Remove local temporary upload directory (the file was already moved).
     if (is_dir($localTempUploadDir)) {
       rmdir($localTempUploadDir);
     }
-    // Remover arquivo baixado e seu diretório temporário.
+    // Remove downloaded file and its temporary directory.
     if (file_exists($downloadedLocalFilePath)) {
       unlink($downloadedLocalFilePath);
     }
     if (is_dir($localTempDownloadDir)) {
       rmdir($localTempDownloadDir);
     }
-    // Remover arquivo do "remoto" (SFTP).
+    // Remove file from the "remote" (SFTP).
     $rcloneRemote->deletefile($remoteFilePath);
-    // Tenta remover o diretório de trabalho no SFTP (só funcionará se estiver vazio).
+    // Attempt to remove the working directory on SFTP (will only work if empty).
     try {
       $rcloneRemote->rmdir($this->working_directory);
     }
     catch (\Exception $e) {
-      // Ignora falha ao remover o diretório, pode não estar vazio ou permissões.
-      // Em um cenário real, poderia ser logado.
+      // Ignore failure to remove directory, it might not be empty or due to permissions.
+      // In a real scenario, this could be logged.
+    }
+  }
+  
+  /**
+   * Tests the progress tracking of the upload_file operation.
+   * upload_file internally uses 'moveto' with a (Local -> Remote) Rclone configuration.
+   *
+   * @param Rclone $rcloneRemote Instance of Rclone configured with SFTPProvider (Remote).
+   *
+   * @test
+   * @depends instantiate_with_one_provider
+   */
+  public function test_upload_with_progress(Rclone $rcloneRemote) : void
+  {
+    // Ensure the remote working directory exists on SFTP.
+    $rcloneRemote->mkdir($this->working_directory);
+    
+    // Create a large local file to ensure progress updates are triggered.
+    $localLargeFile = $this->create_large_temp_file(1); // Creates a 1MB file.
+    $remoteFilePath = $this->working_directory . '/' . basename($localLargeFile);
+    
+    // To test progress for upload_file, we test the underlying 'moveto' (Local -> Remote) operation.
+    $localProvider = new LocalProvider('temp_local_for_upload_progress');
+    // This Rclone instance is specifically for (Local -> SFTP) transfer.
+    $uploaderRclone = new Rclone($localProvider, $rcloneRemote->getLeftSide()); // $rcloneRemote->getLeftSide() is the SFTP provider
+    
+    $this->assert_progress_tracking(
+      $uploaderRclone,    // The Rclone instance performing the operation.
+      'moveto',           // The operation used by upload_file.
+      $localLargeFile,    // Source path (local large file).
+      $remoteFilePath     // Destination path on SFTP.
+    );
+    
+    // Cleanup:
+    // 'moveto' deletes the source, so $localLargeFile should be gone from its original temp dir.
+    $this->cleanup_temp_file_and_dir($localLargeFile); // This will clean the temp dir if empty.
+    $rcloneRemote->deletefile($remoteFilePath); // Delete the uploaded file from SFTP.
+    // Attempt to remove the working directory on SFTP if it's empty.
+    if ($rcloneRemote->is_dir($this->working_directory)->exists && count($rcloneRemote->ls($this->working_directory)) === 0) {
+      $rcloneRemote->rmdir($this->working_directory);
+    }
+  }
+  
+  /**
+   * Tests the progress tracking of the download_to_local operation.
+   * download_to_local internally uses 'copyto' with a (Remote -> Local) Rclone configuration.
+   *
+   * @param Rclone $rcloneRemote Instance of Rclone configured with SFTPProvider (Remote).
+   *
+   * @test
+   * @depends instantiate_with_one_provider
+   */
+  public function test_download_with_progress(Rclone $rcloneRemote) : void
+  {
+    // Ensure the remote working directory exists on SFTP.
+    $rcloneRemote->mkdir($this->working_directory);
+    
+    // 1. Create a large file on the SFTP remote to download.
+    $largeContentSizeMB = 1; // 1MB
+    $largeContent = str_repeat('X', $largeContentSizeMB * 1024 * 1024); // Content for the large file.
+    $remoteLargeFilePath = $this->working_directory . '/remote_large_file_for_dl_progress_' . $this->random_string() . '.dat';
+    $rcloneRemote->rcat($remoteLargeFilePath, $largeContent); // Upload content to SFTP.
+    self::assertTrue($rcloneRemote->is_file($remoteLargeFilePath)->exists, 'Large file not created on SFTP for download progress test.');
+    
+    // 2. Define local destination path for the download.
+    $localTempDownloadDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'flyclone_progress_dl_temp_' . $this->random_string();
+    // No need to mkdir for $localTempDownloadDir, download_to_local handles parent dir creation for the file.
+    // However, for cleanup_temp_file_and_dir to work as intended for the directory, it needs the specific name pattern.
+    // So, we'll use our create_large_temp_file helper's directory structure pattern for the local destination directory,
+    // even though the file itself is created by rclone.
+    $patternMatchingTempDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'flyclone_progress_test_src_' . $this->random_string();
+    mkdir($patternMatchingTempDir, 0777, TRUE);
+    $localDestinationPath = $patternMatchingTempDir . '/' . basename($remoteLargeFilePath);
+    
+    
+    // 3. Setup Rclone for download (SFTP -> Local).
+    $localProvider = new LocalProvider('temp_local_for_download_progress');
+    // This Rclone instance is specifically for (SFTP -> Local) transfer.
+    $downloaderRclone = new Rclone($rcloneRemote->getLeftSide(), $localProvider); // $rcloneRemote->getLeftSide() is SFTP.
+    
+    // 4. Assert progress for 'copyto' (underlying operation of download_to_local).
+    $this->assert_progress_tracking(
+      $downloaderRclone,
+      'copyto',               // The operation used by download_to_local.
+      $remoteLargeFilePath,   // Source path on SFTP.
+      $localDestinationPath   // Destination path on local filesystem.
+    );
+    
+    // 5. Cleanup:
+    self::assertFileExists($localDestinationPath, "Downloaded file does not exist at {$localDestinationPath}.");
+    $this->cleanup_temp_file_and_dir($localDestinationPath); // Cleans the local file and its temp dir.
+    $rcloneRemote->deletefile($remoteLargeFilePath); // Delete the large file from SFTP.
+    // Attempt to remove the working directory on SFTP if it's empty.
+    if ($rcloneRemote->is_dir($this->working_directory)->exists && count($rcloneRemote->ls($this->working_directory)) === 0) {
+      $rcloneRemote->rmdir($this->working_directory);
     }
   }
 }

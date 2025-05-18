@@ -283,7 +283,7 @@ class Rclone
       $base_key = preg_replace(array_keys($replace_patterns), array_values($replace_patterns), (string) $key);
       $base_key = strtoupper($base_key);
       
-      $final_env_var_name;
+      $final_env_var_name = '';
       // Check if the base_key already starts with the "RCLONE_" substring.
       if (str_starts_with($base_key, 'RCLONE_')) {
         // Case 1: base_key is 'RCLONE_SOME_FLAG'.
@@ -412,18 +412,21 @@ class Rclone
     if ($onProgress) {
       // Enable rclone progress output if a callback is provided.
       // RCLONE_STATS forces updates at the specified interval.
-      $env_options += [
-        'RCLONE_STATS_ONE_LINE' => 'true',
-        'RCLONE_PROGRESS' => 'true',
-        'RCLONE_STATS' => '250ms', // Request progress updates every 250 milliseconds.
-      ];
+      // These will be merged into allEnvs and prefixed.
+      $env_options['STATS_ONE_LINE'] = 'true'; // Becomes RCLONE_STATS_ONE_LINE
+      $env_options['PROGRESS'] = 'true';       // Becomes RCLONE_PROGRESS
+      $env_options['STATS'] = '250ms';         // Becomes RCLONE_STATS
     }
+    
+    // Build the full rclone command line arguments.
+    $process_args = array_merge([self::getBIN(), $command], $args);
     
     // Consolidate all environment variables (provider, global, custom, operation-specific).
     $final_envs = $this->allEnvs($env_options);
     
-    // Build the full rclone command line arguments.
-    $process_args = array_merge([self::getBIN(), $command], $args);
+    if ($onProgress) {
+      $this->resetProgress(); // Ensure progress state is clean *before* this specific monitored run.
+    }
     
     $process = new Process($process_args, sys_get_temp_dir(), $final_envs);
     
@@ -658,19 +661,22 @@ class Rclone
     if ($type === Process::OUT) {
       // Regex for transfer stats. Made more robust for units (KiB, MiB, GiB, TiB, B) and ETA (can be '-', 'Ns', etc.).
       // iu modifiers: case-insensitive, unicode.
-      $regex_base = '([\d.]+\s[KMGT]?i?B)\s*\/\s*([\d.]+\s[KMGT]?i?B),\s*(\d+)\%,\s*([\d.]+\s[KMGT]?i?B\/s),\s*ETA\s*(\S+)';
+      // Corrected to ensure dataTotal allows for '-' or actual values
+      $regex_base = '([\d.]+\s[KMGT]?i?B)\s*\/\s*([\d.]+\s[KMGT]?i?B|-),\s*(\d+)\%,\s*([\d.]+\s[KMGT]?i?B\/s|-),\s*ETA\s*(\S+)';
       $regex = '/' . $regex_base . '/iu';
-      $regex_xfr = '/' . $regex_base . '\s*\(xfr#(\d+\/\d+)\)/iu';
+      $regex_xfr = '/' . $regex_base . '\s*\(xfr#(\d+\/\d+)\)/iu'; // For multiple file transfers
       
       $matches_xfr = [];
       $matches = [];
       
-      preg_match($regex_xfr, $buffer, $matches_xfr); // Using preg_match as we expect at most one progress line per buffer chunk.
+      // Try matching the version with xfr count first
+      preg_match($regex_xfr, $buffer, $matches_xfr);
       
       if (isset($matches_xfr[0]) && count($matches_xfr) >= 7) {
         // raw, dataSent, dataTotal, sent (percentage), speed, eta, xfr_count
         $this->setProgressData($matches_xfr[0], $matches_xfr[1], $matches_xfr[2], (int) $matches_xfr[3], $matches_xfr[4], $matches_xfr[5], $matches_xfr[6]);
       } else {
+        // Fallback to matching without xfr count (e.g., single file transfer or overall progress)
         preg_match($regex, $buffer, $matches);
         if (isset($matches[0]) && count($matches) >= 6) {
           // raw, dataSent, dataTotal, sent (percentage), speed, eta
@@ -685,9 +691,9 @@ class Rclone
    *
    * @param string      $raw            The raw progress string.
    * @param string      $dataSent       Amount of data sent (e.g., "1.2 GiB").
-   * @param string      $dataTotal      Total amount of data (e.g., "2.0 GiB").
+   * @param string      $dataTotal      Total amount of data (e.g., "2.0 GiB", or "-" if unknown).
    * @param int         $sentPercentage Percentage completed.
-   * @param string      $speed          Current transfer speed (e.g., "10 MiB/s").
+   * @param string      $speed          Current transfer speed (e.g., "10 MiB/s", or "-" if unknown).
    * @param string      $eta            Estimated time remaining (e.g., "1m2s", "-", "0s").
    * @param string|null $xfr            Current transferring files count (e.g., "1/10"). Defaults to '1/1'.
    */
