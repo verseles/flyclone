@@ -245,12 +245,27 @@ class Rclone
   
   
   /**
-   * Prefixes array keys and transforms keys for rclone compatibility.
-   * Converts boolean values to "true" or "false" strings. All values are cast to string.
-   * Example: ['my-flag' => true] with prefix 'RCLONE_' becomes ['RCLONE_MY_FLAG' => 'true']
+   * Prefixes array keys for rclone environment variables and transforms them.
+   * - Removes leading '--' from keys.
+   * - Replaces hyphens '-' with underscores '_' in keys.
+   * - Converts keys to uppercase.
+   * - Ensures the final key starts with the provided $prefix, avoiding duplication like "RCLONE_RCLONE_".
+   * - If a key already starts with "RCLONE_", and $prefix is more specific (e.g., "RCLONE_CONFIG_REMOTE_"),
+   *   it correctly forms a key like "RCLONE_CONFIG_REMOTE_KEYNAME".
+   * - Converts boolean values to "true" or "false" strings. All other values are cast to string.
+   *
+   * Example:
+   *   prefix_flags(['my-flag' => true], 'RCLONE_')
+   *     // Result: ['RCLONE_MY_FLAG' => 'true']
+   *   prefix_flags(['RCLONE_VERBOSE' => true], 'RCLONE_')
+   *     // Result: ['RCLONE_VERBOSE' => 'true'] (no double "RCLONE_")
+   *   prefix_flags(['timeout' => 30], 'RCLONE_CONFIG_MYREMOTE_')
+   *     // Result: ['RCLONE_CONFIG_MYREMOTE_TIMEOUT' => '30']
+   *   prefix_flags(['RCLONE_TIMEOUT' => 30], 'RCLONE_CONFIG_MYREMOTE_')
+   *     // Result: ['RCLONE_CONFIG_MYREMOTE_TIMEOUT' => '30']
    *
    * @param array  $arr    The input array of flags or parameters.
-   * @param string $prefix The prefix to add to each key (default: 'RCLONE_').
+   * @param string $prefix The prefix to apply (e.g., 'RCLONE_', 'RCLONE_CONFIG_MYREMOTE_').
    *
    * @return array The processed array with prefixed keys and string-cast values.
    */
@@ -263,19 +278,43 @@ class Rclone
     $replace_patterns = ['/^--/m' => '', '/-/m' => '_',];
     
     foreach ($arr as $key => $value) {
-      // Apply transformations to the key
-      $processed_key = preg_replace(array_keys($replace_patterns), array_values($replace_patterns), (string) $key);
-      $processed_key = strtoupper($processed_key); // Convert key to uppercase (e.g., 'max_depth' -> 'MAX_DEPTH')
+      // Apply transformations to the key to get a "base" key name.
+      // Example: '--log-level' becomes 'LOG_LEVEL', 'RCLONE_BUFFER_SIZE' remains 'RCLONE_BUFFER_SIZE'.
+      $base_key = preg_replace(array_keys($replace_patterns), array_values($replace_patterns), (string) $key);
+      $base_key = strtoupper($base_key);
       
-      // Convert boolean values to their "true" or "false" string representations
+      $final_env_var_name;
+      // Check if the base_key already starts with the "RCLONE_" substring.
+      if (str_starts_with($base_key, 'RCLONE_')) {
+        // Case 1: base_key is 'RCLONE_SOME_FLAG'.
+        if ($prefix === 'RCLONE_') {
+          // If the target prefix is also just 'RCLONE_', the base_key is already correct.
+          // Example: prefix_flags(['RCLONE_VERBOSE' => true], 'RCLONE_') -> 'RCLONE_VERBOSE'
+          $final_env_var_name = $base_key;
+        } else {
+          // If the target prefix is more specific (e.g., 'RCLONE_CONFIG_MYREMOTE_'),
+          // we want to use the specific prefix and the part of the base_key *after* "RCLONE_".
+          // Example: prefix_flags(['RCLONE_TIMEOUT' => 30], 'RCLONE_CONFIG_MYREMOTE_')
+          //          -> 'RCLONE_CONFIG_MYREMOTE_' + 'TIMEOUT'
+          //          -> 'RCLONE_CONFIG_MYREMOTE_TIMEOUT'
+          $final_env_var_name = $prefix . substr($base_key, strlen('RCLONE_'));
+        }
+      } else {
+        // Case 2: base_key is 'SOME_FLAG' (does not start with 'RCLONE_').
+        // Simply prepend the target prefix.
+        // Example: prefix_flags(['verbose' => true], 'RCLONE_') -> 'RCLONE_VERBOSE'
+        // Example: prefix_flags(['type' => 's3'], 'RCLONE_CONFIG_MYREMOTE_') -> 'RCLONE_CONFIG_MYREMOTE_TYPE'
+        $final_env_var_name = $prefix . $base_key;
+      }
+      
+      // Convert boolean values to their "true" or "false" string representations.
       if (is_bool($value)) {
         $processed_value = $value ? 'true' : 'false';
       } else {
-        // Ensure all other values are cast to string for environment variables
+        // Ensure all other values are cast to string for environment variables.
         $processed_value = (string) $value;
       }
-      // Build the new key with the prefix and assign the processed value
-      $newArr[$prefix . $processed_key] = $processed_value;
+      $newArr[$final_env_var_name] = $processed_value;
     }
     
     return $newArr;
@@ -285,7 +324,7 @@ class Rclone
    * Consolidates all environment variables for the rclone process.
    * This includes forced variables, provider-specific flags, global flags,
    * custom environment variables, and operation-specific flags.
-   * The order of merging determines precedence (later merges override earlier ones).
+   * The order of `array_merge` determines precedence (later merges override earlier ones).
    * Precedence: Operation-Specific > Custom Envs > Global Flags > Provider Flags > Forced Vars.
    *
    * @param array $additional_operation_flags Flags specific to the current rclone operation (e.g., for copy, move).
