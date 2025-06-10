@@ -14,11 +14,11 @@ class ProcessTimedOutException extends RcloneException
   {
     $message = 'The process timed out.'; // Default message
     
-    // Determine which timeout was exceeded by inspecting the Symfony exception object.
+    // Determine which timeout was exceeded by inspecting the Symfony exception object and its process.
     if ($exception->isIdleTimeout()) {
-      $message = sprintf('The process exceeded the idle timeout of %s seconds.', $exception->getIdleTimeout());
+      $message = sprintf('The process exceeded the idle timeout of %s seconds.', $exception->getProcess()->getIdleTimeout());
     } elseif ($exception->isGeneralTimeout()) {
-      $message = sprintf('The process exceeded the total timeout of %s seconds.', $exception->getTimeout());
+      $message = sprintf('The process exceeded the total timeout of %s seconds.', $exception->getProcess()->getTimeout());
     }
     
     parent::__construct($message, $code, $exception);
