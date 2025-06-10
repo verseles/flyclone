@@ -58,26 +58,11 @@ class Rclone
    */
   public function __construct(Provider $left_side, ?Provider $right_side = NULL)
   {
-    $this->reset(); // Initialize/reset static properties to defaults.
+    $this->resetProgress(); // Initialize the progress object for this instance.
     
     $this->setLeftSide($left_side);
     // If no right_side provider is given, rclone operations will target the left_side provider itself (e.g., moving files within the same remote).
     $this->setRightSide($right_side ?? $left_side);
-  }
-  
-  /**
-   * Resets static configuration properties to their default values.
-   * Also resets the progress object.
-   */
-  private function reset() : void
-  {
-    self::setTimeout(self::$reset['timeout']);
-    self::setIdleTimeout(self::$reset['idleTimeout']);
-    self::setFlags(self::$reset['flags']);
-    self::setEnvs(self::$reset['envs']);
-    self::setInput(self::$reset['input']);
-    
-    $this->resetProgress(); // Resets the progress tracking object.
   }
   
   /**
@@ -447,7 +432,6 @@ class Rclone
         // Execute without progress callback.
         $process->mustRun();
       }
-      $this->reset(); // Reset static settings after successful execution.
       
       $output = $process->getOutput();
       
@@ -512,6 +496,9 @@ class Rclone
     catch (\Exception $exception) {
       // Catch any other unexpected exceptions.
       throw new UnknownErrorException($exception, 'An unexpected error occurred: ' . $exception->getMessage());
+    } finally {
+      // Ensure the input buffer is cleared after every run, successful or not.
+      self::setInput('');
     }
   }
   
