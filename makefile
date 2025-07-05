@@ -36,4 +36,5 @@ cup:
 tog:
 	# First copy ./makefile to ./makefile.txt, replancing existing makefile.txt if exists
 	cp ./makefile ./makefile.txt
-	tog ./* --ignore-folders=vendor,node_modules,.git,sandbox
+	tog ./* --ignore-folders=vendor,node_modules,.git,sandbox,ai-docs
+	tog ./ai-docs/rclone*/*.md --output=./ai-docs/rclone.txt

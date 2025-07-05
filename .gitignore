@@ -1,5 +1,6 @@
 .env
 output.txt
+ai-docs
 makefile.txt
 /vendor
 composer.phar
