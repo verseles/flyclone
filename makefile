@@ -34,7 +34,8 @@ cin:
 cup:
 	CMD=update make composer
 tog:
-	# First copy ./makefile to ./makefile.txt, replancing existing makefile.txt if exists
 	cp ./makefile ./makefile.txt
+	cp ./tests/Unit/Dockerfile ./Dockerfile.txt
 	tog ./* --ignore-folders=vendor,node_modules,.git,sandbox,ai-docs
 	tog ./ai-docs/rclone*/*.md --output=./ai-docs/rclone.txt
+	rm -f ./makefile.txt ./Dockerfile.txt

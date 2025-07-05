@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Test\Unit;
 
+use PHPUnit\Framework\Attributes\Depends;
+use PHPUnit\Framework\Attributes\Test;
 use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Rclone;
 
@@ -15,49 +17,35 @@ class LocalProviderTest extends AbstractProviderTest
     $working_directory = sys_get_temp_dir() . '/flyclone_' . $this->random_string();
     mkdir($working_directory, 0777, true);
     $this->working_directory = $working_directory;
-
+    
     self::assertEquals($left_disk_name, $this->getLeftProviderName());
   }
-
-  /**
-   * @test
-   */
+  
+  #[Test]
   public function instantiate_left_provider(): LocalProvider
   {
     $left_side = new LocalProvider($this->getLeftProviderName()); // name
-
+    
     self::assertInstanceOf(get_class($left_side), $left_side);
-
+    
     return $left_side;
   }
-
- /**
-  * @test
-  * @depends instantiate_with_one_provider
-  */
-  public function touch_a_file_on_left_side(Rclone $left_side): array
- {
-   return parent::touch_a_file($left_side);
- }
-
-  /**
-   * @test
-   * @depends touch_a_file_on_left_side
-   *
-   */
-  final public function write_to_a_temp_file($params): array
+  
+  
+  #[Test]
+  #[Depends('touch_a_file')]
+  final public function write_to_a_file($params): array
   {
     [$left_side, $temp_filepath] = $params;
     $content = 'I live at https://github.com/verseles/flyclone';
     self::assertFileIsWritable($temp_filepath, "File not writable: $temp_filepath");
     $result = file_put_contents($temp_filepath, $content);
-
+    
     self::assertIsInt($result);
     self::assertNotFalse($result);
-    self::assertEquals(file_get_contents($temp_filepath), $content);
-
+    self::assertStringEqualsFile($temp_filepath, $content);
+    
     return [$left_side, $temp_filepath];
   }
-
-
+  
 }

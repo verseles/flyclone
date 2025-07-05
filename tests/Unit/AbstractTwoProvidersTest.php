@@ -4,6 +4,8 @@
 namespace Verseles\Flyclone\Test\Unit;
 
 
+use PHPUnit\Framework\Attributes\Depends;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Exception;
 use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
@@ -123,16 +125,15 @@ abstract class AbstractTwoProvidersTest extends TestCase
    * Instantiates Rclone with two providers.
    * Depends on successful instantiation of both left and right providers.
    *
-   * @test
-   * @depends      instantiate_left_provider
-   * @depends      instantiate_right_provider
-   *
    * @param Provider $left_side  Instantiated left provider.
    * @param Provider $right_side Instantiated right provider.
    *
    * @return Rclone Instance of Rclone configured with two providers.
    * @noinspection PhpUnitTestsInspection PhpStorm flags this due to @depends on abstract methods, which is valid.
    */
+  #[Test]
+  #[Depends('instantiate_left_provider')]
+  #[Depends('instantiate_right_provider')]
   public function instantiate_with_two_providers($left_side, $right_side) : Rclone
   {
     $two_sides_rclone = new Rclone($left_side, $right_side); // Variable name corrected
@@ -146,13 +147,12 @@ abstract class AbstractTwoProvidersTest extends TestCase
    * Tests 'touch' command on the left provider.
    * Depends on a successfully instantiated Rclone (with two providers, but 'touch' uses left_side).
    *
-   * @test
-   * @depends instantiate_with_two_providers
-   *
    * @param Rclone $two_sides_rclone Rclone instance.
    *
    * @return array Array containing Rclone instance and path to the touched file.
    */
+  #[Test]
+  #[Depends('instantiate_with_two_providers')]
   public function touch_a_file_on_left_side(Rclone $two_sides_rclone) : array
   {
     // Generate a unique filepath within the left provider's working directory
@@ -176,13 +176,12 @@ abstract class AbstractTwoProvidersTest extends TestCase
    * Tests writing content to a file on the left provider using 'rcat'.
    * Depends on a file successfully created by 'touch_a_file_on_left_side'.
    *
-   * @test
-   * @depends touch_a_file_on_left_side
-   *
    * @param array $params Array from previous test: [Rclone instance, filepath on left_side].
    *
    * @return array Array containing Rclone instance, filepath, and content.
    */
+  #[Test]
+  #[Depends('touch_a_file_on_left_side')]
   public function write_to_a_file_on_left_side($params) : array
   {
     $content = 'But my father lives at https://helio.me :)';
@@ -203,13 +202,12 @@ abstract class AbstractTwoProvidersTest extends TestCase
    * Tests moving a file from the left provider to the right provider.
    * Depends on a file successfully written by 'write_to_a_file_on_left_side'.
    *
-   * @test
-   * @depends write_to_a_file_on_left_side
-   *
    * @param array $params Array from previous test: [Rclone instance, source filepath on left, content].
    *
    * @return array Array containing the main Rclone instance, an Rclone instance for right_side, new filepath on right, and content.
    */
+  #[Test]
+  #[Depends('write_to_a_file_on_left_side')]
   public function move_file_to_right_side(array $params) : array
   {
     /** @var Rclone $two_sides_rclone */
@@ -246,13 +244,12 @@ abstract class AbstractTwoProvidersTest extends TestCase
    * Tests downloading a file (from the right provider, which now holds the file) to local storage.
    * Depends on 'move_file_to_right_side'.
    *
-   * @test
-   * @depends move_file_to_right_side
-   *
    * @param array $params Array from previous test.
    *
    * @return array Array containing the main Rclone instance, path to downloaded local file, and content.
    */
+  #[Test]
+  #[Depends('move_file_to_right_side')]
   public function download_to_local(array $params) : array
   {
     /** @var Rclone $two_sides_rclone_main_config Not directly used for download, but passed through */
@@ -260,18 +257,18 @@ abstract class AbstractTwoProvidersTest extends TestCase
     [$two_sides_rclone_main_config, $rclone_for_right_ops, $filepath_on_right, $content] = $params;
     
     // download_to_local will use $rclone_for_right_ops's left_side (which is our right provider) as source
-    $downloaded_local_path = $rclone_for_right_ops->download_to_local($filepath_on_right);
+    $downloadResult = $rclone_for_right_ops->download_to_local($filepath_on_right);
     
-    self::assertNotFalse($downloaded_local_path, "Download failed for {$filepath_on_right}.");
-    self::assertFileExists($downloaded_local_path, "File not downloaded to local path: {$downloaded_local_path}.");
+    self::assertTrue($downloadResult->success, "Download failed for {$filepath_on_right}.");
+    self::assertFileExists($downloadResult->local_path, "File not downloaded to local path: {$downloadResult->local_path}.");
     
     // Verify content of the downloaded file
-    $local_downloaded_content = file_get_contents($downloaded_local_path);
-    self::assertEquals($content, $local_downloaded_content, "Content mismatch for downloaded file {$downloaded_local_path}.");
+    $local_downloaded_content = file_get_contents($downloadResult->local_path);
+    self::assertEquals($content, $local_downloaded_content, "Content mismatch for downloaded file {$downloadResult->local_path}.");
     
     // Clean up the local downloaded file and its temporary directory
-    unlink($downloaded_local_path);
-    rmdir(dirname($downloaded_local_path));
+    unlink($downloadResult->local_path);
+    rmdir(dirname($downloadResult->local_path));
     
     
     return [$two_sides_rclone_main_config, $rclone_for_right_ops, $filepath_on_right, $content]; // Pass $rclone_for_right_ops for next step
@@ -281,13 +278,12 @@ abstract class AbstractTwoProvidersTest extends TestCase
    * Tests deleting a file from the right provider.
    * Depends on 'download_to_local' (primarily for parameter passing, file is still on right provider).
    *
-   * @test
-   * @depends download_to_local
-   *
    * @param array $params Array from previous test.
    *
    * @return array Array containing the main Rclone instance and the Rclone instance for right_side.
    */
+  #[Test]
+  #[Depends('download_to_local')]
   public function delete_file_on_right_side($params) : array
   {
     /** @var Rclone $two_sides_rclone_main_config */
@@ -317,11 +313,10 @@ abstract class AbstractTwoProvidersTest extends TestCase
    * Depends on `write_to_a_file_on_left_side` to ensure there's a file to work with,
    * though this test creates its own larger file for better progress observation.
    *
-   * @test
-   * @depends write_to_a_file_on_left_side
-   *
    * @param array $params Output from write_to_a_file_on_left_side: [Rclone $two_sides_rclone, string $fileOnLeftSidePath, string $content]
    */
+  #[Test]
+  #[Depends('write_to_a_file_on_left_side')]
   public function test_move_with_progress_between_providers(array $params) : void
   {
     /** @var Rclone $two_sides_rclone This instance is configured (Left -> Right) */

@@ -9,6 +9,7 @@ Flyclone provides an intuitive, object-oriented interface for interacting with `
 *   **Broad Provider Support**: Works with numerous storage backends supported by rclone (see below).
 *   **Fluent API**: Simplifies rclone command execution.
 *   **Progress Reporting**: Built-in support for tracking transfer progress.
+*   **Detailed Transfer Statistics**: Get comprehensive stats including bytes transferred, speed, and errors after each operation.
 *   **Process Management**: Handles rclone process execution, timeouts, and errors.
 *   **Easy Configuration**: Configure providers and rclone flags directly in PHP.
 
@@ -155,12 +156,31 @@ $local = new LocalProvider('myDisk');
 $s3 = new S3Provider('myS3', [ /* S3 config */ ]);
 $rclone = new Rclone($local, $s3); // local is source, S3 is destination
 
-// Copy a local directory to S3
-// Copies contents of /local/data to s3://my-bucket/backups/data
-$rclone->copy('/local/data', 'my-bucket/backups/data');
+// Copy a local directory to S3 and get stats
+$result = $rclone->copy('/local/data', 'my-bucket/backups/data');
+if ($result->success) {
+    echo "Copy successful!\n";
+    echo "Bytes transferred: " . $result->stats->bytes . "\n";
+    echo "Average speed: " . $result->stats->speed_human . "\n";
+}
+/*
+$result object structure:
+(object) [
+    'success' => true,
+    'stats' => (object) [
+        'bytes' => 1073741824, // Total bytes transferred
+        'files' => 150,        // Total files transferred
+        'speed_bytes_per_second' => 12946789.23, // Average speed in bytes/s
+        'speed_human' => '12.345 MiB/s', // Human-readable average speed
+        'elapsed_time' => 93.4, // Elapsed time in seconds
+        'errors' => 0,
+        'checks' => 150,
+    ],
+    'raw_output' => '...' // The raw stderr block from rclone
+]
+*/
 
 // Copy a single local file to S3 with a specific name
-// Copies /local/file.txt to s3://my-bucket/target/renamed.txt
 $rclone->copyto('/local/file.txt', 'my-bucket/target/renamed.txt');
 ```
 </details>
@@ -175,7 +195,11 @@ $localDisk = new LocalProvider('myDisk');
 $rclone = new Rclone($localDisk); // Operations on the same local disk
 
 // Move a file to another location on the same disk (effectively renaming)
-$rclone->moveto('/old/path/file.txt', '/new/path/renamed_file.txt');
+$result = $rclone->moveto('/old/path/file.txt', '/new/path/renamed_file.txt');
+if ($result->success) {
+    echo "Move successful. Transferred {$result->stats->bytes} bytes.";
+}
+
 
 // To move between different remotes:
 $sftp = new SFtpProvider('mySFTP', [ /* config */ ]);
@@ -197,11 +221,14 @@ $rclone = new Rclone($local, $sftpBackup); // Sync from local to SFTP
 
 // Make SFTP /backup/documents identical to local /user/documents
 // Only transfers changed files, deletes files on SFTP not present locally.
-$rclone->sync('/user/documents', '/backup/documents');
+$result = $rclone->sync('/user/documents', '/backup/documents');
+if ($result->success) {
+    echo "Sync complete. {$result->stats->files} files transferred.";
+}
 ```
 </details>
 
-<details><summary>Delete files/directories (<code>delete</code>, <code>deletefile</code>, <code>purge</code>, <code>rmdir</code>)</summary>
+<details><summary>Delete files/directories (<code>delete</code>, <code>deletefile</code>, <code>purge</code>)</summary>
 
 ```php
 use Verseles\Flyclone\Rclone;
@@ -211,7 +238,9 @@ $s3 = new S3Provider('myS3', [ /* config */ ]);
 $rclone = new Rclone($s3);
 
 // Delete a single file
-$rclone->deletefile('my-bucket/path/to/file.txt');
+$result = $rclone->deletefile('my-bucket/path/to/file.txt');
+if ($result->success) echo "File deleted.";
+
 
 // Delete all *.log files in a directory (respects filters)
 $rclone->delete('my-bucket/logs/', ['include' => '*.log']);
@@ -277,7 +306,8 @@ $sftp = new SFtpProvider('mySFTP', [ /* config */ ]);
 $rclone = new Rclone($sftp);
 
 $newContent = "Hello from Flyclone!";
-$rclone->rcat('/remote/path/newfile.txt', $newContent);
+$result = $rclone->rcat('/remote/path/newfile.txt', $newContent);
+if ($result->success) echo "Content written successfully.";
 ```
 </details>
 
@@ -313,7 +343,8 @@ $rclone = new Rclone($s3); // $s3 is the destination for uploads
 
 // Uploads /tmp/local_file.zip to s3://my-bucket/uploads/local_file.zip
 // The local file /tmp/local_file.zip is removed after successful upload (uses rclone moveto).
-$rclone->upload_file('/tmp/local_file.zip', 'my-bucket/uploads/local_file.zip');
+$result = $rclone->upload_file('/tmp/local_file.zip', 'my-bucket/uploads/local_file.zip');
+if ($result->success) echo "Upload successful.";
 ```
 </details>
 
@@ -327,16 +358,16 @@ $sftp = new SFtpProvider('mySFTP', [ /* config */ ]);
 $rclone = new Rclone($sftp); // $sftp is the source for downloads
 
 // Download from SFTP to a specific local path
-$localPath = $rclone->download_to_local('/remote/path/on_sftp/document.pdf', '/home/user/downloads/document.pdf');
-if ($localPath) {
-    echo "Downloaded to: " . $localPath;
+$result = $rclone->download_to_local('/remote/path/on_sftp/document.pdf', '/home/user/downloads/document.pdf');
+if ($result->success) {
+    echo "Downloaded to: " . $result->local_path;
 }
 
 // Download to a temporary directory (filename preserved)
-$tempPath = $rclone->download_to_local('/remote/path/on_sftp/image.jpg');
-if ($tempPath) {
-    echo "Downloaded to temporary location: " . $tempPath;
-    // Remember to unlink($tempPath) and rmdir(dirname($tempPath)) when done if temporary.
+$result = $rclone->download_to_local('/remote/path/on_sftp/image.jpg');
+if ($result->success) {
+    echo "Downloaded to temporary location: " . $result->local_path;
+    // Remember to unlink($result->local_path) and rmdir(dirname($result->local_path)) when done if temporary.
 }
 ```
 </details>
@@ -360,7 +391,7 @@ $rclone = new Rclone($local, $dropbox);
 $sourceFile = '/path/to/large_local_file.zip';
 $destinationPath = '/dropbox_folder/'; // Directory on Dropbox
 
-$rclone->copy($sourceFile, $destinationPath, [], static function ($type, $buffer) use ($rclone) {
+$result = $rclone->copy($sourceFile, $destinationPath, [], static function ($type, $buffer) use ($rclone) {
     // $type is \Symfony\Component\Process\Process::OUT or \Symfony\Component\Process\Process::ERR
     // $buffer contains the raw rclone progress line
     if ($type === \Symfony\Component\Process\Process::OUT && !empty(trim($buffer))) {
@@ -388,7 +419,9 @@ $rclone->copy($sourceFile, $destinationPath, [], static function ($type, $buffer
         );
     }
 });
-echo "\nCopy complete!\n";
+if ($result->success) {
+    echo "\nCopy complete! Total bytes: " . $result->stats->bytes . "\n";
+}
 ```
 </details>
 
@@ -401,10 +434,10 @@ echo "\nCopy complete!\n";
     ```
 *   **Single Provider Operations**: If you instantiate `Rclone` with only one provider, operations like `copy` or `move` will assume the source and destination are on that same provider (e.g., moving files within the same S3 bucket).
 *   **Global Rclone Settings**:
-  *   `Rclone::setFlags(['checksum' => true, 'verbose' => true])`: Set global flags for all subsequent rclone commands.
-  *   `Rclone::setEnvs(['RCLONE_BUFFER_SIZE' => '64M'])`: Set environment variables for rclone (these are usually prefixed with `RCLONE_` automatically if not already).
-  *   `Rclone::setTimeout(300)`: Set the maximum execution time for rclone processes (seconds).
-  *   `Rclone::setIdleTimeout(120)`: Set the idle timeout for rclone processes (seconds).
+*   `Rclone::setFlags(['checksum' => true, 'verbose' => true])`: Set global flags for all subsequent rclone commands.
+*   `Rclone::setEnvs(['RCLONE_BUFFER_SIZE' => '64M'])`: Set environment variables for rclone (these are usually prefixed with `RCLONE_` automatically if not already).
+*   `Rclone::setTimeout(300)`: Set the maximum execution time for rclone processes (seconds).
+*   `Rclone::setIdleTimeout(120)`: Set the idle timeout for rclone processes (seconds).
 *   **Error Handling**: Flyclone throws specific exceptions based on rclone's exit codes (e.g., `FileNotFoundException`, `DirectoryNotFoundException`, `TemporaryErrorException`). Catch these for robust error management.
 
 ## To-do
@@ -412,7 +445,7 @@ echo "\nCopy complete!\n";
 - [x] ~~Add timeout support~~
 - [x] ~~Add more commands~~
 - [x] ~~Add tests~~
-  - [x] ~~Use docker and docker compose for tests~~
+    - [x] ~~Use docker and docker compose for tests~~
 - [ ] Send meta details like file id in some storage system like google drive (e.g. for `lsjson` output).
 
 ## Testing
@@ -428,6 +461,15 @@ make                 # Default goal runs 'test-offline'
 
 ## Contribution
 > You know the drill: Fork, branch, code, test, PR! Contributions are welcome.
+
+<details>
+<summary>Changelog</summary>
+
+### v2.3.0 (Upcoming)
+*   **[BREAKING]** Transfer operations (`copy`, `sync`, `move`, `rcat`, `upload_file`, `download_to_local`, `delete`, `deletefile`, `purge`) now return a detailed statistics object instead of a boolean. This allows access to transfer speed, total bytes, errors, and more.
+*   Updated `README.md` with examples for the new statistics feature and added this changelog.
+
+</details>
 
 ## License
 [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](LICENSE.md)

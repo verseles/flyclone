@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Test\Unit;
 
+use PHPUnit\Framework\Attributes\Depends;
+use PHPUnit\Framework\Attributes\Test;
 use Verseles\Flyclone\Providers\LocalProvider;
 
 // Needed for simulating local side in progress tests
@@ -44,9 +46,9 @@ class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits Prog
    * SFTP credentials and settings are obtained from environment variables.
    * This method is a dependency provider for other tests.
    *
-   * @test
    * @return SFtpProvider The configured instance of SfTpProvider.
    */
+  #[Test]
   public function instantiate_left_provider() : SFtpProvider
   {
     $sftpProvider = new SFtpProvider($this->getLeftProviderName(), [
@@ -68,12 +70,11 @@ class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits Prog
    *                             This instance is provided by the `instantiate_with_one_provider`
    *                             method from the parent `AbstractProviderTest` class.
    *
-   * @test
-   * @depends instantiate_with_one_provider
-   * @return void
    * @throws ExpectationFailedException
    * @throws InvalidArgumentException
    */
+  #[Test]
+  #[Depends('instantiate_with_one_provider')]
   public function test_upload_and_download_file_operations(Rclone $rcloneRemote) : void
   {
     // Step 0: Ensure the working directory on SFTP exists.
@@ -101,8 +102,8 @@ class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits Prog
     
     // Step 3: Upload the local file to the "remote" (SFTP).
     // The `upload_file` method uses `moveto`, which removes the original local file upon success.
-    $uploadSuccess = $rcloneRemote->upload_file($localFilePath, $remoteFilePath);
-    self::assertTrue($uploadSuccess, 'Failed to upload file to SFTP.');
+    $uploadResult = $rcloneRemote->upload_file($localFilePath, $remoteFilePath);
+    self::assertTrue($uploadResult->success, 'Failed to upload file to SFTP.');
     // Verify that the original local file was removed, as expected by `moveto`.
     self::assertFileDoesNotExist($localFilePath, 'Original local file still exists after upload_file (should have been moved).');
     
@@ -118,9 +119,9 @@ class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits Prog
     // The `download_to_local` method will create the parent directory if it doesn't exist.
     $downloadedLocalFilePath = $localTempDownloadDir . DIRECTORY_SEPARATOR . 'downloaded_from_sftp.txt';
     
-    $downloadResultPath = $rcloneRemote->download_to_local($remoteFilePath, $downloadedLocalFilePath);
-    self::assertNotFalse($downloadResultPath, 'Failed to download file from SFTP.');
-    self::assertEquals($downloadedLocalFilePath, $downloadResultPath, 'Downloaded file path is not as expected.');
+    $downloadResult = $rcloneRemote->download_to_local($remoteFilePath, $downloadedLocalFilePath);
+    self::assertTrue($downloadResult->success, 'Failed to download file from SFTP.');
+    self::assertEquals($downloadedLocalFilePath, $downloadResult->local_path, 'Downloaded file path is not as expected.');
     self::assertFileExists($downloadedLocalFilePath, 'Downloaded file not found locally.');
     
     // Step 6: Verify that the content of the downloaded file is identical to the original.
@@ -156,10 +157,9 @@ class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits Prog
    * upload_file internally uses 'moveto' with a (Local -> Remote) Rclone configuration.
    *
    * @param Rclone $rcloneRemote Instance of Rclone configured with SFTPProvider (Remote).
-   *
-   * @test
-   * @depends instantiate_with_one_provider
    */
+  #[Test]
+  #[Depends('instantiate_with_one_provider')]
   public function test_upload_with_progress(Rclone $rcloneRemote) : void
   {
     // Ensure the remote working directory exists on SFTP.
@@ -196,10 +196,9 @@ class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits Prog
    * download_to_local internally uses 'copyto' with a (Remote -> Local) Rclone configuration.
    *
    * @param Rclone $rcloneRemote Instance of Rclone configured with SFTPProvider (Remote).
-   *
-   * @test
-   * @depends instantiate_with_one_provider
    */
+  #[Test]
+  #[Depends('instantiate_with_one_provider')]
   public function test_download_with_progress(Rclone $rcloneRemote) : void
   {
     // Ensure the remote working directory exists on SFTP.

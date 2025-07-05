@@ -2,6 +2,7 @@
 output.txt
 ai-docs
 makefile.txt
+Dockerfile.txt
 /vendor
 composer.phar
 composer.lock

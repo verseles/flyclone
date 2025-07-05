@@ -4,6 +4,8 @@
 namespace Verseles\Flyclone\Test\Unit;
 
 
+use PHPUnit\Framework\Attributes\Depends;
+use PHPUnit\Framework\Attributes\Test;
 use Verseles\Flyclone\Providers\Provider;
 use Verseles\Flyclone\Rclone;
 use PHPUnit\Framework\TestCase;
@@ -42,7 +44,6 @@ abstract class AbstractProviderTest extends TestCase
    * Instantiates the specific provider being tested.
    * This method must be implemented by concrete test classes.
    *
-   * @test
    * @return Provider Instance of the provider.
    */
   abstract public function instantiate_left_provider() : Provider;
@@ -51,13 +52,12 @@ abstract class AbstractProviderTest extends TestCase
    * Instantiates Rclone with a single provider (the one under test).
    * Depends on the successful instantiation of the provider.
    *
-   * @test
-   * @depends instantiate_left_provider
-   *
    * @param Provider $left_side The instantiated provider.
    *
    * @return Rclone Instance of Rclone configured with the provider.
    */
+  #[Test]
+  #[Depends('instantiate_left_provider')]
   public function instantiate_with_one_provider($left_side) : Rclone
   {
     $rclone_instance = new Rclone($left_side); // Corrected variable name
@@ -71,13 +71,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests the 'touch' command to create an empty file.
    * Depends on a successfully instantiated Rclone instance.
    *
-   * @test
-   * @depends instantiate_with_one_provider
-   *
    * @param Rclone $left_side Rclone instance.
    *
    * @return array Returns an array containing the Rclone instance and the path to the touched file.
    */
+  #[Test]
+  #[Depends('instantiate_with_one_provider')]
   public function touch_a_file(Rclone $left_side) : array
   {
     // Generate a unique filepath within the working directory
@@ -104,13 +103,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests writing content to a file using 'rcat'.
    * Depends on a file successfully created by 'touch_a_file'.
    *
-   * @test
-   * @depends touch_a_file
-   *
    * @param array $params Array from touch_a_file: [Rclone instance, filepath].
    *
    * @return array Returns an array containing the Rclone instance and the filepath.
    */
+  #[Test]
+  #[Depends('touch_a_file')]
   public function write_to_a_file($params) : array
   {
     $content = 'But my father lives at https://helio.me';
@@ -130,13 +128,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests renaming (moving) a file on the same provider.
    * Depends on a file successfully written by 'write_to_a_file'.
    *
-   * @test
-   * @depends write_to_a_file
-   *
    * @param array $params Array from write_to_a_file: [Rclone instance, old filepath].
    *
    * @return array Returns an array containing the Rclone instance and the new filepath.
    */
+  #[Test]
+  #[Depends('write_to_a_file')]
   final public function rename_a_file($params) : array
   {
     /** @var Rclone $left_side */
@@ -167,13 +164,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests deleting a file.
    * Depends on a file successfully renamed by 'rename_a_file'.
    *
-   * @test
-   * @depends rename_a_file
-   *
    * @param array $params Array from rename_a_file: [Rclone instance, filepath to delete].
    *
    * @return array Returns an array containing the Rclone instance.
    */
+  #[Test]
+  #[Depends('rename_a_file')]
   public function delete_a_file($params) : array
   {
     /** @var Rclone $left_side */
@@ -194,13 +190,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests creating a directory.
    * Depends on a successfully instantiated Rclone instance.
    *
-   * @test
-   * @depends instantiate_with_one_provider
-   *
    * @param Rclone $left_side Rclone instance.
    *
    * @return array Returns an array containing the Rclone instance and the path to the created directory.
    */
+  #[Test]
+  #[Depends('instantiate_with_one_provider')]
   public function make_a_directory(Rclone $left_side) : array
   {
     // Define a unique directory path within the working directory
@@ -225,13 +220,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests creating a nested directory.
    * Depends on a directory successfully created by 'make_a_directory'.
    *
-   * @test
-   * @depends make_a_directory
-   *
    * @param array $params Array from make_a_directory: [Rclone instance, parent directory path].
    *
    * @return array Returns an array containing the Rclone instance, parent dir path, and nested dir path.
    */
+  #[Test]
+  #[Depends('make_a_directory')]
   public function make_a_directory_inside_the_previous(array $params) : array
   {
     /** @var Rclone $left_side */
@@ -253,13 +247,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests touching a file inside a previously created directory.
    * Depends on successful creation of nested directories.
    *
-   * @test
-   * @depends make_a_directory_inside_the_previous
-   *
    * @param array $params Array from previous test: [Rclone, parent dir, nested dir].
    *
    * @return array Returns array with Rclone instance, parent dir, nested dir, and new file path.
    */
+  #[Test]
+  #[Depends('make_a_directory_inside_the_previous')]
   public function touch_a_file_inside_first_directory(array $params) : array
   {
     /** @var Rclone $left_side */
@@ -280,13 +273,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests copying a file to another directory on the same provider.
    * Depends on a file successfully created by 'touch_a_file_inside_first_directory'.
    *
-   * @test
-   * @depends touch_a_file_inside_first_directory
-   *
    * @param array $params Array from previous test: [Rclone, parent dir, nested dir, source file path].
    *
    * @return array Returns array with Rclone, parent dir, nested dir, source file path, copied file path.
    */
+  #[Test]
+  #[Depends('touch_a_file_inside_first_directory')]
   public function copy_latest_file_to_first_directory(array $params) // Method name a bit misleading now
   : array
   {
@@ -316,13 +308,12 @@ abstract class AbstractProviderTest extends TestCase
    * Uses the copied file from 'copy_latest_file_to_first_directory' (which is in nested_dir)
    * and moves it back to the first_dir (parent_dir).
    *
-   * @test
-   * @depends copy_latest_file_to_first_directory
-   *
    * @param array $params Array from previous test.
    *
    * @return array Returns array with Rclone, parent dir, nested dir, and the new path of the moved file.
    */
+  #[Test]
+  #[Depends('copy_latest_file_to_first_directory')]
   public function move_latest_file_to_latest_directory(array $params)  // Method name can be improved
   : array
   {
@@ -352,13 +343,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests listing contents of a directory.
    * Depends on the state after 'move_latest_file_to_latest_directory'.
    *
-   * @test
-   * @depends move_latest_file_to_latest_directory
-   *
    * @param array $params Array from previous test.
    *
    * @return Rclone The Rclone instance.
    */
+  #[Test]
+  #[Depends('move_latest_file_to_latest_directory')]
   public function list_directory(array $params) : Rclone
   {
     /** @var Rclone $left_side */
@@ -389,13 +379,12 @@ abstract class AbstractProviderTest extends TestCase
    * Tests purging a directory (removing directory and all its contents).
    * Depends on the state after 'move_latest_file_to_latest_directory'.
    *
-   * @test
-   * @depends move_latest_file_to_latest_directory
-   *
    * @param array $params Array from previous test.
    *
    * @return array The Rclone instance.
    */
+  #[Test]
+  #[Depends('move_latest_file_to_latest_directory')]
   public function purge_first_directory_created(array $params) : array
   {
     /** @var Rclone $left_side */
@@ -415,26 +404,23 @@ abstract class AbstractProviderTest extends TestCase
   }
   
   /**
-   * Tests copy operation with progress tracking.
-   * Depends on a file being available from 'write_to_a_file'.
-   *
-   * @test
-   * @depends write_to_a_file
+   * Tests copy operation with progress tracking on the same provider.
+   * Depends on a file being available from 'write_to_a_file' to get a working rclone instance.
    *
    * @param array $params Output from write_to_a_file: [Rclone $rclone, string $sourceFilePath]
    */
-  public function test_copy_with_progress(array $params) : void
+  #[Test]
+  #[Depends('write_to_a_file')]
+  public function test_copy_with_progress_on_same_provider(array $params) : void
   {
     /** @var Rclone $rclone */
-    [$rclone, $originalSourceFilePath] = $params; // This file might be small
+    [$rclone, $originalSourceFilePath] = $params; // This file might be small, so we'll create a larger one.
     
     // Destination directory for the copy operation
     $destinationDir = $this->working_directory . '/progress_test_dest_dir_' . $this->random_string();
     $rclone->mkdir($destinationDir); // Ensure destination directory exists
     
     // Create a larger temporary file for more reliable progress reporting on the rclone's left_side.
-    // If left_side is local, this creates it directly in its working_directory.
-    // If left_side is remote, this will rcat content to a path on that remote.
     $largeSourceFileContent = str_repeat('0', 1 * 1024 * 1024); // 1MB of '0's
     $largeSourceFilePathOnProvider = $this->working_directory . '/large_source_for_copy_progress_' . $this->random_string() . '.dat';
     $rclone->rcat($largeSourceFilePathOnProvider, $largeSourceFileContent);
