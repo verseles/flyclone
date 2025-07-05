@@ -454,7 +454,7 @@ Install Docker and Docker Compose, then run:
 cp .env.example .env # Fill in any necessary credentials if you want to test against real cloud providers
 make test-offline    # Runs tests against local, SFTP (Dockerized), S3/MinIO (Dockerized)
 # or simply:
-make                 # Default goal runs 'test-offline'
+make                 # Default goal runs 'test-fast'
 ```
 
 > There are other test targets in the `makefile` (e.g., `test_dropbox`, `test_gdrive`), but they require you to fill the `.env` file with actual credentials for those services.

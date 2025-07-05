@@ -3,12 +3,12 @@
 .DEFAULT_GOAL := test
 
 test: ## Start containers detached
-	make test-offline
+	make test-fast
 init: ## Start a new develop environment
 	make cin
 test-fast:
 	docker compose run --remove-orphans test_local
-	docker compose run --remove-orphans test_sftp
+	docker compose run --remove-orphans test_upload_download
 	docker compose run --remove-orphans cleanup_tests
 test-offline:
 	docker compose run --remove-orphans test_local
