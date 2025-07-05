@@ -7,7 +7,6 @@ namespace Verseles\Flyclone\Test\Unit;
 use PHPUnit\Framework\Attributes\Test;
 use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Providers\S3Provider;
-use Verseles\Flyclone\Rclone;
 
 class FromLocalToS3ProviderTest extends AbstractTwoProvidersTest
 {

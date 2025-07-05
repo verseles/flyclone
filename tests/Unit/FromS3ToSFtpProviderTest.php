@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Verseles\Flyclone\Test\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Exception;
+use PHPUnit\Framework\ExpectationFailedException;
 use Verseles\Flyclone\Providers\S3Provider;
 use Verseles\Flyclone\Providers\SFtpProvider;
 use Verseles\Flyclone\Rclone;
-use PHPUnit\Framework\Exception;
-use PHPUnit\Framework\ExpectationFailedException;
 
 class FromS3ToSFtpProviderTest extends AbstractTwoProvidersTest
 {

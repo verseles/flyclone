@@ -6,9 +6,9 @@ namespace Verseles\Flyclone\Test\Unit;
 
 use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 use Verseles\Flyclone\Providers\Provider;
 use Verseles\Flyclone\Rclone;
-use PHPUnit\Framework\TestCase;
 
 abstract class AbstractProviderTest extends TestCase
 {

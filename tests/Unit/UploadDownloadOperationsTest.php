@@ -6,13 +6,13 @@ namespace Verseles\Flyclone\Test\Unit;
 
 use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\Attributes\Test;
-use Verseles\Flyclone\Providers\LocalProvider;
-
-// Needed for simulating local side in progress tests
-use Verseles\Flyclone\Providers\SFtpProvider;
-use Verseles\Flyclone\Rclone;
 use PHPUnit\Framework\ExpectationFailedException;
 use SebastianBergmann\RecursionContext\InvalidArgumentException;
+use Verseles\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Providers\SFtpProvider;
+use Verseles\Flyclone\Rclone;
+
+// Needed for simulating local side in progress tests
 
 /**
  * Tests the upload_file and download_to_local operations of the Rclone class.

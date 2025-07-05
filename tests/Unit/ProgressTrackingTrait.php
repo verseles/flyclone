@@ -2,9 +2,12 @@
 
 namespace Verseles\Flyclone\Test\Unit;
 
+use PHPUnit\Framework\Assert;
+use Symfony\Component\Process\Process;
 use Verseles\Flyclone\Rclone;
-use Symfony\Component\Process\Process; // Important for Process::OUT
-use PHPUnit\Framework\Assert; // Explicitly use PHPUnit's Assert for static calls within trait
+
+// Important for Process::OUT
+// Explicitly use PHPUnit's Assert for static calls within trait
 
 trait ProgressTrackingTrait
 {

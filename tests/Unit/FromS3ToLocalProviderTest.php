@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace Verseles\Flyclone\Test\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
-use Verseles\Flyclone\Providers\LocalProvider;
-use Verseles\Flyclone\Providers\S3Provider;
-use Verseles\Flyclone\Rclone;
-use PHPUnit\Framework\Exception;
 use PHPUnit\Framework\ExpectationFailedException;
 use SebastianBergmann\RecursionContext\InvalidArgumentException;
+use Verseles\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Providers\S3Provider;
 
 class FromS3ToLocalProviderTest extends AbstractTwoProvidersTest
 {
