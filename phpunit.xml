@@ -5,7 +5,7 @@
         testdox="true"
         processIsolation="false"
         stopOnFailure="true"
-        xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.4/phpunit.xsd"
+        xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/12.2/phpunit.xsd"
         bootstrap="vendor/autoload.php"
         cacheDirectory=".phpunit.cache"
         failOnDeprecation="true"
