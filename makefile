@@ -6,8 +6,11 @@ test: ## Start containers detached
 	make test-fast
 init: ## Start a new develop environment
 	make cin
+test-local:
+	docker compose run --remove-orphans test_extra_commands
+	docker compose run --remove-orphans cleanup_tests
 test-fast:
-	docker compose run --remove-orphans test_local
+	docker compose run --remove-orphans test_extra_commands
 	docker compose run --remove-orphans test_upload_download
 	docker compose run --remove-orphans cleanup_tests
 test-offline:
@@ -18,6 +21,9 @@ test-offline:
 	docker compose run --remove-orphans test_sftp_to_s3
 	docker compose run --remove-orphans test_s3_to_sftp
 	docker compose run --remove-orphans test_upload_download
+	docker compose run --remove-orphans test_extra_commands
+	docker compose run --remove-orphans test_crypt_provider
+	docker compose run --remove-orphans test_union_provider
 	docker compose run --remove-orphans cleanup_tests
 logs: ## Show the output logs
 	docker compose logs

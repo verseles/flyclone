@@ -326,12 +326,9 @@ class Rclone
     ];
     
     // 2. Provider-specific flags.
-    // These are prefixed like 'RCLONE_CONFIG_MYREMOTENAME_OPTION'.
-    // Provider::flags() internally uses Rclone::prefix_flags(), so boolean conversion is handled.
+    // This now correctly handles wrapped providers (like crypt) by calling their custom flags() method.
     $env_vars = array_merge($env_vars, $this->left_side->flags());
-    // $this->right_side is guaranteed to be set by the constructor ($right_side ?? $left_side)
     $env_vars = array_merge($env_vars, $this->right_side->flags());
-    
     
     // 3. Global flags (set via Rclone::setFlags()).
     // These are general rclone flags, prefixed with 'RCLONE_'.
@@ -1316,6 +1313,114 @@ class Rclone
     // For 'check', a successful run (exit code 0) means no differences were found (or ignored by flags).
     $this->directTwinRun('check', $source_path, $dest_path, $flags, $onProgress);
     return TRUE; // If directTwinRun doesn't throw, it means rclone exited with 0.
+  }
+  
+  /**
+   * Gets quota information from the provider (rclone about).
+   *
+   * @see https://rclone.org/commands/rclone_about/
+   *
+   * @param string|null $path  Path on the provider. Some providers require this.
+   * @param array       $flags Additional flags for the operation.
+   *
+   * @return object An object with quota details (total, used, free, etc.).
+   * @throws \JsonException
+   */
+  public function about(?string $path = null, array $flags = []): object
+  {
+    $flags['json'] = true; // Force JSON output for parsing.
+    $result_json = $this->simpleRun('about', [$this->left_side->backend($path)], $flags);
+    return json_decode($result_json, false, 512, JSON_THROW_ON_ERROR);
+  }
+  
+  /**
+   * Lists the contents of a path in a tree-like format (rclone tree).
+   *
+   * @see https://rclone.org/commands/rclone_tree/
+   *
+   * @param string|null $path  The root path to list from.
+   * @param array       $flags Additional rclone flags (e.g., ['max-depth' => 2]).
+   *
+   * @return string The tree structure as a string.
+   */
+  public function tree(?string $path = null, array $flags = []): string
+  {
+    return $this->simpleRun('tree', [$this->left_side->backend($path)], $flags);
+  }
+  
+  /**
+   * Finds and deals with duplicate files (rclone dedupe).
+   *
+   * @see https://rclone.org/commands/rclone_dedupe/
+   *
+   * @param string $path  The path to check for duplicates.
+   * @param string $mode  Deduplication strategy (e.g., 'newest', 'oldest', 'rename'). Default is 'interactive'.
+   * @param array  $flags Additional flags.
+   *
+   * @return object Object with 'success' status and 'stats' from the operation.
+   */
+  public function dedupe(string $path, string $mode = 'interactive', array $flags = []): object
+  {
+    $dedupe_flags = array_merge($flags, ['dedupe-mode' => $mode]);
+    return $this->runAndGetStats('dedupe', [$this->left_side->backend($path)], $dedupe_flags);
+  }
+  
+  /**
+   * Cleans up the remote, removing old file versions or empty trash. (rclone cleanup)
+   *
+   * @see https://rclone.org/commands/rclone_cleanup/
+   *
+   * @param string|null $path  The path to clean up.
+   * @param array       $flags Additional flags.
+   *
+   * @return object Object with 'success' status and 'stats'.
+   */
+  public function cleanup(?string $path = null, array $flags = []): object
+  {
+    return $this->runAndGetStats('cleanup', [$this->left_side->backend($path)], $flags);
+  }
+  
+  /**
+   * Executes a backend-specific command (rclone backend).
+   *
+   * This provides a generic way to access commands not exposed as dedicated methods.
+   * E.g., `rclone backend drives drive:` becomes `backend('drives', null)`
+   *
+   * @see https://rclone.org/commands/rclone_backend/
+   *
+   * @param string      $command   The backend command to run (e.g., 'drives', 'get-url').
+   * @param string|null $path      The remote path for the command.
+   * @param array       $options   Associative array of options (e.g., ['option' => 'value'] becomes --option=value).
+   * @param array       $arguments Positional arguments for the command.
+   *
+   * @return string The raw output from the command.
+   */
+  public function backend(string $command, ?string $path = null, array $options = [], array $arguments = []): string
+  {
+    $command_array = [self::getBIN(), 'backend', $command];
+    
+    if ($path !== null) {
+      $command_array[] = $this->left_side->backend($path);
+    }
+    
+    foreach ($options as $key => $value) {
+      // Correct syntax for backend options is `-o key=value` or `--option key=value`
+      $command_array[] = '-o';
+      $command_array[] = "{$key}={$value}";
+    }
+    
+    if (!empty($arguments)) {
+      array_push($command_array, ...$arguments);
+    }
+    
+    $final_envs = $this->allEnvs();
+    $process = new Process($command_array, sys_get_temp_dir(), $final_envs);
+    $process->setTimeout(self::getTimeout());
+    $process->setIdleTimeout(self::getIdleTimeout());
+    
+    $completedProcess = $this->executeProcess($process);
+    
+    return trim($completedProcess->getOutput());
   }
   
   /**

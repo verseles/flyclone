@@ -35,6 +35,9 @@
             <file>tests/Unit/FromLocalToS3ProviderTest.php</file>
             <file>tests/Unit/FromS3ToLocalProviderTest.php</file>
             <file>tests/Unit/UploadDownloadOperationsTest.php</file>
+            <file>tests/Unit/ExtraCommandsTest.php</file>
+            <file>tests/Unit/CryptProviderTest.php</file>
+            <file>tests/Unit/UnionProviderTest.php</file>
         </testsuite>
     </testsuites>
     <php>

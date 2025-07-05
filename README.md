@@ -25,6 +25,8 @@ Flyclone supports a wide array of rclone providers, including:
 *   Backblaze B2 ([b2](https://rclone.org/b2/))
 *   ...and [many others](https://rclone.org/overview/#features) supported by rclone. New providers can often be used by leveraging the generic `Provider` class or by adding specific classes via PR.
 
+> **Note:** Support for `crypt` and `union` providers is currently **experimental**. Tests for these providers are not passing, and they should be used with caution.
+
 ![](https://img.shields.io/badge/php-777bb4?style=for-the-badge&logo=php&logoColor=white)
 ![](http://img.shields.io/badge/-phpstorm-7256fe?style=for-the-badge&logo=phpstorm&logoColor=white)
 ![](https://img.shields.io/badge/composer-885630?style=for-the-badge&logo=composer&logoColor=white)
@@ -441,12 +443,8 @@ if ($result->success) {
 *   **Error Handling**: Flyclone throws specific exceptions based on rclone's exit codes (e.g., `FileNotFoundException`, `DirectoryNotFoundException`, `TemporaryErrorException`). Catch these for robust error management.
 
 ## To-do
-- [x] ~~Add progress support~~
-- [x] ~~Add timeout support~~
-- [x] ~~Add more commands~~
-- [x] ~~Add tests~~
-    - [x] ~~Use docker and docker compose for tests~~
 - [ ] Send meta details like file id in some storage system like google drive (e.g. for `lsjson` output).
+- [ ] Fix experimental providers (`crypt`, `union`).
 
 ## Testing
 Install Docker and Docker Compose, then run:

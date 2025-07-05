@@ -66,6 +66,18 @@ services :
     build     : tests/Unit
     command   : phpunit ./tests/Unit/UploadDownloadOperationsTest.php # Comando para rodar o novo teste
     depends_on: [ sftp ] # Depende do serviço sftp para estar operacional
+  test_extra_commands :
+    <<     : *commons # Herda configurações comuns
+    build  : tests/Unit
+    command: phpunit ./tests/Unit/ExtraCommandsTest.php
+  test_crypt_provider :
+    <<     : *commons # Herda configurações comuns
+    build  : tests/Unit
+    command: phpunit ./tests/Unit/CryptProviderTest.php
+  test_union_provider :
+    <<     : *commons # Herda configurações comuns
+    build  : tests/Unit
+    command: phpunit ./tests/Unit/UnionProviderTest.php
   test_sftp_to_s3     :
     <<        : *commons # Herda configurações comuns
     build     : tests/Unit
