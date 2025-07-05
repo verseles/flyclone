@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Verseles\Flyclone\Test\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
+use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Providers\S3Provider;
-use Verseles\Flyclone\Providers\SFtpProvider;
 use Verseles\Flyclone\Rclone;
 
 class FromLocalToS3ProviderTest extends AbstractTwoProvidersTest
@@ -29,14 +29,9 @@ class FromLocalToS3ProviderTest extends AbstractTwoProvidersTest
   }
   
   #[Test]
-  final public function instantiate_left_provider (): SFtpProvider
+  final public function instantiate_left_provider (): LocalProvider
   {
-    $left_side = new SFtpProvider($this->getLeftProviderName(), [
-      'HOST' => $_ENV[ 'SFTP_HOST' ],
-      'USER' => $_ENV[ 'SFTP_USER' ],
-      'PASS' => Rclone::obscure($_ENV[ 'SFTP_PASS' ]),
-      'PORT' => $_ENV[ 'SFTP_PORT' ],
-    ]);
+    $left_side = new LocalProvider($this->getLeftProviderName());
     
     self::assertInstanceOf(get_class($left_side), $left_side);
     

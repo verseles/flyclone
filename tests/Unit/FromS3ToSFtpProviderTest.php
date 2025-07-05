@@ -35,7 +35,7 @@ class FromS3ToSFtpProviderTest extends AbstractTwoProvidersTest
   #[Test]
   final public function instantiate_left_provider (): S3Provider
   {
-    $left_side = new S3Provider($this->getRightProviderName(), [
+    $left_side = new S3Provider($this->getLeftProviderName(), [
       'REGION'            => $_ENV[ 'S3_REGION' ],
       'ENDPOINT'          => $_ENV[ 'S3_ENDPOINT' ],
       'ACCESS_KEY_ID'     => $_ENV[ 'S3_ACCESS_KEY_ID' ],
@@ -54,7 +54,7 @@ class FromS3ToSFtpProviderTest extends AbstractTwoProvidersTest
   #[Test]
   final public function instantiate_right_provider (): SFtpProvider
   {
-    $right_side = new SFtpProvider($this->getLeftProviderName(), [
+    $right_side = new SFtpProvider($this->getRightProviderName(), [
       'HOST' => $_ENV[ 'SFTP_HOST' ],
       'USER' => $_ENV[ 'SFTP_USER' ],
       'PASS' => Rclone::obscure($_ENV[ 'SFTP_PASS' ]),
