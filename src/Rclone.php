@@ -327,8 +327,9 @@ class Rclone
     
     // 2. Provider-specific flags.
     // This now correctly handles wrapped providers (like crypt) by calling their custom flags() method.
-    $env_vars = array_merge($env_vars, $this->left_side->flags());
-    $env_vars = array_merge($env_vars, $this->right_side->flags());
+    $left_flags = $this->left_side->flags();
+    $right_flags = $this->right_side->flags();
+    $env_vars = array_merge($env_vars, $left_flags, $right_flags);
     
     // 3. Global flags (set via Rclone::setFlags()).
     // These are general rclone flags, prefixed with 'RCLONE_'.
@@ -492,7 +493,9 @@ class Rclone
     $env_options = $operation_flags;
     
     // Add stats logging flag to capture final summary on stderr
-    $env_options['stats'] = '0s'; // Log stats at the end.
+    $env_options['stats'] = '1s'; // Log stats every second to force final summary.
+    // Force stats to be logged at NOTICE level so they are always available.
+    $env_options['stats-log-level'] = 'NOTICE';
     
     if ($onProgress) {
       $this->resetProgress();
@@ -513,7 +516,14 @@ class Rclone
     $completedProcess = $this->executeProcess($process, $onProgress);
     
     $stderr = $completedProcess->getErrorOutput();
+    
     $stats = $this->parseFinalStats($stderr);
+    
+    // If stats parsing failed but the operation was a simple move/copy,
+    // and was successful, assume 1 file and 0 bytes transferred.
+    if (empty(trim($stderr)) && in_array($command, ['moveto', 'copyto'])) {
+      $stats->files = 1;
+    }
     
     return (object) [
       'success'    => true,
@@ -534,48 +544,59 @@ class Rclone
     $stats = [
       'errors'                 => 0,
       'checks'                 => 0,
-      'files'                  => 0, // Transferred files
+      'files'                  => 0, // Transferred/Renamed files
       'bytes'                  => 0, // Transferred bytes
       'elapsed_time'           => 0.0,
       'speed_human'            => '0 B/s',
       'speed_bytes_per_second' => 0.0,
-      'eta_human'              => '0s',
     ];
     
     $lines = explode("\n", $output);
-    $statsBlock = '';
-    // The stats block is usually at the end, after a "Transferred" line
-    foreach (array_reverse($lines) as $line) {
-      if (str_contains($line, '----------')) {
-        break;
+    
+    foreach ($lines as $line) {
+      // Regex for --stats-one-line format, e.g., "Transferred:            42 B / 42 B, 100%, 0 B/s, ETA -s"
+      if (preg_match('/Transferred:\s+([\d.]+\s*[KMGTPI]?B)/i', $line, $matches)) {
+        $stats['bytes'] = $this->convertSizeToBytes(trim($matches[1]));
+        continue; // Found one-line stats, continue to next line
       }
-      $statsBlock = $line . "\n" . $statsBlock;
+      
+      // Fallback to multiline stats parsing
+      $parts = explode(':', $line, 2);
+      if (count($parts) < 2) {
+        continue;
+      }
+      
+      $key = trim($parts[0]);
+      $value = trim($parts[1]);
+      
+      switch ($key) {
+        case 'Transferred':
+          if (preg_match('/^\s*([\d.]+\s*[KMGTPI]?B)/i', $value, $byteMatches)) {
+            $stats['bytes'] += $this->convertSizeToBytes(trim($byteMatches[1]));
+          } elseif (preg_match('/^\s*(\d+)\s*\/\s*\d+/', $value, $fileMatches)) {
+            $stats['files'] += (int)$fileMatches[1];
+          }
+          break;
+        case 'Renamed':
+          $stats['files'] += (int)$value;
+          break;
+        case 'Errors':
+          $stats['errors'] = (int)$value;
+          break;
+        case 'Checks':
+          if (preg_match('/^\s*(\d+)/', $value, $matches)) {
+            $stats['checks'] = (int)$matches[1];
+          }
+          break;
+        case 'Elapsed time':
+          $stats['elapsed_time'] = $this->convertDurationToSeconds($value);
+          break;
+      }
     }
     
-    if (preg_match('/Transferred:\s*([\d.]+\s*[KMGTPI]?B)/i', $statsBlock, $matches)) {
-      $stats['bytes'] = $this->convertSizeToBytes(trim($matches[1]));
-    }
-    
-    if (preg_match('/Transferred:\s*(\d+)\s*\/\s*(\d+)/', $statsBlock, $matches)) {
-      $stats['files'] = (int) $matches[1];
-    }
-    
-    if (preg_match('/Errors:\s*(\d+)/', $statsBlock, $matches)) {
-      $stats['errors'] = (int) $matches[1];
-    }
-    
-    if (preg_match('/Checks:\s*(\d+)\s*\/\s*(\d+)/', $statsBlock, $matches)) {
-      $stats['checks'] = (int) $matches[1];
-    }
-    
-    if (preg_match('/Elapsed time:\s*([^\n]+)/', $statsBlock, $matches)) {
-      $stats['elapsed_time'] = $this->convertDurationToSeconds(trim($matches[1]));
-    }
-    
-    // Average speed from elapsed time and bytes
-    if ($stats['elapsed_time'] > 0) {
+    if ($stats['elapsed_time'] > 0 && $stats['bytes'] > 0) {
       $stats['speed_bytes_per_second'] = $stats['bytes'] / $stats['elapsed_time'];
-      $stats['speed_human'] = $this->formatBytes($stats['speed_bytes_per_second']) . '/s';
+      $stats['speed_human'] = $this->formatBytes((int) $stats['speed_bytes_per_second']) . '/s';
     }
     
     return (object) $stats;
@@ -656,7 +677,7 @@ class Rclone
     }
     $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
     $i = floor(log($bytes, 1024));
-    return round($bytes / (1024 ** $i), 2) . ' ' . $units[$i];
+    return round($bytes / (1024 ** (int)$i), 2) . ' ' . $units[(int) $i];
   }
   
   

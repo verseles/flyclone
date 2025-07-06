@@ -16,16 +16,16 @@ class FromS3ToSFtpProviderTest extends AbstractTwoProvidersTest
   public function setUp (): void
   {
     $left_disk_name = 's3_disk';
-    $this->setLeftProviderName($left_disk_name);
-    $this->setLeftWorkingDirectory('flyclone/flyclone');  // bucket/folder
+    $this->leftProviderName = $left_disk_name;
+    $this->left_working_directory = 'flyclone/flyclone';  // bucket/folder
     
-    self::assertEquals($left_disk_name, $this->getLeftProviderName());
+    self::assertEquals($left_disk_name, $this->leftProviderName);
     
     $right_disk_name = 'sftp_disk';
-    $this->setRightProviderName($right_disk_name);
+    $this->rightProviderName = $right_disk_name;
     $working_directory = '/upload';
-    $this->setRightWorkingDirectory($working_directory . '/' . $this->random_string());
-    self::assertEquals($right_disk_name, $this->getRightProviderName());
+    $this->right_working_directory = $working_directory . '/' . $this->random_string();
+    self::assertEquals($right_disk_name, $this->rightProviderName);
   }
   
   /**
@@ -35,7 +35,7 @@ class FromS3ToSFtpProviderTest extends AbstractTwoProvidersTest
   #[Test]
   final public function instantiate_left_provider (): S3Provider
   {
-    $left_side = new S3Provider($this->getLeftProviderName(), [
+    $left_side = new S3Provider($this->leftProviderName, [
       'REGION'            => $_ENV[ 'S3_REGION' ],
       'ENDPOINT'          => $_ENV[ 'S3_ENDPOINT' ],
       'ACCESS_KEY_ID'     => $_ENV[ 'S3_ACCESS_KEY_ID' ],
@@ -54,7 +54,7 @@ class FromS3ToSFtpProviderTest extends AbstractTwoProvidersTest
   #[Test]
   final public function instantiate_right_provider (): SFtpProvider
   {
-    $right_side = new SFtpProvider($this->getRightProviderName(), [
+    $right_side = new SFtpProvider($this->rightProviderName, [
       'HOST' => $_ENV[ 'SFTP_HOST' ],
       'USER' => $_ENV[ 'SFTP_USER' ],
       'PASS' => Rclone::obscure($_ENV[ 'SFTP_PASS' ]),
