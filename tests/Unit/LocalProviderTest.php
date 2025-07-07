@@ -44,7 +44,7 @@ class LocalProviderTest extends AbstractProviderTest
     self::assertNotFalse($result);
     self::assertStringEqualsFile($temp_filepath, $content);
     
-    return [$left_side, $temp_filepath];
+    return [$left_side, $temp_filepath, $content];
   }
   
 }
