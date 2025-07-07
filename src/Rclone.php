@@ -452,6 +452,32 @@ class Rclone
   }
   
   /**
+   * Centralized method to prepare and execute an rclone command.
+   *
+   * @param string        $command         The rclone command (e.g., 'lsjson', 'copy').
+   * @param array         $args            Arguments for the command.
+   * @param array         $operation_flags Additional operation flags.
+   * @param callable|null $onProgress      Optional progress callback.
+   *
+   * @return Process The completed process instance.
+   */
+  private function _run(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = NULL): Process
+  {
+    $process_args = array_merge([self::getBIN(), $command], $args);
+    $final_envs = $this->allEnvs($operation_flags);
+    
+    $process = new Process($process_args, sys_get_temp_dir(), $final_envs);
+    $process->setTimeout(self::getTimeout());
+    $process->setIdleTimeout(self::getIdleTimeout());
+    
+    if (!empty(self::getInput())) {
+      $process->setInput(self::getInput());
+    }
+    
+    return $this->executeProcess($process, $onProgress);
+  }
+  
+  /**
    * Executes a simple rclone command that returns a string output.
    *
    * @param string        $command         The rclone command (e.g., 'lsjson').
@@ -463,18 +489,7 @@ class Rclone
    */
   private function simpleRun(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = NULL) : string
   {
-    $process_args = array_merge([self::getBIN(), $command], $args);
-    $final_envs = $this->allEnvs($operation_flags);
-    
-    $process = new Process($process_args, sys_get_temp_dir(), $final_envs);
-    $process->setTimeout(self::getTimeout());
-    $process->setIdleTimeout(self::getIdleTimeout());
-    if (!empty(self::getInput())) {
-      $process->setInput(self::getInput());
-    }
-    
-    $completedProcess = $this->executeProcess($process, $onProgress);
-    
+    $completedProcess = $this->_run($command, $args, $operation_flags, $onProgress);
     return trim($completedProcess->getOutput());
   }
   
@@ -503,17 +518,7 @@ class Rclone
       $env_options['progress'] = true;
     }
     
-    $process_args = array_merge([self::getBIN(), $command], $args);
-    $final_envs = $this->allEnvs($env_options);
-    
-    $process = new Process($process_args, sys_get_temp_dir(), $final_envs);
-    $process->setTimeout(self::getTimeout());
-    $process->setIdleTimeout(self::getIdleTimeout());
-    if (!empty(self::getInput())) {
-      $process->setInput(self::getInput());
-    }
-    
-    $completedProcess = $this->executeProcess($process, $onProgress);
+    $completedProcess = $this->_run($command, $args, $env_options, $onProgress);
     
     $stderr = $completedProcess->getErrorOutput();
     

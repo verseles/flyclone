@@ -104,6 +104,11 @@ class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits Prog
     // The `upload_file` method uses `moveto`, which removes the original local file upon success.
     $uploadResult = $rcloneRemote->upload_file($localFilePath, $remoteFilePath);
     self::assertTrue($uploadResult->success, 'Failed to upload file to SFTP.');
+    self::assertObjectHasProperty('stats', $uploadResult, 'The result from upload_file should contain stats.');
+    self::assertIsObject($uploadResult->stats, 'Stats should be an object.');
+    self::assertObjectHasProperty('bytes', $uploadResult->stats, 'Stats object should have a bytes property.');
+    self::assertEquals(strlen($originalContent), $uploadResult->stats->bytes, 'Bytes transferred on upload should match content length.');
+    
     // Verify that the original local file was removed, as expected by `moveto`.
     self::assertFileDoesNotExist($localFilePath, 'Original local file still exists after upload_file (should have been moved).');
     
@@ -123,6 +128,10 @@ class UploadDownloadOperationsTest extends AbstractProviderTest // Inherits Prog
     self::assertTrue($downloadResult->success, 'Failed to download file from SFTP.');
     self::assertEquals($downloadedLocalFilePath, $downloadResult->local_path, 'Downloaded file path is not as expected.');
     self::assertFileExists($downloadedLocalFilePath, 'Downloaded file not found locally.');
+    self::assertObjectHasProperty('stats', $downloadResult, 'The result from download_to_local should contain stats.');
+    self::assertIsObject($downloadResult->stats, 'Stats should be an object.');
+    self::assertObjectHasProperty('bytes', $downloadResult->stats, 'Stats object should have a bytes property.');
+    self::assertEquals(strlen($originalContent), $downloadResult->stats->bytes, 'Bytes transferred on download should match content length.');
     
     // Step 6: Verify that the content of the downloaded file is identical to the original.
     $downloadedContent = file_get_contents($downloadedLocalFilePath);

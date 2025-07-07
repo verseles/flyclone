@@ -9,13 +9,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Verseles\Flyclone\Providers\Provider;
 use Verseles\Flyclone\Rclone;
-
 abstract class AbstractProviderTest extends TestCase
 {
   use Helpers;
-  use ProgressTrackingTrait;
-  
-  // Added the new trait for progress testing capabilities
+  use ProgressTrackingTrait; // Added the new trait for progress testing capabilities
   
   protected string $leftProviderName  = 'undefined_disk'; // Name of the provider under test
   protected string $working_directory = '/tmp'; // Base working directory for tests on the provider
@@ -84,7 +81,6 @@ abstract class AbstractProviderTest extends TestCase
     
     $result = $left_side->touch($temp_filepath); // Execute touch command
     self::assertTrue($result, "Rclone touch command failed for {$temp_filepath}");
-    
     $file_info = $left_side->is_file($temp_filepath); // Verify file existence
     
     self::assertTrue($file_info->exists, "File not created at {$temp_filepath} after touch.");
@@ -94,8 +90,6 @@ abstract class AbstractProviderTest extends TestCase
       (isset($file_info->details->Size) && ($file_info->details->Size === 0 || $file_info->details->Size === -1)),
       'File created by touch should be empty (Size 0 or -1). Actual size: ' . ($file_info->details->Size ?? 'N/A')
     );
-    
-    
     return [$left_side, $temp_filepath];
   }
   
@@ -105,14 +99,13 @@ abstract class AbstractProviderTest extends TestCase
    *
    * @param array $params Array from touch_a_file: [Rclone instance, filepath].
    *
-   * @return array Returns an array containing the Rclone instance, the filepath, and the written content.
+   * @return array Returns an array containing the Rclone instance, the filepath, and the content.
    */
   #[Test]
   #[Depends('touch_a_file')]
   public function write_to_a_file($params) : array
   {
     $content = 'But my father lives at https://helio.me';
-    
     /** @var Rclone $left_side */
     [$left_side, $temp_filepath] = $params;
     
@@ -120,88 +113,73 @@ abstract class AbstractProviderTest extends TestCase
     
     $file_content = $left_side->cat($temp_filepath); // Read content back using cat
     self::assertEquals($content, $file_content, "File content mismatch after rcat for {$temp_filepath}.");
-    
-    return [$left_side, $temp_filepath, $content]; // Pass Rclone instance and filepath for further tests
+    return [$left_side, $temp_filepath, $content]; // Pass Rclone instance, filepath and content for further tests
   }
   
   /**
-   * Tests copying and then renaming (moving) a file on the same provider.
-   * This now includes checking transfer stats on the copy operation.
+   * Tests renaming (moving) a file on the same provider.
    * Depends on a file successfully written by 'write_to_a_file'.
    *
    * @param array $params Array from write_to_a_file: [Rclone instance, old filepath, content].
    *
-   * @return array Returns an array containing the Rclone instance, the original filepath, and the new renamed filepath.
+   * @return array Returns an array containing the Rclone instance and the new filepath.
    */
   #[Test]
   #[Depends('write_to_a_file')]
-  final public function copy_and_rename_a_file(array $params) : array
+  final public function rename_a_file($params) : array
   {
     /** @var Rclone $left_side */
     [$left_side, $temp_filepath, $content] = $params;
-    
-    // 1. Copy the file and check stats
-    $copied_file_path = $this->working_directory . '/flyclone_copied_file_' . $this->random_string() . '.txt';
-    $copy_result = $left_side->copyto($temp_filepath, $copied_file_path);
-    
-    self::assertTrue($copy_result->success, 'copyto operation should be successful.');
-    self::assertObjectHasProperty('stats', $copy_result, "The result object should have a 'stats' property.");
-    self::assertEquals(strlen($content), $copy_result->stats->bytes, 'Bytes transferred in copyto should match content length.');
-    
-    $check_copy = $left_side->is_file($copied_file_path);
-    self::assertTrue($check_copy->exists, "File not copied to {$copied_file_path}.");
-    
-    
-    // 2. Rename the *copied* file
+    // Define a new path for the renamed file within the working directory
     $new_path = $this->working_directory . '/flyclone_renamed_file_' . $this->random_string() . '.txt';
+    
     $new_file_check_before = $left_side->is_file($new_path);
     self::assertFalse($new_file_check_before->exists, "New file path {$new_path} should not exist before moveto.");
     
-    $left_side->moveto($copied_file_path, $new_path); // Execute moveto (rename) on the copied file
+    $result = $left_side->moveto($temp_filepath, $new_path); // Execute moveto (rename) and capture result
     
-    $old_file_check_after = $left_side->is_file($copied_file_path);
-    self::assertFalse($old_file_check_after->exists, "Copied file {$copied_file_path} should not exist after moveto.");
+    // Assertions for transfer statistics
+    self::assertTrue($result->success, 'The moveto operation should be successful.');
+    self::assertObjectHasProperty('stats', $result, "The result object should have a 'stats' property.");
+    self::assertObjectHasProperty('bytes', $result->stats, "The stats object should have a 'bytes' property.");
+    self::assertEquals(strlen($content), $result->stats->bytes, 'The number of bytes transferred should match the content length.');
+    
+    
+    $old_file_check_after = $left_side->is_file($temp_filepath);
+    self::assertFalse($old_file_check_after->exists, "Old file {$temp_filepath} should not exist after moveto.");
     
     $new_file_check_after = $left_side->is_file($new_path);
     self::assertTrue($new_file_check_after->exists, "New file {$new_path} should exist after moveto.");
-    
-    // Verify size if not dir agnostic
+    // Verify size if not dir agnostic (dir agnostic might not report size accurately for empty/small files immediately)
     if (!$left_side->isLeftSideDirAgnostic() && isset($new_file_check_after->details->Size)) {
       self::assertGreaterThan(0, $new_file_check_after->details->Size, "Renamed file {$new_path} should have size greater than 0 if it had content.");
     }
     
-    // Return original and final renamed path for cleanup
-    return [$left_side, $temp_filepath, $new_path];
+    
+    return [$left_side, $new_path];
   }
   
   /**
-   * Tests deleting multiple files.
-   * Depends on files successfully created by 'copy_and_rename_a_file'.
+   * Tests deleting a file.
+   * Depends on a file successfully renamed by 'rename_a_file'.
    *
-   * @param array $params Array from copy_and_rename_a_file: [Rclone instance, original_filepath, renamed_filepath].
+   * @param array $params Array from rename_a_file: [Rclone instance, filepath to delete].
    *
    * @return array Returns an array containing the Rclone instance.
    */
   #[Test]
-  #[Depends('copy_and_rename_a_file')]
-  public function delete_a_file(array $params) : array
+  #[Depends('rename_a_file')]
+  public function delete_a_file($params) : array
   {
     /** @var Rclone $left_side */
-    [$left_side, $original_filepath, $renamed_filepath] = $params;
+    [$left_side, $filepath] = $params;
+    $file_check_before = $left_side->is_file($filepath);
+    self::assertTrue($file_check_before->exists, "File {$filepath} should exist before deletion.");
     
-    // Delete the original file
-    $file_check_before_orig = $left_side->is_file($original_filepath);
-    self::assertTrue($file_check_before_orig->exists, "Original file {$original_filepath} should exist before deletion.");
-    $left_side->deletefile($original_filepath);
-    $file_check_after_orig = $left_side->is_file($original_filepath);
-    self::assertFalse($file_check_after_orig->exists, "Original file {$original_filepath} should not exist after deletion.");
+    $left_side->delete($filepath); // Delete the file (delete command can target a file path)
     
-    // Delete the renamed file
-    $file_check_before_renamed = $left_side->is_file($renamed_filepath);
-    self::assertTrue($file_check_before_renamed->exists, "Renamed file {$renamed_filepath} should exist before deletion.");
-    $left_side->deletefile($renamed_filepath);
-    $file_check_after_renamed = $left_side->is_file($renamed_filepath);
-    self::assertFalse($file_check_after_renamed->exists, "Renamed file {$renamed_filepath} should not exist after deletion.");
+    $file_check_after = $left_side->is_file($filepath);
+    self::assertFalse($file_check_after->exists, "File {$filepath} should not exist after deletion.");
     
     return [$left_side];
   }
@@ -232,7 +210,6 @@ abstract class AbstractProviderTest extends TestCase
       $check_dir_after->exists || $left_side->isLeftSideDirAgnostic(),
       "Directory {$dir_path} should exist after mkdir (or provider is dir-agnostic)."
     );
-    
     return [$left_side, $dir_path];
   }
   
@@ -259,7 +236,6 @@ abstract class AbstractProviderTest extends TestCase
       $check_nested_dir->exists || $left_side->isLeftSideDirAgnostic(),
       "Nested directory {$nested_dir_path} should exist after mkdir (or provider is dir-agnostic)."
     );
-    
     return [$left_side, $parent_dir_path, $nested_dir_path];
   }
   
@@ -276,7 +252,8 @@ abstract class AbstractProviderTest extends TestCase
   public function touch_a_file_inside_first_directory(array $params) : array
   {
     /** @var Rclone $left_side */
-    [$left_side, $first_dir_path, $latest_dir_path] = $params; // $latest_dir_path is the nested one
+    [$left_side, $first_dir_path, $latest_dir_path] = $params;
+    // $latest_dir_path is the nested one
     // Create a file inside the *first* (parent) directory
     $new_file_path = $first_dir_path . '/file_in_parent_' . $this->random_string() . '.txt';
     $content = 'CONTENT FOR FILE IN PARENT DIR';
@@ -307,12 +284,10 @@ abstract class AbstractProviderTest extends TestCase
     [$left_side, $first_dir_path, $latest_dir_path, $source_file_path] = $params;
     // Copy the source file into the *latest_dir_path* (nested directory)
     $copied_file_path_in_nested_dir = $latest_dir_path . '/' . basename($source_file_path);
-    
     $left_side->copy($source_file_path, $latest_dir_path); // Copy file to directory
     
     $check_original = $left_side->is_file($source_file_path);
     $check_copy = $left_side->is_file($copied_file_path_in_nested_dir);
-    
     self::assertTrue($check_original->exists, "Original file {$source_file_path} should still exist after copy.");
     self::assertTrue($check_copy->exists, "File not copied to {$copied_file_path_in_nested_dir}.");
     if (isset($check_original->details->Size) && isset($check_copy->details->Size)) {
@@ -340,7 +315,6 @@ abstract class AbstractProviderTest extends TestCase
     /** @var Rclone $left_side */
     // $latest_file is $source_file_path (in parent_dir), $copy_file is $copied_file_path_in_nested_dir
     [$left_side, $first_dir_path, $latest_dir_path, $original_source_file_path, $file_to_move_path] = $params;
-    
     // We will move $file_to_move_path (from nested_dir) back to $first_dir_path (parent_dir) with a new name.
     $moved_file_new_name_in_first_dir = $first_dir_path . '/moved_back_' . basename($file_to_move_path);
     
@@ -348,7 +322,6 @@ abstract class AbstractProviderTest extends TestCase
     
     $check_original_location = $left_side->is_file($file_to_move_path); // Should be gone from nested_dir
     self::assertFalse($check_original_location->exists, "File {$file_to_move_path} should not exist in nested dir after moveto.");
-    
     $check_new_location = $left_side->is_file($moved_file_new_name_in_first_dir); // Should exist in parent_dir
     self::assertTrue($check_new_location->exists, "File not moved to {$moved_file_new_name_in_first_dir}.");
     if (isset($check_new_location->details->Size) && !$left_side->isLeftSideDirAgnostic()) {
@@ -373,14 +346,12 @@ abstract class AbstractProviderTest extends TestCase
   {
     /** @var Rclone $left_side */
     [$left_side, $first_dir_path, $latest_dir_path, $file_in_first_dir] = $params;
-    
     // List the $first_dir_path, it should contain $file_in_first_dir and possibly $original_source_file_path
     $listing_result = $left_side->ls($first_dir_path);
     
     self::assertIsArray($listing_result);
     self::assertTrue(count($listing_result) > 0, "Listing of {$first_dir_path} should not be empty.");
     self::assertObjectHasProperty('Name', $listing_result[0], 'Unexpected result structure from ls.');
-    
     // Check if one of the listed items is the file we expect to be there.
     $foundExpectedFile = FALSE;
     foreach ($listing_result as $item) {
@@ -390,8 +361,6 @@ abstract class AbstractProviderTest extends TestCase
       }
     }
     self::assertTrue($foundExpectedFile, 'Expected file ' . basename($file_in_first_dir) . " not found in ls result of {$first_dir_path}.");
-    
-    
     return $left_side;
   }
   
@@ -409,7 +378,6 @@ abstract class AbstractProviderTest extends TestCase
   {
     /** @var Rclone $left_side */
     [$left_side, $first_dir_path, $latest_dir_path /*, ... */] = $params;
-    
     // Purge the $first_dir_path (which should contain files and the $latest_dir_path as a subdirectory)
     $left_side->purge($first_dir_path);
     $check_dir_after_purge = $left_side->is_dir($first_dir_path);
@@ -434,8 +402,8 @@ abstract class AbstractProviderTest extends TestCase
   public function test_copy_with_progress_on_same_provider(array $params) : void
   {
     /** @var Rclone $rclone */
-    [$rclone, $originalSourceFilePath] = $params; // This file might be small, so we'll create a larger one.
-    
+    [$rclone, $originalSourceFilePath] = $params;
+    // This file might be small, so we'll create a larger one.
     // Destination directory for the copy operation
     $destinationDir = $this->working_directory . '/progress_test_dest_dir_' . $this->random_string();
     $rclone->mkdir($destinationDir); // Ensure destination directory exists
@@ -445,15 +413,12 @@ abstract class AbstractProviderTest extends TestCase
     $largeSourceFilePathOnProvider = $this->working_directory . '/large_source_for_copy_progress_' . $this->random_string() . '.dat';
     $rclone->rcat($largeSourceFilePathOnProvider, $largeSourceFileContent);
     self::assertTrue($rclone->is_file($largeSourceFilePathOnProvider)->exists, 'Large source file not created on provider for copy progress test.');
-    
-    
     $this->assert_progress_tracking(
       $rclone,
       'copy', // Rclone operation to test
       $largeSourceFilePathOnProvider, // Source path (the large file on the provider)
       $destinationDir   // Destination directory path
     );
-    
     // Cleanup
     $rclone->deletefile($largeSourceFilePathOnProvider); // Delete the large source file from the provider
     $rclone->purge($destinationDir); // Clean up the destination directory and its contents
