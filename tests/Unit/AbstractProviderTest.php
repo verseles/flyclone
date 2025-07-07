@@ -105,7 +105,7 @@ abstract class AbstractProviderTest extends TestCase
    *
    * @param array $params Array from touch_a_file: [Rclone instance, filepath].
    *
-   * @return array Returns an array containing the Rclone instance and the filepath.
+   * @return array Returns an array containing the Rclone instance, the filepath, and the written content.
    */
   #[Test]
   #[Depends('touch_a_file')]
@@ -121,67 +121,87 @@ abstract class AbstractProviderTest extends TestCase
     $file_content = $left_side->cat($temp_filepath); // Read content back using cat
     self::assertEquals($content, $file_content, "File content mismatch after rcat for {$temp_filepath}.");
     
-    return [$left_side, $temp_filepath]; // Pass Rclone instance and filepath for further tests
+    return [$left_side, $temp_filepath, $content]; // Pass Rclone instance and filepath for further tests
   }
   
   /**
-   * Tests renaming (moving) a file on the same provider.
+   * Tests copying and then renaming (moving) a file on the same provider.
+   * This now includes checking transfer stats on the copy operation.
    * Depends on a file successfully written by 'write_to_a_file'.
    *
-   * @param array $params Array from write_to_a_file: [Rclone instance, old filepath].
+   * @param array $params Array from write_to_a_file: [Rclone instance, old filepath, content].
    *
-   * @return array Returns an array containing the Rclone instance and the new filepath.
+   * @return array Returns an array containing the Rclone instance, the original filepath, and the new renamed filepath.
    */
   #[Test]
   #[Depends('write_to_a_file')]
-  final public function rename_a_file($params) : array
+  final public function copy_and_rename_a_file(array $params) : array
   {
     /** @var Rclone $left_side */
-    [$left_side, $temp_filepath] = $params;
-    // Define a new path for the renamed file within the working directory
-    $new_path = $this->working_directory . '/flyclone_renamed_file_' . $this->random_string() . '.txt';
+    [$left_side, $temp_filepath, $content] = $params;
     
+    // 1. Copy the file and check stats
+    $copied_file_path = $this->working_directory . '/flyclone_copied_file_' . $this->random_string() . '.txt';
+    $copy_result = $left_side->copyto($temp_filepath, $copied_file_path);
+    
+    self::assertTrue($copy_result->success, 'copyto operation should be successful.');
+    self::assertObjectHasProperty('stats', $copy_result, "The result object should have a 'stats' property.");
+    self::assertEquals(strlen($content), $copy_result->stats->bytes, 'Bytes transferred in copyto should match content length.');
+    
+    $check_copy = $left_side->is_file($copied_file_path);
+    self::assertTrue($check_copy->exists, "File not copied to {$copied_file_path}.");
+    
+    
+    // 2. Rename the *copied* file
+    $new_path = $this->working_directory . '/flyclone_renamed_file_' . $this->random_string() . '.txt';
     $new_file_check_before = $left_side->is_file($new_path);
     self::assertFalse($new_file_check_before->exists, "New file path {$new_path} should not exist before moveto.");
     
-    $left_side->moveto($temp_filepath, $new_path); // Execute moveto (rename)
+    $left_side->moveto($copied_file_path, $new_path); // Execute moveto (rename) on the copied file
     
-    $old_file_check_after = $left_side->is_file($temp_filepath);
-    self::assertFalse($old_file_check_after->exists, "Old file {$temp_filepath} should not exist after moveto.");
+    $old_file_check_after = $left_side->is_file($copied_file_path);
+    self::assertFalse($old_file_check_after->exists, "Copied file {$copied_file_path} should not exist after moveto.");
     
     $new_file_check_after = $left_side->is_file($new_path);
     self::assertTrue($new_file_check_after->exists, "New file {$new_path} should exist after moveto.");
-    // Verify size if not dir agnostic (dir agnostic might not report size accurately for empty/small files immediately)
+    
+    // Verify size if not dir agnostic
     if (!$left_side->isLeftSideDirAgnostic() && isset($new_file_check_after->details->Size)) {
       self::assertGreaterThan(0, $new_file_check_after->details->Size, "Renamed file {$new_path} should have size greater than 0 if it had content.");
     }
     
-    
-    return [$left_side, $new_path];
+    // Return original and final renamed path for cleanup
+    return [$left_side, $temp_filepath, $new_path];
   }
   
   /**
-   * Tests deleting a file.
-   * Depends on a file successfully renamed by 'rename_a_file'.
+   * Tests deleting multiple files.
+   * Depends on files successfully created by 'copy_and_rename_a_file'.
    *
-   * @param array $params Array from rename_a_file: [Rclone instance, filepath to delete].
+   * @param array $params Array from copy_and_rename_a_file: [Rclone instance, original_filepath, renamed_filepath].
    *
    * @return array Returns an array containing the Rclone instance.
    */
   #[Test]
-  #[Depends('rename_a_file')]
-  public function delete_a_file($params) : array
+  #[Depends('copy_and_rename_a_file')]
+  public function delete_a_file(array $params) : array
   {
     /** @var Rclone $left_side */
-    [$left_side, $filepath] = $params;
+    [$left_side, $original_filepath, $renamed_filepath] = $params;
     
-    $file_check_before = $left_side->is_file($filepath);
-    self::assertTrue($file_check_before->exists, "File {$filepath} should exist before deletion.");
+    // Delete the original file
+    $file_check_before_orig = $left_side->is_file($original_filepath);
+    self::assertTrue($file_check_before_orig->exists, "Original file {$original_filepath} should exist before deletion.");
+    $left_side->deletefile($original_filepath);
+    $file_check_after_orig = $left_side->is_file($original_filepath);
+    self::assertFalse($file_check_after_orig->exists, "Original file {$original_filepath} should not exist after deletion.");
     
-    $left_side->delete($filepath); // Delete the file (delete command can target a file path)
-    
-    $file_check_after = $left_side->is_file($filepath);
-    self::assertFalse($file_check_after->exists, "File {$filepath} should not exist after deletion.");
+    // Delete the renamed file
+    $file_check_before_renamed = $left_side->is_file($renamed_filepath);
+    self::assertTrue($file_check_before_renamed->exists, "Renamed file {$renamed_filepath} should exist before deletion.");
+    $left_side->deletefile($renamed_filepath);
+    $file_check_after_renamed = $left_side->is_file($renamed_filepath);
+    self::assertFalse($file_check_after_renamed->exists, "Renamed file {$renamed_filepath} should not exist after deletion.");
     
     return [$left_side];
   }
