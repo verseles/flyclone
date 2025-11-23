@@ -13,8 +13,12 @@ use Verseles\Flyclone\Exception\ProcessTimedOutException;
 use Verseles\Flyclone\Exception\SyntaxErrorException;
 use Verseles\Flyclone\Exception\TemporaryErrorException;
 use Verseles\Flyclone\Exception\UnknownErrorException;
+use Verseles\Flyclone\Parser\ProgressParser;
+use Verseles\Flyclone\Parser\StatsParser;
 use Verseles\Flyclone\Providers\LocalProvider;
-use Verseles\Flyclone\Providers\Provider;
+use Verseles\Flyclone\Providers\ProviderInterface;
+use Verseles\Flyclone\Util\DurationConverter;
+use Verseles\Flyclone\Util\SizeConverter;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyProcessTimedOutExceptionAlias;
 use Symfony\Component\Process\ExecutableFinder;
@@ -22,198 +26,199 @@ use Symfony\Component\Process\Process;
 
 class Rclone
 {
-  
-  private static string $BIN; // Path to the rclone executable.
-  private Provider      $left_side; // The 'source' provider for rclone operations.
-  private Provider      $right_side; // The 'destination' provider. Can be the same as left_side.
-  
-  private static int    $timeout     = 120; // Default timeout for rclone processes in seconds.
-  private static int    $idleTimeout = 100; // Default idle timeout for rclone processes in seconds.
-  private static array  $flags       = [];  // Global rclone flags to be applied to all commands.
-  private static array  $envs        = [];  // Custom environment variables (usually rclone parameters).
-  private static string $input       = '';  // Input string to be passed to rclone commands (e.g., for rcat).
-  private object        $progress;          // Object to store rclone progress information.
-  private static array  $reset       = [    // Default values for resetting static properties.
-                                            'timeout' => 120,
-                                            'idleTimeout' => 100,
-                                            'flags' => [],
-                                            'envs' => [],
-                                            'input' => '',
-                                            'progress' => [ // Default structure for the progress object.
-                                                            'raw' => '',
-                                                            'dataSent' => '0 B', // Initialize with string value
-                                                            'dataTotal' => '0 B', // Initialize with string value
-                                                            'sent' => 0,
-                                                            'speed' => '0 B/s', // Initialize with string value
-                                                            'eta' => '-', // Initialize with string value
-                                                            'xfr' => '0/0',      // Initialize with string value
-                                            ],
-  ];
-  
+  /** Default timeout for rclone processes in seconds */
+  private const DEFAULT_TIMEOUT = 120;
+
+  /** Default idle timeout for rclone processes in seconds */
+  private const DEFAULT_IDLE_TIMEOUT = 100;
+
+  /** Regex for parsing rclone version string */
+  private const VERSION_REGEX = '/rclone\sv(.+)/m';
+
+  /** Path to the rclone executable (cached) */
+  private static string $BIN;
+
+  /** The 'source' provider for rclone operations */
+  private ProviderInterface $left_side;
+
+  /** The 'destination' provider. Can be the same as left_side */
+  private ProviderInterface $right_side;
+
+  /** Process timeout in seconds for this instance */
+  private int $timeout;
+
+  /** Process idle timeout in seconds for this instance */
+  private int $idleTimeout;
+
+  /** Rclone flags for this instance */
+  private array $flags;
+
+  /** Custom environment variables for this instance */
+  private array $envs;
+
+  /** Input string for rclone commands (e.g., for rcat) */
+  private string $input = '';
+
+  /** Object to store rclone progress information */
+  private object $progress;
+
+  /**
+   * Creates a new RcloneBuilder for fluent configuration.
+   *
+   * @param ProviderInterface $leftSide The primary (source) provider
+   * @return RcloneBuilder Builder instance for fluent configuration
+   *
+   * @example
+   * ```php
+   * $rclone = Rclone::create($s3Provider)
+   *     ->withTimeout(300)
+   *     ->withFlags(['verbose' => true])
+   *     ->build();
+   * ```
+   */
+  public static function create(ProviderInterface $leftSide): RcloneBuilder
+  {
+    return new RcloneBuilder($leftSide);
+  }
+
   /**
    * Constructor for Rclone.
    *
-   * @param Provider      $left_side  The primary (source) provider.
-   * @param Provider|null $right_side The secondary (destination) provider. If null, defaults to $left_side.
-   */
-  public function __construct(Provider $left_side, ?Provider $right_side = NULL)
-  {
-    $this->resetProgress(); // Initialize the progress object for this instance.
-    
-    $this->setLeftSide($left_side);
-    // If no right_side provider is given, rclone operations will target the left_side provider itself (e.g., moving files within the same remote).
-    $this->setRightSide($right_side ?? $left_side);
-  }
-  
-  /**
-   * Gets the current process timeout value.
+   * Prefer using Rclone::create() for a fluent builder pattern.
    *
-   * @return int Timeout in seconds.
+   * @param ProviderInterface      $leftSide    The primary (source) provider
+   * @param ProviderInterface|null $rightSide   The secondary (destination) provider. If null, defaults to $leftSide
+   * @param int                    $timeout     Process timeout in seconds (default: 120)
+   * @param int                    $idleTimeout Process idle timeout in seconds (default: 100)
+   * @param array                  $flags       Rclone flags (e.g., ['verbose' => true])
+   * @param array                  $envs        Custom environment variables
    */
-  public static function getTimeout() : int
-  {
-    return self::$timeout;
+  public function __construct(
+    ProviderInterface $leftSide,
+    ?ProviderInterface $rightSide = null,
+    int $timeout = self::DEFAULT_TIMEOUT,
+    int $idleTimeout = self::DEFAULT_IDLE_TIMEOUT,
+    array $flags = [],
+    array $envs = []
+  ) {
+    $this->left_side = $leftSide;
+    $this->right_side = $rightSide ?? $leftSide;
+    $this->timeout = $timeout;
+    $this->idleTimeout = $idleTimeout;
+    $this->flags = $flags;
+    $this->envs = $envs;
+    $this->resetProgress();
   }
-  
+
   /**
-   * Sets the process timeout value.
+   * Gets the process timeout value for this instance.
    *
-   * @param int $timeout Timeout in seconds.
+   * @return int Timeout in seconds
    */
-  public static function setTimeout(int $timeout) : void
+  public function getTimeout(): int
   {
-    self::$timeout = $timeout;
+    return $this->timeout;
   }
-  
+
   /**
-   * Gets the current process idle timeout value.
+   * Gets the process idle timeout value for this instance.
    *
-   * @return int Idle timeout in seconds.
+   * @return int Idle timeout in seconds
    */
-  public static function getIdleTimeout() : int
+  public function getIdleTimeout(): int
   {
-    return self::$idleTimeout;
+    return $this->idleTimeout;
   }
-  
+
   /**
-   * Sets the process idle timeout value.
+   * Gets the rclone flags for this instance.
    *
-   * @param int $idleTimeout Idle timeout in seconds.
+   * @return array Array of flags
    */
-  public static function setIdleTimeout(int $idleTimeout) : void
+  public function getFlags(): array
   {
-    self::$idleTimeout = $idleTimeout;
+    return $this->flags;
   }
-  
+
   /**
-   * Gets the globally set rclone flags.
+   * Gets the custom environment variables for this instance.
    *
-   * @return array Array of flags.
+   * @return array Array of environment variables
    */
-  public static function getFlags() : array
+  public function getEnvs(): array
   {
-    return self::$flags;
+    return $this->envs;
   }
-  
+
   /**
-   * Sets global rclone flags. These flags are applied to most rclone commands.
-   * Example: ['retries' => 3, 'verbose' => true]
+   * Gets the input string for rclone commands.
    *
-   * @param array $flags Array of flags. Boolean true will be converted to "true", false to "false".
+   * @return string The input string
    */
-  public static function setFlags(array $flags) : void
+  public function getInput(): string
   {
-    self::$flags = $flags;
+    return $this->input;
   }
-  
+
   /**
-   * Gets the custom environment variables.
+   * Sets the input string for rclone commands like 'rcat'.
    *
-   * @return array Array of environment variables.
+   * @param string $input The input string
+   * @return self
    */
-  public static function getEnvs() : array
+  public function setInput(string $input): self
   {
-    return self::$envs;
+    $this->input = $input;
+
+    return $this;
   }
-  
-  /**
-   * Sets custom environment variables, typically used for rclone parameters.
-   * These are usually prefixed with 'RCLONE_' when passed to the process.
-   * Example: ['BUFFER_SIZE' => '64M'] would become 'RCLONE_BUFFER_SIZE=64M' if default prefix is used.
-   *
-   * @param array $envs Array of environment variables. Boolean true will be converted to "true", false to "false".
-   */
-  public static function setEnvs(array $envs) : void
-  {
-    self::$envs = $envs;
-  }
-  
-  /**
-   * Gets the input string for rclone commands like 'rcat'.
-   *
-   * @return string The input string.
-   */
-  public static function getInput() : string
-  {
-    return self::$input;
-  }
-  
-  /**
-   * Sets the input string for rclone commands.
-   *
-   * @param string $input The input string.
-   */
-  public static function setInput(string $input) : void
-  {
-    self::$input = $input;
-  }
-  
+
   /**
    * Checks if the left-side provider is directory-agnostic (does not support empty directories).
    *
-   * @return bool True if directory-agnostic, false otherwise.
+   * @return bool True if directory-agnostic, false otherwise
    */
-  public function isLeftSideDirAgnostic() : bool
+  public function isLeftSideDirAgnostic(): bool
   {
     return $this->getLeftSide()->isDirAgnostic();
   }
-  
+
   /**
    * Checks if the right-side provider is directory-agnostic.
    *
-   * @return bool True if directory-agnostic, false otherwise.
+   * @return bool True if directory-agnostic, false otherwise
    */
-  public function isRightSideDirAgnostic() : bool
+  public function isRightSideDirAgnostic(): bool
   {
     return $this->getRightSide()->isDirAgnostic();
   }
-  
+
   /**
    * Checks if the left-side provider treats buckets as directories.
    *
-   * @return bool True if buckets are treated as directories, false otherwise.
+   * @return bool True if buckets are treated as directories, false otherwise
    */
-  public function isLeftSideBucketAsDir() : bool
+  public function isLeftSideBucketAsDir(): bool
   {
     return $this->getLeftSide()->isBucketAsDir();
   }
-  
+
   /**
    * Checks if the right-side provider treats buckets as directories.
    *
-   * @return bool True if buckets are treated as directories, false otherwise.
+   * @return bool True if buckets are treated as directories, false otherwise
    */
-  public function isRightSideBucketAsDir() : bool
+  public function isRightSideBucketAsDir(): bool
   {
     return $this->getRightSide()->isBucketAsDir();
   }
-  
+
   /**
    * Checks if the left-side provider lists contents as a flat tree (all items at once).
    *
-   * @return bool True if it lists as a tree, false otherwise.
+   * @return bool True if it lists as a tree, false otherwise
    */
-  public function isLeftSideListsAsTree() : bool
+  public function isLeftSideListsAsTree(): bool
   {
     return $this->getLeftSide()->isListsAsTree();
   }
@@ -331,15 +336,15 @@ class Rclone
     $right_flags = $this->right_side->flags();
     $env_vars = array_merge($env_vars, $left_flags, $right_flags);
     
-    // 3. Global flags (set via Rclone::setFlags()).
+    // 3. Global flags (configured via constructor or builder).
     // These are general rclone flags, prefixed with 'RCLONE_'.
     // Rclone::prefix_flags() handles key transformation and boolean-to-string conversion.
-    $env_vars = array_merge($env_vars, self::prefix_flags(self::getFlags(), 'RCLONE_'));
-    
-    // 4. Custom environment variables (set via Rclone::setEnvs()).
+    $env_vars = array_merge($env_vars, self::prefix_flags($this->flags, 'RCLONE_'));
+
+    // 4. Custom environment variables (configured via constructor or builder).
     // These are assumed to be rclone parameters that need the 'RCLONE_' prefix.
     // Rclone::prefix_flags() handles key transformation and boolean-to-string conversion.
-    $env_vars = array_merge($env_vars, self::prefix_flags(self::getEnvs(), 'RCLONE_'));
+    $env_vars = array_merge($env_vars, self::prefix_flags($this->envs, 'RCLONE_'));
     
     // 5. Operation-specific flags (passed as $additional_operation_flags) (highest precedence).
     // These are flags specific to the rclone command being run (e.g., 'copy', 'sync').
@@ -368,7 +373,7 @@ class Rclone
    * @throws UnknownErrorException
    * @throws ProcessTimedOutException
    */
-  private function executeProcess(Process $process, ?callable $onProgress = NULL) : Process
+  private function executeProcess(Process $process, ?callable $onProgress = null) : Process
   {
     try {
       if ($onProgress) {
@@ -390,7 +395,7 @@ class Rclone
     catch (\Exception $e) {
       throw new UnknownErrorException($e, 'An unexpected error occurred: ' . $e->getMessage());
     } finally {
-      self::setInput('');
+      $this->input = '';
     }
   }
   
@@ -426,28 +431,31 @@ class Rclone
    * @throws NoFilesTransferredException
    * @throws UnknownErrorException
    */
-  private function handleProcessFailure(ProcessFailedException $exception) : void
+  #[\NoReturn]
+  private function handleProcessFailure(ProcessFailedException $exception): never
   {
     $process = $exception->getProcess();
     $code = $process->getExitCode();
     $msg = trim($process->getErrorOutput());
-    
+
     // Fallback to a generic message if stderr is empty
     if (empty($msg)) {
       $msg = 'Rclone process failed. Stdout: ' . trim($process->getOutput());
     }
-    
+
+    $exitCode = RcloneExitCode::tryFrom((int) $code);
+
     // Map rclone exit codes to specific exceptions.
-    match ((int) $code) {
-      1 => throw new SyntaxErrorException($exception, $msg, (int) $code),
-      3 => throw new DirectoryNotFoundException($exception, $msg, (int) $code),
-      4 => throw new FileNotFoundException($exception, $msg, (int) $code),
-      5 => throw new TemporaryErrorException($exception, $msg, (int) $code),
-      6 => throw new LessSeriousErrorException($exception, $msg, (int) $code),
-      7 => throw new FatalErrorException($exception, $msg, (int) $code),
-      8 => throw new MaxTransferReachedException($exception, $msg, (int) $code),
-      9 => throw new NoFilesTransferredException($exception, $msg, (int) $code),
-      default => throw new UnknownErrorException($exception, "Rclone error (Code: $code): $msg", (int) $code),
+    throw match ($exitCode) {
+      RcloneExitCode::SYNTAX_ERROR => new SyntaxErrorException($exception, $msg, (int) $code),
+      RcloneExitCode::DIRECTORY_NOT_FOUND => new DirectoryNotFoundException($exception, $msg, (int) $code),
+      RcloneExitCode::FILE_NOT_FOUND => new FileNotFoundException($exception, $msg, (int) $code),
+      RcloneExitCode::TEMPORARY_ERROR => new TemporaryErrorException($exception, $msg, (int) $code),
+      RcloneExitCode::LESS_SERIOUS_ERROR => new LessSeriousErrorException($exception, $msg, (int) $code),
+      RcloneExitCode::FATAL_ERROR => new FatalErrorException($exception, $msg, (int) $code),
+      RcloneExitCode::MAX_TRANSFER_REACHED => new MaxTransferReachedException($exception, $msg, (int) $code),
+      RcloneExitCode::NO_FILES_TRANSFERRED => new NoFilesTransferredException($exception, $msg, (int) $code),
+      default => new UnknownErrorException($exception, "Rclone error (Code: $code): $msg", (int) $code),
     };
   }
   
@@ -461,17 +469,17 @@ class Rclone
    *
    * @return Process The completed process instance.
    */
-  private function _run(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = NULL): Process
+  private function _run(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = null): Process
   {
     $process_args = array_merge([self::getBIN(), $command], $args);
     $final_envs = $this->allEnvs($operation_flags);
     
     $process = new Process($process_args, sys_get_temp_dir(), $final_envs);
-    $process->setTimeout(self::getTimeout());
-    $process->setIdleTimeout(self::getIdleTimeout());
-    
-    if (!empty(self::getInput())) {
-      $process->setInput(self::getInput());
+    $process->setTimeout($this->timeout);
+    $process->setIdleTimeout($this->idleTimeout);
+
+    if (!empty($this->input)) {
+      $process->setInput($this->input);
     }
     
     return $this->executeProcess($process, $onProgress);
@@ -487,7 +495,7 @@ class Rclone
    *
    * @return string The trimmed standard output.
    */
-  private function simpleRun(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = NULL) : string
+  private function simpleRun(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = null) : string
   {
     $completedProcess = $this->_run($command, $args, $operation_flags, $onProgress);
     return trim($completedProcess->getOutput());
@@ -503,7 +511,7 @@ class Rclone
    *
    * @return object An object containing the success status and transfer statistics.
    */
-  private function runAndGetStats(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = NULL) : object
+  private function runAndGetStats(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = null) : object
   {
     $env_options = $operation_flags;
     
@@ -544,145 +552,45 @@ class Rclone
    *
    * @return object An object containing parsed statistics.
    */
-  private function parseFinalStats(string $output) : object
+  private function parseFinalStats(string $output): object
   {
-    $stats = [
-      'errors'                 => 0,
-      'checks'                 => 0,
-      'files'                  => 0, // Transferred/Renamed files
-      'bytes'                  => 0, // Transferred bytes
-      'elapsed_time'           => 0.0,
-      'speed_human'            => '0 B/s',
-      'speed_bytes_per_second' => 0.0,
-    ];
-    
-    $lines = explode("\n", $output);
-    
-    foreach ($lines as $line) {
-      // Regex for --stats-one-line format, e.g., "Transferred:            42 B / 42 B, 100%, 0 B/s, ETA -s"
-      if (preg_match('/Transferred:\s+([\d.]+\s*[KMGTPI]?B)/i', $line, $matches)) {
-        $stats['bytes'] = $this->convertSizeToBytes(trim($matches[1]));
-        continue; // Found one-line stats, continue to next line
-      }
-      
-      // Fallback to multiline stats parsing
-      $parts = explode(':', $line, 2);
-      if (count($parts) < 2) {
-        continue;
-      }
-      
-      $key = trim($parts[0]);
-      $value = trim($parts[1]);
-      
-      switch ($key) {
-        case 'Transferred':
-          if (preg_match('/^\s*([\d.]+\s*[KMGTPI]?B)/i', $value, $byteMatches)) {
-            $stats['bytes'] += $this->convertSizeToBytes(trim($byteMatches[1]));
-          } elseif (preg_match('/^\s*(\d+)\s*\/\s*\d+/', $value, $fileMatches)) {
-            $stats['files'] += (int)$fileMatches[1];
-          }
-          break;
-        case 'Renamed':
-          $stats['files'] += (int)$value;
-          break;
-        case 'Errors':
-          $stats['errors'] = (int)$value;
-          break;
-        case 'Checks':
-          if (preg_match('/^\s*(\d+)/', $value, $matches)) {
-            $stats['checks'] = (int)$matches[1];
-          }
-          break;
-        case 'Elapsed time':
-          $stats['elapsed_time'] = $this->convertDurationToSeconds($value);
-          break;
-      }
-    }
-    
-    if ($stats['elapsed_time'] > 0 && $stats['bytes'] > 0) {
-      $stats['speed_bytes_per_second'] = $stats['bytes'] / $stats['elapsed_time'];
-      $stats['speed_human'] = $this->formatBytes((int) $stats['speed_bytes_per_second']) . '/s';
-    }
-    
-    return (object) $stats;
+    return StatsParser::parse($output);
   }
   
   /**
    * Converts a size string (e.g., "1.5GiB") to bytes.
    *
    * @param string $sizeStr The size string from rclone.
-   *
    * @return int The size in bytes.
+   * @deprecated Use SizeConverter::toBytes() directly
    */
-  private function convertSizeToBytes(string $sizeStr) : int
+  private function convertSizeToBytes(string $sizeStr): int
   {
-    $sizeStr = trim($sizeStr);
-    if (empty($sizeStr) || $sizeStr === '-') {
-      return 0;
-    }
-    
-    $units = ['B' => 0, 'K' => 1, 'M' => 2, 'G' => 3, 'T' => 4, 'P' => 5];
-    preg_match('/([\d.]+)\s*([KMGTPI]?)B?/i', $sizeStr, $matches);
-    
-    if (!isset($matches[1])) {
-      return (int) $sizeStr;
-    }
-    
-    $value = (float) $matches[1];
-    $unit = strtoupper($matches[2] ?? 'B');
-    
-    if (isset($units[$unit])) {
-      return (int) ($value * (1024 ** $units[$unit]));
-    }
-    
-    return (int) $value;
+    return SizeConverter::toBytes($sizeStr);
   }
-  
+
   /**
    * Converts a duration string (e.g., "1m33.4s") to seconds.
    *
    * @param string $durationStr The duration string.
-   *
    * @return float The duration in seconds.
+   * @deprecated Use DurationConverter::toSeconds() directly
    */
-  private function convertDurationToSeconds(string $durationStr) : float
+  private function convertDurationToSeconds(string $durationStr): float
   {
-    $totalSeconds = 0.0;
-    // Regex for days, hours, minutes, seconds, milliseconds
-    if (preg_match('/(\d+(\.\d+)?)d/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1] * 86400;
-    }
-    if (preg_match('/(\d+(\.\d+)?)h/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1] * 3600;
-    }
-    if (preg_match('/(\d+(\.\d+)?)m/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1] * 60;
-    }
-    if (preg_match('/(\d+(\.\d+)?)s/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1];
-    }
-    if (preg_match('/(\d+(\.\d+)?)ms/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1] / 1000;
-    }
-    
-    return $totalSeconds > 0 ? $totalSeconds : (float) $durationStr; // Fallback for plain seconds
+    return DurationConverter::toSeconds($durationStr);
   }
-  
+
   /**
    * Formats bytes into a human-readable string (KiB, MiB, etc.).
    *
    * @param int $bytes The number of bytes.
-   *
    * @return string The formatted string.
+   * @deprecated Use SizeConverter::toHuman() directly
    */
-  private function formatBytes(int $bytes) : string
+  private function formatBytes(int $bytes): string
   {
-    if ($bytes === 0) {
-      return '0 B';
-    }
-    $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
-    $i = floor(log($bytes, 1024));
-    return round($bytes / (1024 ** (int)$i), 2) . ' ' . $units[(int) $i];
+    return SizeConverter::toHuman($bytes);
   }
   
   
@@ -697,7 +605,7 @@ class Rclone
    *
    * @return string The output of the command.
    */
-  private function directRun(string $command, $path = NULL, array $flags = [], ?callable $onProgress = NULL) : string
+  private function directRun(string $command, ?string $path = null, array $flags = [], ?callable $onProgress = null): string
   {
     return $this->simpleRun($command, [
       $this->left_side->backend($path), // Builds the path like 'myremote:path/to/file'
@@ -715,7 +623,7 @@ class Rclone
    *
    * @return string The output of the command.
    */
-  private function directTwinRun(string $command, ?string $left_path = NULL, ?string $right_path = NULL, array $flags = [], ?callable $onProgress = NULL) : string
+  private function directTwinRun(string $command, ?string $left_path = null, ?string $right_path = null, array $flags = [], ?callable $onProgress = null): string
   {
     return $this->simpleRun($command,
                             [$this->left_side->backend($left_path), $this->right_side->backend($right_path)],
@@ -730,13 +638,13 @@ class Rclone
    *
    * @return string|float The rclone version.
    */
-  public function version(bool $numeric = FALSE) : string|float
+  public function version(bool $numeric = false): string|float
   {
     $cmd_output = $this->simpleRun('version'); // Executes 'rclone version'.
-    
+
     // Parses version string like "rclone v1.2.3"
-    preg_match_all('/rclone\sv(.+)/m', $cmd_output, $version_matches, PREG_SET_ORDER, 0);
-    
+    preg_match_all(self::VERSION_REGEX, $cmd_output, $version_matches, PREG_SET_ORDER, 0);
+
     if (isset($version_matches[0][1])) {
       $version_string = $version_matches[0][1];
       return $numeric ? (float) $version_string : $version_string;
@@ -783,7 +691,7 @@ class Rclone
         '/usr/local/sbin',
         '/var/lib/snapd/snap/bin', // Common path for snap installations
       ]);
-      if ($rclone_path === NULL) {
+      if ($rclone_path === null) {
         throw new \RuntimeException('Rclone binary not found. Please ensure rclone is installed and in your PATH, or set the path manually using Rclone::setBIN().');
       }
       return $rclone_path;
@@ -801,61 +709,34 @@ class Rclone
    * @param string $type   The type of output (Process::OUT or Process::ERR).
    * @param string $buffer The output buffer content.
    */
-  private function parseProgress(string $type, string $buffer) : void
+  private function parseProgress(string $type, string $buffer): void
   {
     // Rclone progress output is expected on STDOUT (Process::OUT).
-    // Example line: "Transferred: 1.234 GiB / 2.000 GiB, 61%, 12.345 MiB/s, ETA 1m2s"
-    // Or with checks/errors: "Checks: 100 / 100, 100% | Transferred: 0 / 0, - | Errors: 1 (retrying may help)"
-    // These regexes focus on the transfer part.
-    if ($type === Process::OUT) {
-      // Regex for transfer stats. Made more robust for units (KiB, MiB, GiB, TiB, B) and ETA (can be '-', 'Ns', etc.).
-      // iu modifiers: case-insensitive, unicode.
-      // Corrected to ensure dataTotal allows for '-' or actual values
-      $regex_base = '([\d.]+\s[KMGT]?i?B)\s*\/\s*([\d.]+\s[KMGT]?i?B|-),\s*(\d+)\%,\s*([\d.]+\s[KMGT]?i?B\/s|-),\s*ETA\s*(\S+)';
-      $regex = '/' . $regex_base . '/iu';
-      $regex_xfr = '/' . $regex_base . '\s*\(xfr#(\d+\/\d+)\)/iu'; // For multiple file transfers
-      
-      $matches_xfr = [];
-      $matches = [];
-      
-      // Try matching the version with xfr count first
-      preg_match($regex_xfr, $buffer, $matches_xfr);
-      
-      if (isset($matches_xfr[0]) && count($matches_xfr) >= 7) {
-        // raw, dataSent, dataTotal, sent (percentage), speed, eta, xfr_count
-        $this->setProgressData($matches_xfr[0], $matches_xfr[1], $matches_xfr[2], (int) $matches_xfr[3], $matches_xfr[4], $matches_xfr[5], $matches_xfr[6]);
-      } else {
-        // Fallback to matching without xfr count (e.g., single file transfer or overall progress)
-        preg_match($regex, $buffer, $matches);
-        if (isset($matches[0]) && count($matches) >= 6) {
-          // raw, dataSent, dataTotal, sent (percentage), speed, eta
-          $this->setProgressData($matches[0], $matches[1], $matches[2], (int) $matches[3], $matches[4], $matches[5]);
-        }
-      }
+    if ($type !== Process::OUT) {
+      return;
+    }
+
+    $parsed = ProgressParser::parse($buffer);
+    if ($parsed !== null) {
+      $this->progress = $parsed;
     }
   }
   
   /**
    * Sets the internal progress object with parsed data.
    *
-   * @param string      $raw            The raw progress string.
-   * @param string      $dataSent       Amount of data sent (e.g., "1.2 GiB").
-   * @param string      $dataTotal      Total amount of data (e.g., "2.0 GiB", or "-" if unknown).
-   * @param int         $sentPercentage Percentage completed.
-   * @param string      $speed          Current transfer speed (e.g., "10 MiB/s", or "-" if unknown).
-   * @param string      $eta            Estimated time remaining (e.g., "1m2s", "-", "0s").
-   * @param string|null $xfr            Current transferring files count (e.g., "1/10"). Defaults to '1/1'.
+   * @deprecated Use ProgressParser::parse() instead
    */
-  private function setProgressData(string $raw, string $dataSent, string $dataTotal, int $sentPercentage, string $speed, string $eta, ?string $xfr = '1/1') : void
+  private function setProgressData(string $raw, string $dataSent, string $dataTotal, int $sentPercentage, string $speed, string $eta, ?string $xfr = '1/1'): void
   {
     $this->progress = (object) [
-      'raw' => trim($raw), // Trim the raw string
+      'raw' => trim($raw),
       'dataSent' => trim($dataSent),
       'dataTotal' => trim($dataTotal),
-      'sent' => $sentPercentage, // Storing as integer percentage
+      'sent' => $sentPercentage,
       'speed' => trim($speed),
       'eta' => trim($eta),
-      'xfr' => $xfr ?? '1/1', // Default if not provided (e.g., single file transfer)
+      'xfr' => $xfr ?? '1/1',
     ];
   }
   
@@ -872,10 +753,9 @@ class Rclone
   /**
    * Resets the progress object to its default state.
    */
-  private function resetProgress() : void
+  private function resetProgress(): void
   {
-    // Initialize with default/empty values from self::$reset['progress']
-    $this->progress = (object) self::$reset['progress'];
+    $this->progress = ProgressParser::getDefault();
   }
   
   
@@ -893,7 +773,7 @@ class Rclone
   {
     $result_json = $this->simpleRun('lsjson', [$this->left_side->backend($path)], $flags);
     
-    $items_array = json_decode($result_json, FALSE, 512, JSON_THROW_ON_ERROR);
+    $items_array = json_decode($result_json, false, 512, JSON_THROW_ON_ERROR);
     
     // Process ModTime for each item
     foreach ($items_array as $item) {
@@ -903,7 +783,7 @@ class Rclone
         // Removing excessive nanoseconds for broader compatibility if necessary.
         $time_string = preg_replace('/\.(\d{6})\d*Z$/', '.$1Z', $item->ModTime);
         $timestamp = strtotime($time_string);
-        $item->ModTime = ($timestamp !== FALSE) ? $timestamp : NULL;
+        $item->ModTime = ($timestamp !== false) ? $timestamp : null;
       }
     }
     return $items_array;
@@ -970,7 +850,7 @@ class Rclone
     }
     catch (\Exception $e) {
       // If ls fails (e.g., parent directory not found), the item doesn't exist or is inaccessible.
-      return (object) ['exists' => FALSE, 'details' => [], 'error' => $e];
+      return (object) ['exists' => false, 'details' => [], 'error' => $e];
     }
   }
   
@@ -986,7 +866,7 @@ class Rclone
    *
    * @return bool True on success.
    */
-  public function touch(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
+  public function touch(string $path, array $flags = [], ?callable $onProgress = null) : bool
   {
     $this->directRun('touch', $path, $flags, $onProgress);
     return true;
@@ -1003,7 +883,7 @@ class Rclone
    *
    * @return bool True on success.
    */
-  public function mkdir(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
+  public function mkdir(string $path, array $flags = [], ?callable $onProgress = null) : bool
   {
     $this->directRun('mkdir', $path, $flags, $onProgress);
     return true;
@@ -1021,7 +901,7 @@ class Rclone
    *
    * @return bool True on success.
    */
-  public function rmdir(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
+  public function rmdir(string $path, array $flags = [], ?callable $onProgress = null) : bool
   {
     $this->directRun('rmdir', $path, $flags, $onProgress);
     return true;
@@ -1038,7 +918,7 @@ class Rclone
    *
    * @return bool True on success.
    */
-  public function rmdirs(string $path, array $flags = [], ?callable $onProgress = NULL) : bool
+  public function rmdirs(string $path, array $flags = [], ?callable $onProgress = null) : bool
   {
     $this->directRun('rmdirs', $path, $flags, $onProgress);
     return true;
@@ -1056,7 +936,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function purge(string $path, array $flags = [], ?callable $onProgress = NULL) : object
+  public function purge(string $path, array $flags = [], ?callable $onProgress = null) : object
   {
     return $this->runAndGetStats('purge', [$this->left_side->backend($path)], $flags, $onProgress);
   }
@@ -1073,7 +953,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function delete(?string $path = NULL, array $flags = [], ?callable $onProgress = NULL) : object
+  public function delete(?string $path = null, array $flags = [], ?callable $onProgress = null): object
   {
     return $this->runAndGetStats('delete', [$this->left_side->backend($path)], $flags, $onProgress);
   }
@@ -1090,7 +970,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function deletefile(string $path, array $flags = [], ?callable $onProgress = NULL) : object
+  public function deletefile(string $path, array $flags = [], ?callable $onProgress = null) : object
   {
     return $this->runAndGetStats('deletefile', [$this->left_side->backend($path)], $flags, $onProgress);
   }
@@ -1105,13 +985,13 @@ class Rclone
    * @return object Object with 'count' and 'bytes' properties.
    * @throws \JsonException If JSON decoding fails.
    */
-  public function size(?string $path = NULL, array $flags = [], ?callable $onProgress = NULL) : object
+  public function size(?string $path = null, array $flags = [], ?callable $onProgress = null): object
   {
     // Ensure --json flag is added for parsable output.
     $size_flags = array_merge($flags, ['json' => 'true']);
     $result_json = $this->simpleRun('size', [$this->left_side->backend($path)], $size_flags, $onProgress);
-    
-    return json_decode($result_json, FALSE, 512, JSON_THROW_ON_ERROR);
+
+    return json_decode($result_json, false, 512, JSON_THROW_ON_ERROR);
   }
   
   /**
@@ -1125,7 +1005,7 @@ class Rclone
    *
    * @return string The file content.
    */
-  public function cat(string $path, array $flags = [], ?callable $onProgress = NULL) : string
+  public function cat(string $path, array $flags = [], ?callable $onProgress = null) : string
   {
     return $this->simpleRun('cat', [$this->left_side->backend($path)], $flags, $onProgress);
   }
@@ -1143,9 +1023,9 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function rcat(string $path, string $input, array $flags = [], ?callable $onProgress = NULL) : object
+  public function rcat(string $path, string $input, array $flags = [], ?callable $onProgress = null) : object
   {
-    self::setInput($input);
+    $this->setInput($input);
     return $this->runAndGetStats('rcat', [$this->left_side->backend($path)], $flags, $onProgress);
   }
   
@@ -1161,7 +1041,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function upload_file(string $local_path, string $remote_path, array $flags = [], ?callable $onProgress = NULL) : object
+  public function upload_file(string $local_path, string $remote_path, array $flags = [], ?callable $onProgress = null) : object
   {
     // Create a temporary Rclone setup: local provider as source, current Rclone's left_side as destination.
     $uploader = new self(left_side: new LocalProvider('local_temp_upload'), right_side: $this->left_side);
@@ -1182,14 +1062,14 @@ class Rclone
    *
    * @return object The result object from the copy operation, with an added `local_path` property on success.
    */
-  public function download_to_local(string $remote_path, ?string $local_destination_path = NULL, array $flags = [], ?callable $onProgress = NULL) : object
+  public function download_to_local(string $remote_path, ?string $local_destination_path = null, array $flags = [], ?callable $onProgress = null): object
   {
     $remote_filename = basename($remote_path);
-    
-    if ($local_destination_path === NULL) {
+
+    if ($local_destination_path === null) {
       // Create a temporary directory and append the remote filename.
       $temp_dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'flyclone_download_' . uniqid();
-      if (!mkdir($temp_dir, 0777, TRUE) && !is_dir($temp_dir)) {
+      if (!mkdir($temp_dir, 0700, true) && !is_dir($temp_dir)) {
         // @codeCoverageIgnoreStart
         // This case is hard to test reliably without manipulating system permissions.
         throw new \RuntimeException("Failed to create temporary directory: $temp_dir");
@@ -1203,7 +1083,7 @@ class Rclone
       // A specific file path is provided. Ensure parent directory exists.
       $parent_dir = dirname($local_destination_path);
       if (!is_dir($parent_dir)) {
-        if (!mkdir($parent_dir, 0777, TRUE) && !is_dir($parent_dir)) {
+        if (!mkdir($parent_dir, 0700, true) && !is_dir($parent_dir)) {
           // @codeCoverageIgnoreStart
           throw new \RuntimeException("Failed to create parent directory for download: $parent_dir");
           // @codeCoverageIgnoreEnd
@@ -1238,7 +1118,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function copy(string $source_path, string $dest_DIR_path, array $flags = [], ?callable $onProgress = NULL) : object
+  public function copy(string $source_path, string $dest_DIR_path, array $flags = [], ?callable $onProgress = null) : object
   {
     return $this->runAndGetStats('copy', [$this->left_side->backend($source_path), $this->right_side->backend($dest_DIR_path)], $flags, $onProgress);
   }
@@ -1256,7 +1136,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function copyto(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = NULL) : object
+  public function copyto(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = null) : object
   {
     return $this->runAndGetStats('copyto', [$this->left_side->backend($source_path), $this->right_side->backend($dest_path)], $flags, $onProgress);
   }
@@ -1275,7 +1155,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function move(string $source_path, string $dest_DIR_path, array $flags = [], ?callable $onProgress = NULL) : object
+  public function move(string $source_path, string $dest_DIR_path, array $flags = [], ?callable $onProgress = null) : object
   {
     return $this->runAndGetStats('move', [$this->left_side->backend($source_path), $this->right_side->backend($dest_DIR_path)], $flags, $onProgress);
   }
@@ -1295,7 +1175,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function moveto(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = NULL) : object
+  public function moveto(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = null) : object
   {
     return $this->runAndGetStats('moveto', [$this->left_side->backend($source_path), $this->right_side->backend($dest_path)], $flags, $onProgress);
   }
@@ -1312,7 +1192,7 @@ class Rclone
    *
    * @return object Object with 'success' status and 'stats'.
    */
-  public function sync(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = NULL) : object
+  public function sync(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = null) : object
   {
     return $this->runAndGetStats('sync', [$this->left_side->backend($source_path), $this->right_side->backend($dest_path)], $flags, $onProgress);
   }
@@ -1332,13 +1212,13 @@ class Rclone
    *              will throw an exception if rclone exits non-zero, unless specific
    *              error handling flags like --one-way and --differ are used and result in exit code 0.
    */
-  public function check(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = NULL) : bool
+  public function check(string $source_path, string $dest_path, array $flags = [], ?callable $onProgress = null) : bool
   {
     // Rclone 'check' can exit non-zero if differences are found.
     // The 'simpleRun' method will throw an exception for non-zero exit codes.
     // For 'check', a successful run (exit code 0) means no differences were found (or ignored by flags).
     $this->directTwinRun('check', $source_path, $dest_path, $flags, $onProgress);
-    return TRUE; // If directTwinRun doesn't throw, it means rclone exited with 0.
+    return true; // If directTwinRun doesn't throw, it means rclone exited with 0.
   }
   
   /**
@@ -1441,8 +1321,8 @@ class Rclone
     
     $final_envs = $this->allEnvs();
     $process = new Process($command_array, sys_get_temp_dir(), $final_envs);
-    $process->setTimeout(self::getTimeout());
-    $process->setIdleTimeout(self::getIdleTimeout());
+    $process->setTimeout($this->timeout);
+    $process->setIdleTimeout($this->idleTimeout);
     
     $completedProcess = $this->executeProcess($process);
     
@@ -1452,39 +1332,39 @@ class Rclone
   /**
    * Gets the left-side (source) provider.
    *
-   * @return Provider The left-side provider instance.
+   * @return ProviderInterface The left-side provider instance.
    */
-  public function getLeftSide() : Provider
+  public function getLeftSide(): ProviderInterface
   {
     return $this->left_side;
   }
-  
+
   /**
    * Sets the left-side (source) provider.
    *
-   * @param Provider $left_side The provider instance.
+   * @param ProviderInterface $left_side The provider instance.
    */
-  public function setLeftSide(Provider $left_side) : void
+  public function setLeftSide(ProviderInterface $left_side): void
   {
     $this->left_side = $left_side;
   }
-  
+
   /**
    * Gets the right-side (destination) provider.
    *
-   * @return Provider The right-side provider instance.
+   * @return ProviderInterface The right-side provider instance.
    */
-  public function getRightSide() : Provider
+  public function getRightSide(): ProviderInterface
   {
     return $this->right_side;
   }
-  
+
   /**
    * Sets the right-side (destination) provider.
    *
-   * @param Provider $right_side The provider instance.
+   * @param ProviderInterface $right_side The provider instance.
    */
-  public function setRightSide(Provider $right_side) : void
+  public function setRightSide(ProviderInterface $right_side): void
   {
     $this->right_side = $right_side;
   }

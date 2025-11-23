@@ -13,4 +13,6 @@ Thumbs.db
 .phpunit.result.cache
 .phpunit.cache
 .cache
+/coverage
+coverage.xml
 tests/Unit/sandbox

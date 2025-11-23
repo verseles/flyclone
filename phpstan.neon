@@ -1,0 +1,11 @@
+parameters:
+  level: 6
+  paths:
+    - src
+  excludePaths:
+    - src/Providers/CryptProvider.php
+    - src/Providers/UnionProvider.php
+  reportUnmatchedIgnoredErrors: false
+  ignoreErrors:
+    # Allow dynamic properties on stdClass objects returned by rclone
+    - '#Access to an undefined property stdClass::\$\w+#'
