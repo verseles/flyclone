@@ -4,7 +4,12 @@ namespace Verseles\Flyclone\Providers;
 
 use Verseles\Flyclone\Rclone;
 
-abstract class AbstractProvider
+/**
+ * Abstract base class for all rclone storage providers.
+ *
+ * Provides common functionality and default implementations for the ProviderInterface.
+ */
+abstract class AbstractProvider implements ProviderInterface
 {
   /** @var string The rclone provider type (e.g., 's3', 'local', 'sftp') */
   protected string $provider;

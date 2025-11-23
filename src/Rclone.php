@@ -14,7 +14,7 @@ use Verseles\Flyclone\Exception\SyntaxErrorException;
 use Verseles\Flyclone\Exception\TemporaryErrorException;
 use Verseles\Flyclone\Exception\UnknownErrorException;
 use Verseles\Flyclone\Providers\LocalProvider;
-use Verseles\Flyclone\Providers\Provider;
+use Verseles\Flyclone\Providers\ProviderInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyProcessTimedOutExceptionAlias;
 use Symfony\Component\Process\ExecutableFinder;
@@ -44,8 +44,8 @@ class Rclone
   private const VERSION_REGEX = '/rclone\sv(.+)/m';
 
   private static string $BIN; // Path to the rclone executable.
-  private Provider      $left_side; // The 'source' provider for rclone operations.
-  private Provider      $right_side; // The 'destination' provider. Can be the same as left_side.
+  private ProviderInterface $left_side; // The 'source' provider for rclone operations.
+  private ProviderInterface $right_side; // The 'destination' provider. Can be the same as left_side.
   
   private static int    $timeout     = 120; // Default timeout for rclone processes in seconds.
   private static int    $idleTimeout = 100; // Default idle timeout for rclone processes in seconds.
@@ -73,10 +73,10 @@ class Rclone
   /**
    * Constructor for Rclone.
    *
-   * @param Provider      $left_side  The primary (source) provider.
-   * @param Provider|null $right_side The secondary (destination) provider. If null, defaults to $left_side.
+   * @param ProviderInterface      $left_side  The primary (source) provider.
+   * @param ProviderInterface|null $right_side The secondary (destination) provider. If null, defaults to $left_side.
    */
-  public function __construct(Provider $left_side, ?Provider $right_side = null)
+  public function __construct(ProviderInterface $left_side, ?ProviderInterface $right_side = null)
   {
     $this->resetProgress(); // Initialize the progress object for this instance.
     
@@ -1469,39 +1469,39 @@ class Rclone
   /**
    * Gets the left-side (source) provider.
    *
-   * @return Provider The left-side provider instance.
+   * @return ProviderInterface The left-side provider instance.
    */
-  public function getLeftSide() : Provider
+  public function getLeftSide(): ProviderInterface
   {
     return $this->left_side;
   }
-  
+
   /**
    * Sets the left-side (source) provider.
    *
-   * @param Provider $left_side The provider instance.
+   * @param ProviderInterface $left_side The provider instance.
    */
-  public function setLeftSide(Provider $left_side) : void
+  public function setLeftSide(ProviderInterface $left_side): void
   {
     $this->left_side = $left_side;
   }
-  
+
   /**
    * Gets the right-side (destination) provider.
    *
-   * @return Provider The right-side provider instance.
+   * @return ProviderInterface The right-side provider instance.
    */
-  public function getRightSide() : Provider
+  public function getRightSide(): ProviderInterface
   {
     return $this->right_side;
   }
-  
+
   /**
    * Sets the right-side (destination) provider.
    *
-   * @param Provider $right_side The provider instance.
+   * @param ProviderInterface $right_side The provider instance.
    */
-  public function setRightSide(Provider $right_side) : void
+  public function setRightSide(ProviderInterface $right_side): void
   {
     $this->right_side = $right_side;
   }
