@@ -35,7 +35,7 @@
     "test-offline" : "phpunit --testsuite offline",
     "security-check" : "security-checker security:check composer.lock",
     "post-install-cmd"   : [
-      "exit 0 || [ $COMPOSER_DEV_MODE -eq 0 ] || composer run security-check"
+      "[ \"$COMPOSER_DEV_MODE\" -eq 0 ] || composer run security-check || true"
     ]
   },
   "config"            : {
