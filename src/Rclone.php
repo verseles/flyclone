@@ -13,8 +13,12 @@ use Verseles\Flyclone\Exception\ProcessTimedOutException;
 use Verseles\Flyclone\Exception\SyntaxErrorException;
 use Verseles\Flyclone\Exception\TemporaryErrorException;
 use Verseles\Flyclone\Exception\UnknownErrorException;
+use Verseles\Flyclone\Parser\ProgressParser;
+use Verseles\Flyclone\Parser\StatsParser;
 use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Providers\ProviderInterface;
+use Verseles\Flyclone\Util\DurationConverter;
+use Verseles\Flyclone\Util\SizeConverter;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyProcessTimedOutExceptionAlias;
 use Symfony\Component\Process\ExecutableFinder;
@@ -567,145 +571,45 @@ class Rclone
    *
    * @return object An object containing parsed statistics.
    */
-  private function parseFinalStats(string $output) : object
+  private function parseFinalStats(string $output): object
   {
-    $stats = [
-      'errors'                 => 0,
-      'checks'                 => 0,
-      'files'                  => 0, // Transferred/Renamed files
-      'bytes'                  => 0, // Transferred bytes
-      'elapsed_time'           => 0.0,
-      'speed_human'            => '0 B/s',
-      'speed_bytes_per_second' => 0.0,
-    ];
-    
-    $lines = explode("\n", $output);
-    
-    foreach ($lines as $line) {
-      // Regex for --stats-one-line format, e.g., "Transferred:            42 B / 42 B, 100%, 0 B/s, ETA -s"
-      if (preg_match(self::STATS_TRANSFERRED_REGEX, $line, $matches)) {
-        $stats['bytes'] = $this->convertSizeToBytes(trim($matches[1]));
-        continue; // Found one-line stats, continue to next line
-      }
-      
-      // Fallback to multiline stats parsing
-      $parts = explode(':', $line, 2);
-      if (count($parts) < 2) {
-        continue;
-      }
-      
-      $key = trim($parts[0]);
-      $value = trim($parts[1]);
-      
-      switch ($key) {
-        case 'Transferred':
-          if (preg_match('/^\s*([\d.]+\s*[KMGTPI]?B)/i', $value, $byteMatches)) {
-            $stats['bytes'] += $this->convertSizeToBytes(trim($byteMatches[1]));
-          } elseif (preg_match('/^\s*(\d+)\s*\/\s*\d+/', $value, $fileMatches)) {
-            $stats['files'] += (int)$fileMatches[1];
-          }
-          break;
-        case 'Renamed':
-          $stats['files'] += (int)$value;
-          break;
-        case 'Errors':
-          $stats['errors'] = (int)$value;
-          break;
-        case 'Checks':
-          if (preg_match('/^\s*(\d+)/', $value, $matches)) {
-            $stats['checks'] = (int)$matches[1];
-          }
-          break;
-        case 'Elapsed time':
-          $stats['elapsed_time'] = $this->convertDurationToSeconds($value);
-          break;
-      }
-    }
-    
-    if ($stats['elapsed_time'] > 0 && $stats['bytes'] > 0) {
-      $stats['speed_bytes_per_second'] = $stats['bytes'] / $stats['elapsed_time'];
-      $stats['speed_human'] = $this->formatBytes((int) $stats['speed_bytes_per_second']) . '/s';
-    }
-    
-    return (object) $stats;
+    return StatsParser::parse($output);
   }
   
   /**
    * Converts a size string (e.g., "1.5GiB") to bytes.
    *
    * @param string $sizeStr The size string from rclone.
-   *
    * @return int The size in bytes.
+   * @deprecated Use SizeConverter::toBytes() directly
    */
   private function convertSizeToBytes(string $sizeStr): int
   {
-    $sizeStr = trim($sizeStr);
-    if (empty($sizeStr) || $sizeStr === '-') {
-      return 0;
-    }
-
-    $units = ['B' => 0, 'K' => 1, 'M' => 2, 'G' => 3, 'T' => 4, 'P' => 5];
-    preg_match(self::SIZE_REGEX, $sizeStr, $matches);
-    
-    if (!isset($matches[1])) {
-      return (int) $sizeStr;
-    }
-    
-    $value = (float) $matches[1];
-    $unit = strtoupper($matches[2] ?? 'B');
-    
-    if (isset($units[$unit])) {
-      return (int) ($value * (1024 ** $units[$unit]));
-    }
-    
-    return (int) $value;
+    return SizeConverter::toBytes($sizeStr);
   }
-  
+
   /**
    * Converts a duration string (e.g., "1m33.4s") to seconds.
    *
    * @param string $durationStr The duration string.
-   *
    * @return float The duration in seconds.
+   * @deprecated Use DurationConverter::toSeconds() directly
    */
-  private function convertDurationToSeconds(string $durationStr) : float
+  private function convertDurationToSeconds(string $durationStr): float
   {
-    $totalSeconds = 0.0;
-    // Regex for days, hours, minutes, seconds, milliseconds
-    if (preg_match('/(\d+(\.\d+)?)d/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1] * 86400;
-    }
-    if (preg_match('/(\d+(\.\d+)?)h/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1] * 3600;
-    }
-    if (preg_match('/(\d+(\.\d+)?)m/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1] * 60;
-    }
-    if (preg_match('/(\d+(\.\d+)?)s/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1];
-    }
-    if (preg_match('/(\d+(\.\d+)?)ms/', $durationStr, $matches)) {
-      $totalSeconds += (float) $matches[1] / 1000;
-    }
-    
-    return $totalSeconds > 0 ? $totalSeconds : (float) $durationStr; // Fallback for plain seconds
+    return DurationConverter::toSeconds($durationStr);
   }
-  
+
   /**
    * Formats bytes into a human-readable string (KiB, MiB, etc.).
    *
    * @param int $bytes The number of bytes.
-   *
    * @return string The formatted string.
+   * @deprecated Use SizeConverter::toHuman() directly
    */
-  private function formatBytes(int $bytes) : string
+  private function formatBytes(int $bytes): string
   {
-    if ($bytes === 0) {
-      return '0 B';
-    }
-    $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
-    $i = floor(log($bytes, 1024));
-    return round($bytes / (1024 ** (int)$i), 2) . ' ' . $units[(int) $i];
+    return SizeConverter::toHuman($bytes);
   }
   
   
@@ -827,52 +731,31 @@ class Rclone
   private function parseProgress(string $type, string $buffer): void
   {
     // Rclone progress output is expected on STDOUT (Process::OUT).
-    // Example line: "Transferred: 1.234 GiB / 2.000 GiB, 61%, 12.345 MiB/s, ETA 1m2s"
     if ($type !== Process::OUT) {
       return;
     }
 
-    $matches_xfr = [];
-    $matches = [];
-
-    // Try matching the version with xfr count first
-    preg_match(self::PROGRESS_XFR_REGEX, $buffer, $matches_xfr);
-
-    if (isset($matches_xfr[0]) && count($matches_xfr) >= 7) {
-      // raw, dataSent, dataTotal, sent (percentage), speed, eta, xfr_count
-      $this->setProgressData($matches_xfr[0], $matches_xfr[1], $matches_xfr[2], (int) $matches_xfr[3], $matches_xfr[4], $matches_xfr[5], $matches_xfr[6]);
-      return;
-    }
-
-    // Fallback to matching without xfr count (e.g., single file transfer or overall progress)
-    preg_match(self::PROGRESS_REGEX, $buffer, $matches);
-    if (isset($matches[0]) && count($matches) >= 6) {
-      // raw, dataSent, dataTotal, sent (percentage), speed, eta
-      $this->setProgressData($matches[0], $matches[1], $matches[2], (int) $matches[3], $matches[4], $matches[5]);
+    $parsed = ProgressParser::parse($buffer);
+    if ($parsed !== null) {
+      $this->progress = $parsed;
     }
   }
   
   /**
    * Sets the internal progress object with parsed data.
    *
-   * @param string      $raw            The raw progress string.
-   * @param string      $dataSent       Amount of data sent (e.g., "1.2 GiB").
-   * @param string      $dataTotal      Total amount of data (e.g., "2.0 GiB", or "-" if unknown).
-   * @param int         $sentPercentage Percentage completed.
-   * @param string      $speed          Current transfer speed (e.g., "10 MiB/s", or "-" if unknown).
-   * @param string      $eta            Estimated time remaining (e.g., "1m2s", "-", "0s").
-   * @param string|null $xfr            Current transferring files count (e.g., "1/10"). Defaults to '1/1'.
+   * @deprecated Use ProgressParser::parse() instead
    */
-  private function setProgressData(string $raw, string $dataSent, string $dataTotal, int $sentPercentage, string $speed, string $eta, ?string $xfr = '1/1') : void
+  private function setProgressData(string $raw, string $dataSent, string $dataTotal, int $sentPercentage, string $speed, string $eta, ?string $xfr = '1/1'): void
   {
     $this->progress = (object) [
-      'raw' => trim($raw), // Trim the raw string
+      'raw' => trim($raw),
       'dataSent' => trim($dataSent),
       'dataTotal' => trim($dataTotal),
-      'sent' => $sentPercentage, // Storing as integer percentage
+      'sent' => $sentPercentage,
       'speed' => trim($speed),
       'eta' => trim($eta),
-      'xfr' => $xfr ?? '1/1', // Default if not provided (e.g., single file transfer)
+      'xfr' => $xfr ?? '1/1',
     ];
   }
   
@@ -889,10 +772,9 @@ class Rclone
   /**
    * Resets the progress object to its default state.
    */
-  private function resetProgress() : void
+  private function resetProgress(): void
   {
-    // Initialize with default/empty values from self::$reset['progress']
-    $this->progress = (object) self::$reset['progress'];
+    $this->progress = ProgressParser::getDefault();
   }
   
   
