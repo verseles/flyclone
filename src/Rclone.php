@@ -26,218 +26,199 @@ use Symfony\Component\Process\Process;
 
 class Rclone
 {
-  /**
-   * Regex pattern base for parsing rclone transfer progress.
-   * Matches: "1.234 GiB / 2.000 GiB, 61%, 12.345 MiB/s, ETA 1m2s"
-   */
-  private const PROGRESS_REGEX_BASE = '([\d.]+\s[KMGT]?i?B)\s*\/\s*([\d.]+\s[KMGT]?i?B|-),\s*(\d+)\%,\s*([\d.]+\s[KMGT]?i?B\/s|-),\s*ETA\s*(\S+)';
+  /** Default timeout for rclone processes in seconds */
+  private const DEFAULT_TIMEOUT = 120;
 
-  /** Regex for basic transfer progress (without file transfer count) */
-  private const PROGRESS_REGEX = '/' . self::PROGRESS_REGEX_BASE . '/iu';
-
-  /** Regex for transfer progress with file transfer count (xfr#N/M) */
-  private const PROGRESS_XFR_REGEX = '/' . self::PROGRESS_REGEX_BASE . '\s*\(xfr#(\d+\/\d+)\)/iu';
-
-  /** Regex for parsing transferred bytes from stats output */
-  private const STATS_TRANSFERRED_REGEX = '/Transferred:\s+([\d.]+\s*[KMGTPI]?B)/i';
-
-  /** Regex for parsing size values with units */
-  private const SIZE_REGEX = '/([\d.]+)\s*([KMGTPI]?)B?/i';
+  /** Default idle timeout for rclone processes in seconds */
+  private const DEFAULT_IDLE_TIMEOUT = 100;
 
   /** Regex for parsing rclone version string */
   private const VERSION_REGEX = '/rclone\sv(.+)/m';
 
-  private static string $BIN; // Path to the rclone executable.
-  private ProviderInterface $left_side; // The 'source' provider for rclone operations.
-  private ProviderInterface $right_side; // The 'destination' provider. Can be the same as left_side.
-  
-  private static int    $timeout     = 120; // Default timeout for rclone processes in seconds.
-  private static int    $idleTimeout = 100; // Default idle timeout for rclone processes in seconds.
-  private static array  $flags       = [];  // Global rclone flags to be applied to all commands.
-  private static array  $envs        = [];  // Custom environment variables (usually rclone parameters).
-  private static string $input       = '';  // Input string to be passed to rclone commands (e.g., for rcat).
-  private object        $progress;          // Object to store rclone progress information.
-  private static array  $reset       = [    // Default values for resetting static properties.
-                                            'timeout' => 120,
-                                            'idleTimeout' => 100,
-                                            'flags' => [],
-                                            'envs' => [],
-                                            'input' => '',
-                                            'progress' => [ // Default structure for the progress object.
-                                                            'raw' => '',
-                                                            'dataSent' => '0 B', // Initialize with string value
-                                                            'dataTotal' => '0 B', // Initialize with string value
-                                                            'sent' => 0,
-                                                            'speed' => '0 B/s', // Initialize with string value
-                                                            'eta' => '-', // Initialize with string value
-                                                            'xfr' => '0/0',      // Initialize with string value
-                                            ],
-  ];
-  
+  /** Path to the rclone executable (cached) */
+  private static string $BIN;
+
+  /** The 'source' provider for rclone operations */
+  private ProviderInterface $left_side;
+
+  /** The 'destination' provider. Can be the same as left_side */
+  private ProviderInterface $right_side;
+
+  /** Process timeout in seconds for this instance */
+  private int $timeout;
+
+  /** Process idle timeout in seconds for this instance */
+  private int $idleTimeout;
+
+  /** Rclone flags for this instance */
+  private array $flags;
+
+  /** Custom environment variables for this instance */
+  private array $envs;
+
+  /** Input string for rclone commands (e.g., for rcat) */
+  private string $input = '';
+
+  /** Object to store rclone progress information */
+  private object $progress;
+
+  /**
+   * Creates a new RcloneBuilder for fluent configuration.
+   *
+   * @param ProviderInterface $leftSide The primary (source) provider
+   * @return RcloneBuilder Builder instance for fluent configuration
+   *
+   * @example
+   * ```php
+   * $rclone = Rclone::create($s3Provider)
+   *     ->withTimeout(300)
+   *     ->withFlags(['verbose' => true])
+   *     ->build();
+   * ```
+   */
+  public static function create(ProviderInterface $leftSide): RcloneBuilder
+  {
+    return new RcloneBuilder($leftSide);
+  }
+
   /**
    * Constructor for Rclone.
    *
-   * @param ProviderInterface      $left_side  The primary (source) provider.
-   * @param ProviderInterface|null $right_side The secondary (destination) provider. If null, defaults to $left_side.
-   */
-  public function __construct(ProviderInterface $left_side, ?ProviderInterface $right_side = null)
-  {
-    $this->resetProgress(); // Initialize the progress object for this instance.
-    
-    $this->setLeftSide($left_side);
-    // If no right_side provider is given, rclone operations will target the left_side provider itself (e.g., moving files within the same remote).
-    $this->setRightSide($right_side ?? $left_side);
-  }
-  
-  /**
-   * Gets the current process timeout value.
+   * Prefer using Rclone::create() for a fluent builder pattern.
    *
-   * @return int Timeout in seconds.
+   * @param ProviderInterface      $leftSide    The primary (source) provider
+   * @param ProviderInterface|null $rightSide   The secondary (destination) provider. If null, defaults to $leftSide
+   * @param int                    $timeout     Process timeout in seconds (default: 120)
+   * @param int                    $idleTimeout Process idle timeout in seconds (default: 100)
+   * @param array                  $flags       Rclone flags (e.g., ['verbose' => true])
+   * @param array                  $envs        Custom environment variables
    */
-  public static function getTimeout() : int
-  {
-    return self::$timeout;
+  public function __construct(
+    ProviderInterface $leftSide,
+    ?ProviderInterface $rightSide = null,
+    int $timeout = self::DEFAULT_TIMEOUT,
+    int $idleTimeout = self::DEFAULT_IDLE_TIMEOUT,
+    array $flags = [],
+    array $envs = []
+  ) {
+    $this->left_side = $leftSide;
+    $this->right_side = $rightSide ?? $leftSide;
+    $this->timeout = $timeout;
+    $this->idleTimeout = $idleTimeout;
+    $this->flags = $flags;
+    $this->envs = $envs;
+    $this->resetProgress();
   }
-  
+
   /**
-   * Sets the process timeout value.
+   * Gets the process timeout value for this instance.
    *
-   * @param int $timeout Timeout in seconds.
+   * @return int Timeout in seconds
    */
-  public static function setTimeout(int $timeout) : void
+  public function getTimeout(): int
   {
-    self::$timeout = $timeout;
+    return $this->timeout;
   }
-  
+
   /**
-   * Gets the current process idle timeout value.
+   * Gets the process idle timeout value for this instance.
    *
-   * @return int Idle timeout in seconds.
+   * @return int Idle timeout in seconds
    */
-  public static function getIdleTimeout() : int
+  public function getIdleTimeout(): int
   {
-    return self::$idleTimeout;
+    return $this->idleTimeout;
   }
-  
+
   /**
-   * Sets the process idle timeout value.
+   * Gets the rclone flags for this instance.
    *
-   * @param int $idleTimeout Idle timeout in seconds.
+   * @return array Array of flags
    */
-  public static function setIdleTimeout(int $idleTimeout) : void
+  public function getFlags(): array
   {
-    self::$idleTimeout = $idleTimeout;
+    return $this->flags;
   }
-  
+
   /**
-   * Gets the globally set rclone flags.
+   * Gets the custom environment variables for this instance.
    *
-   * @return array Array of flags.
+   * @return array Array of environment variables
    */
-  public static function getFlags() : array
+  public function getEnvs(): array
   {
-    return self::$flags;
+    return $this->envs;
   }
-  
+
   /**
-   * Sets global rclone flags. These flags are applied to most rclone commands.
-   * Example: ['retries' => 3, 'verbose' => true]
+   * Gets the input string for rclone commands.
    *
-   * @param array $flags Array of flags. Boolean true will be converted to "true", false to "false".
+   * @return string The input string
    */
-  public static function setFlags(array $flags) : void
+  public function getInput(): string
   {
-    self::$flags = $flags;
+    return $this->input;
   }
-  
+
   /**
-   * Gets the custom environment variables.
+   * Sets the input string for rclone commands like 'rcat'.
    *
-   * @return array Array of environment variables.
+   * @param string $input The input string
+   * @return self
    */
-  public static function getEnvs() : array
+  public function setInput(string $input): self
   {
-    return self::$envs;
+    $this->input = $input;
+
+    return $this;
   }
-  
-  /**
-   * Sets custom environment variables, typically used for rclone parameters.
-   * These are usually prefixed with 'RCLONE_' when passed to the process.
-   * Example: ['BUFFER_SIZE' => '64M'] would become 'RCLONE_BUFFER_SIZE=64M' if default prefix is used.
-   *
-   * @param array $envs Array of environment variables. Boolean true will be converted to "true", false to "false".
-   */
-  public static function setEnvs(array $envs) : void
-  {
-    self::$envs = $envs;
-  }
-  
-  /**
-   * Gets the input string for rclone commands like 'rcat'.
-   *
-   * @return string The input string.
-   */
-  public static function getInput() : string
-  {
-    return self::$input;
-  }
-  
-  /**
-   * Sets the input string for rclone commands.
-   *
-   * @param string $input The input string.
-   */
-  public static function setInput(string $input) : void
-  {
-    self::$input = $input;
-  }
-  
+
   /**
    * Checks if the left-side provider is directory-agnostic (does not support empty directories).
    *
-   * @return bool True if directory-agnostic, false otherwise.
+   * @return bool True if directory-agnostic, false otherwise
    */
-  public function isLeftSideDirAgnostic() : bool
+  public function isLeftSideDirAgnostic(): bool
   {
     return $this->getLeftSide()->isDirAgnostic();
   }
-  
+
   /**
    * Checks if the right-side provider is directory-agnostic.
    *
-   * @return bool True if directory-agnostic, false otherwise.
+   * @return bool True if directory-agnostic, false otherwise
    */
-  public function isRightSideDirAgnostic() : bool
+  public function isRightSideDirAgnostic(): bool
   {
     return $this->getRightSide()->isDirAgnostic();
   }
-  
+
   /**
    * Checks if the left-side provider treats buckets as directories.
    *
-   * @return bool True if buckets are treated as directories, false otherwise.
+   * @return bool True if buckets are treated as directories, false otherwise
    */
-  public function isLeftSideBucketAsDir() : bool
+  public function isLeftSideBucketAsDir(): bool
   {
     return $this->getLeftSide()->isBucketAsDir();
   }
-  
+
   /**
    * Checks if the right-side provider treats buckets as directories.
    *
-   * @return bool True if buckets are treated as directories, false otherwise.
+   * @return bool True if buckets are treated as directories, false otherwise
    */
-  public function isRightSideBucketAsDir() : bool
+  public function isRightSideBucketAsDir(): bool
   {
     return $this->getRightSide()->isBucketAsDir();
   }
-  
+
   /**
    * Checks if the left-side provider lists contents as a flat tree (all items at once).
    *
-   * @return bool True if it lists as a tree, false otherwise.
+   * @return bool True if it lists as a tree, false otherwise
    */
-  public function isLeftSideListsAsTree() : bool
+  public function isLeftSideListsAsTree(): bool
   {
     return $this->getLeftSide()->isListsAsTree();
   }
@@ -355,15 +336,15 @@ class Rclone
     $right_flags = $this->right_side->flags();
     $env_vars = array_merge($env_vars, $left_flags, $right_flags);
     
-    // 3. Global flags (set via Rclone::setFlags()).
+    // 3. Global flags (configured via constructor or builder).
     // These are general rclone flags, prefixed with 'RCLONE_'.
     // Rclone::prefix_flags() handles key transformation and boolean-to-string conversion.
-    $env_vars = array_merge($env_vars, self::prefix_flags(self::getFlags(), 'RCLONE_'));
-    
-    // 4. Custom environment variables (set via Rclone::setEnvs()).
+    $env_vars = array_merge($env_vars, self::prefix_flags($this->flags, 'RCLONE_'));
+
+    // 4. Custom environment variables (configured via constructor or builder).
     // These are assumed to be rclone parameters that need the 'RCLONE_' prefix.
     // Rclone::prefix_flags() handles key transformation and boolean-to-string conversion.
-    $env_vars = array_merge($env_vars, self::prefix_flags(self::getEnvs(), 'RCLONE_'));
+    $env_vars = array_merge($env_vars, self::prefix_flags($this->envs, 'RCLONE_'));
     
     // 5. Operation-specific flags (passed as $additional_operation_flags) (highest precedence).
     // These are flags specific to the rclone command being run (e.g., 'copy', 'sync').
@@ -414,7 +395,7 @@ class Rclone
     catch (\Exception $e) {
       throw new UnknownErrorException($e, 'An unexpected error occurred: ' . $e->getMessage());
     } finally {
-      self::setInput('');
+      $this->input = '';
     }
   }
   
@@ -494,11 +475,11 @@ class Rclone
     $final_envs = $this->allEnvs($operation_flags);
     
     $process = new Process($process_args, sys_get_temp_dir(), $final_envs);
-    $process->setTimeout(self::getTimeout());
-    $process->setIdleTimeout(self::getIdleTimeout());
-    
-    if (!empty(self::getInput())) {
-      $process->setInput(self::getInput());
+    $process->setTimeout($this->timeout);
+    $process->setIdleTimeout($this->idleTimeout);
+
+    if (!empty($this->input)) {
+      $process->setInput($this->input);
     }
     
     return $this->executeProcess($process, $onProgress);
@@ -1044,7 +1025,7 @@ class Rclone
    */
   public function rcat(string $path, string $input, array $flags = [], ?callable $onProgress = null) : object
   {
-    self::setInput($input);
+    $this->setInput($input);
     return $this->runAndGetStats('rcat', [$this->left_side->backend($path)], $flags, $onProgress);
   }
   
@@ -1340,8 +1321,8 @@ class Rclone
     
     $final_envs = $this->allEnvs();
     $process = new Process($command_array, sys_get_temp_dir(), $final_envs);
-    $process->setTimeout(self::getTimeout());
-    $process->setIdleTimeout(self::getIdleTimeout());
+    $process->setTimeout($this->timeout);
+    $process->setIdleTimeout($this->idleTimeout);
     
     $completedProcess = $this->executeProcess($process);
     
