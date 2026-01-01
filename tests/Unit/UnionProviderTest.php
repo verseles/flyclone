@@ -13,22 +13,25 @@ use Verseles\Flyclone\Rclone;
 class UnionProviderTest extends AbstractProviderTest
 {
   private LocalProvider $localProviderA;
-  private string        $pathA;
   private LocalProvider $localProviderB;
-  private string        $pathB;
+  private static string $pathA;
+  private static string $pathB;
   
   public function setUp() : void
   {
     $this->setLeftProviderName('union_test');
-    $this->working_directory = ''; // The union provider itself is the root
+    $this->working_directory = '';
     
-    // Setup two distinct local providers
-    $this->pathA = sys_get_temp_dir() . '/flyclone_union_A_' . $this->random_string();
-    mkdir($this->pathA, 0777, TRUE);
+    if (!isset(self::$pathA) || !is_dir(self::$pathA)) {
+      self::$pathA = sys_get_temp_dir() . '/flyclone_union_A_' . $this->random_string();
+      mkdir(self::$pathA, 0777, TRUE);
+    }
     $this->localProviderA = new LocalProvider('local_union_A');
     
-    $this->pathB = sys_get_temp_dir() . '/flyclone_union_B_' . $this->random_string();
-    mkdir($this->pathB, 0777, TRUE);
+    if (!isset(self::$pathB) || !is_dir(self::$pathB)) {
+      self::$pathB = sys_get_temp_dir() . '/flyclone_union_B_' . $this->random_string();
+      mkdir(self::$pathB, 0777, TRUE);
+    }
     $this->localProviderB = new LocalProvider('local_union_B');
   }
   
@@ -37,7 +40,7 @@ class UnionProviderTest extends AbstractProviderTest
   {
     // The `upstreams` string for rclone, specifying the named remotes and their paths.
     // This tells the union to use the remote named `local_union_A` at path `$this->pathA`.
-    $upstreams = $this->localProviderA->backend($this->pathA) . ' ' . $this->localProviderB->backend($this->pathB);
+    $upstreams = $this->localProviderA->backend(self::$pathA) . ' ' . $this->localProviderB->backend(self::$pathB);
     
     // Pass the Provider objects so their configs can be merged.
     $unionProvider = new UnionProvider($this->getLeftProviderName(), [
@@ -55,8 +58,8 @@ class UnionProviderTest extends AbstractProviderTest
   public function test_union_listing(Rclone $rclone) : void
   {
     // Create a file in each upstream
-    file_put_contents($this->pathA . '/file_A.txt', 'content A');
-    file_put_contents($this->pathB . '/file_B.txt', 'content B');
+    file_put_contents(self::$pathA . '/file_A.txt', 'content A');
+    file_put_contents(self::$pathB . '/file_B.txt', 'content B');
     
     $listing = $rclone->ls($this->working_directory);
     
@@ -83,8 +86,8 @@ class UnionProviderTest extends AbstractProviderTest
     self::assertContains($newFileName, $fileNames);
     
     // Verify it exists in one of the underlying physical directories
-    $existsInA = file_exists($this->pathA . '/' . $newFileName);
-    $existsInB = file_exists($this->pathB . '/' . $newFileName);
+    $existsInA = file_exists(self::$pathA . '/' . $newFileName);
+    $existsInB = file_exists(self::$pathB . '/' . $newFileName);
     self::assertTrue($existsInA || $existsInB, 'New file was not created in any of the upstream providers.');
   }
 }
