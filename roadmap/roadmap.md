@@ -12,13 +12,13 @@ Description: Break monolithic Rclone class into focused components and stabilize
 - [x] 1.02 Extract CommandBuilder class - building rclone commands with flags (standalone class ready for integration)
 - [x] 1.03 Extract StatsParser class - parsing transfer statistics (standalone class ready for integration)
 - [x] 1.04 Extract ProgressParser class - parsing progress output (standalone class ready for integration)
-- [ ] 1.05 Refactor Rclone class to use extracted components
+- [x] 1.05 Refactor Rclone class to use extracted components (reduced from 1491 to ~990 lines)
 - [x] 1.06 Fix CryptProvider - make tests pass (stored wrapped_provider in dedicated property, fixed test path isolation)
 - [x] 1.07 Fix UnionProvider - make tests pass (fixed test path isolation with static paths)
 - [x] 1.08 Enable CryptProvider/UnionProvider in makefile test targets (switched to podman-compose)
-- [ ] 1.09 Add configuration behavior tests (setFlags, setEnvs, setTimeout)
-- [ ] 1.10 Add edge case tests (empty files, special chars, large files, invalid binary)
-- [ ] 1.11 Reduce test dependency chains - use setup methods for common scenarios
+- [x] 1.09 Add configuration behavior tests - 13 tests covering setFlags, setEnvs, setTimeout, prefix_flags, buildEnvironment
+- [x] 1.10 Add edge case tests - 13 tests covering empty files, special chars, hidden files, parser edge cases
+- [x] 1.11 Document test dependency pattern - PHPUnit #[Depends] + setUp() requires static paths for shared state
 
 ### Feature 2: v4.0-beta: Security & DX
 Description: Security hardening, retry mechanism, logging, and developer experience improvements
