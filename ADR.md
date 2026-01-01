@@ -226,6 +226,40 @@ Três camadas de testes:
 
 ---
 
+## ADR-009: Branching Strategy para Major Releases
+
+**Status:** Aceito  
+**Data:** 2025-01
+
+### Contexto
+Major releases (v4, v5...) envolvem refatorações extensas que podem quebrar a estabilidade da main.
+
+### Decisão
+Desenvolver major versions em branch dedicada:
+
+```
+main (v3.x estável)
+  └── v4 (desenvolvimento v4)
+        ├── v4.0.0-alpha.1 (tag após milestone 1)
+        ├── v4.0.0-beta.1  (tag após milestone 2)
+        └── v4.0.0-rc.1    (tag após milestone 3)
+```
+
+Fluxo:
+1. Criar branch `v4` a partir de main
+2. Trabalhar diretamente na branch (sem feature branches por action)
+3. Tags alpha/beta/rc conforme milestones completados
+4. Merge para main apenas no release final
+5. Tag `v4.0.0` na main após merge
+
+### Consequências
+- ✅ Main sempre estável para usuários v3.x
+- ✅ Progresso incremental visível via tags
+- ✅ Rollback fácil se necessário
+- ⚠️ Pode divergir de main (resolver antes do merge)
+
+---
+
 ## Template para Novos ADRs
 
 ```markdown
