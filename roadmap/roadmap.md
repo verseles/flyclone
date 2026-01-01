@@ -8,10 +8,10 @@ spec: |
 
 ### Feature 1: v4.0-alpha: Core Refactoring
 Description: Break monolithic Rclone class into focused components and stabilize experimental providers
-- [ ] 1.01 Extract ProcessManager class - binary detection, execution, timeouts
-- [ ] 1.02 Extract CommandBuilder class - building rclone commands with flags
-- [ ] 1.03 Extract StatsParser class - parsing transfer statistics
-- [ ] 1.04 Extract ProgressParser class - parsing progress output
+- [x] 1.01 Extract ProcessManager class - binary detection, execution, timeouts (standalone class ready for integration)
+- [x] 1.02 Extract CommandBuilder class - building rclone commands with flags (standalone class ready for integration)
+- [x] 1.03 Extract StatsParser class - parsing transfer statistics (standalone class ready for integration)
+- [x] 1.04 Extract ProgressParser class - parsing progress output (standalone class ready for integration)
 - [ ] 1.05 Refactor Rclone class to use extracted components
 - [x] 1.06 Fix CryptProvider - make tests pass (stored wrapped_provider in dedicated property, fixed test path isolation)
 - [x] 1.07 Fix UnionProvider - make tests pass (fixed test path isolation with static paths)
