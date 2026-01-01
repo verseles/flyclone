@@ -189,6 +189,27 @@ try {
 
 O projeto utiliza a ferramenta `roadmap` para gerenciar tarefas de longo prazo. Siga estas diretrizes para manter a execução lúcida e focada.
 
+### Estado Atual do Projeto
+
+| Branch | Versão | Status | Ação do Agent |
+| ------ | ------ | ------ | ------------- |
+| `main` | v3.x   | Estável | Apenas hotfixes críticos |
+| `v4`   | v4.0   | **EM DESENVOLVIMENTO** | Todo trabalho do roadmap aqui |
+
+**⚠️ IMPORTANTE:** Ao iniciar sessão para trabalhar no roadmap:
+1. `git checkout v4` - Garantir que está na branch correta
+2. `readroadmap` - Ver estado atual e próximas actions
+3. Escolher UMA action pendente e marcar `in_progress`
+
+### Tags e Milestones
+
+| Tag Pattern | Quando Criar | Milestone |
+| ----------- | ------------ | --------- |
+| `v4.0.0-alpha.N` | Após completar Feature 1 (Core Refactoring) | 1 |
+| `v4.0.0-beta.N`  | Após completar Feature 2 (Security & DX) | 2 |
+| `v4.0.0-rc.N`    | Após completar Feature 3 (Polish & Release) | 3 |
+| `v4.0.0`         | Merge para main + release final | - |
+
 ### Antes de Iniciar uma Action
 
 1. **Ler o roadmap.** `readroadmap` para entender o contexto geral e identificar dependências.
