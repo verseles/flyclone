@@ -10,6 +10,10 @@ PHP wrapper fluente para rclone CLI com suporte a múltiplos provedores cloud.
 flyclone/
 ├── src/
 │   ├── Rclone.php              # Classe principal - orquestra tudo
+│   ├── ProcessManager.php      # Execução de processos rclone
+│   ├── CommandBuilder.php      # Construção de comandos e flags
+│   ├── StatsParser.php         # Parsing de estatísticas
+│   ├── ProgressParser.php      # Parsing de progresso em tempo real
 │   ├── Providers/              # Provedores de storage
 │   └── Exception/              # Hierarquia de exceções
 ├── tests/Unit/                 # Testes PHPUnit
@@ -23,6 +27,7 @@ flyclone/
 ## `/src/Rclone.php` - Classe Principal
 
 Orquestra execução do rclone CLI. Aceita 1-2 providers (source/dest).
+Delega para `ProcessManager`, `CommandBuilder`, `StatsParser` e `ProgressParser`.
 
 ### Configuração Estática
 | Propriedade    | Default | Descrição                        |
@@ -71,6 +76,99 @@ $progress->eta;       // "00:05"
 
 ---
 
+## `/src/ProcessManager.php` - Gerenciamento de Processos
+
+Centraliza execução de processos rclone e mapeamento de erros.
+
+| Método                    | Descrição                                    |
+| ------------------------- | -------------------------------------------- |
+| `guessBin()`              | Detecta binário rclone no sistema            |
+| `run(command, envs, input)` | Cria e executa processo Symfony             |
+| `execute(process)`        | Executa com mustRun e tratamento de erros    |
+| `handleFailure(process)`  | Mapeia exit codes para exceções específicas  |
+| `obscure(secret)`         | Ofusca senha via `rclone obscure`            |
+
+### Mapeamento de Exit Codes
+| Exit Code | Exceção                      |
+| --------- | ---------------------------- |
+| 1         | SyntaxErrorException         |
+| 3         | DirectoryNotFoundException   |
+| 4         | FileNotFoundException        |
+| 5         | TemporaryErrorException      |
+| 6         | LessSeriousErrorException    |
+| 7         | FatalErrorException          |
+| 8         | MaxTransferReachedException  |
+| 9         | NoFilesTransferredException  |
+
+---
+
+## `/src/CommandBuilder.php` - Construção de Comandos
+
+Constrói comandos e variáveis de ambiente para rclone.
+
+| Método                          | Descrição                                         |
+| ------------------------------- | ------------------------------------------------- |
+| `prefixFlags(array, prefix)`    | Transforma keys: `key` → `RCLONE_PREFIX_KEY`      |
+| `buildEnvironment(providers, flags, opFlags)` | Consolida env vars de providers + globais |
+
+### Padrão de Variáveis de Ambiente
+```
+RCLONE_CONFIG_{PROVIDER_NAME}_{KEY} = value
+```
+Exemplo: `RCLONE_CONFIG_MYS3_ACCESS_KEY_ID = xxx`
+
+---
+
+## `/src/StatsParser.php` - Parsing de Estatísticas
+
+Extrai estatísticas de transferência do stderr do rclone.
+
+| Método                       | Descrição                                |
+| ---------------------------- | ---------------------------------------- |
+| `parse(stderr)`              | Extrai stats completas do output         |
+| `convertSizeToBytes(string)` | "1.5 GiB" → 1610612736                   |
+| `convertDurationToSeconds(string)` | "1m30s" → 90                       |
+| `formatBytes(int)`           | 1610612736 → "1.50 GiB"                  |
+
+### Objeto de Estatísticas Retornado
+```php
+(object) [
+    'bytes' => 1073741824,
+    'files' => 150,
+    'speed_bytes_per_second' => 12946789.23,
+    'speed_human' => '12.345 MiB/s',
+    'elapsed_time' => 93.4,
+    'errors' => 0,
+    'checks' => 150,
+]
+```
+
+---
+
+## `/src/ProgressParser.php` - Parsing de Progresso
+
+Extrai progresso em tempo real do stdout do rclone.
+
+| Método                   | Descrição                             |
+| ------------------------ | ------------------------------------- |
+| `parse(type, buffer)`    | Processa linha de progresso           |
+| `getProgress()`          | Retorna objeto de progresso atual     |
+| `reset()`                | Limpa estado de progresso             |
+
+### Objeto de Progresso
+```php
+(object) [
+    'raw' => '1.234 GiB / 2.000 GiB, 61%, 12.345 MiB/s, ETA 1m2s',
+    'dataSent' => '1.234 GiB',
+    'dataTotal' => '2.000 GiB',
+    'sent' => 61,           // porcentagem 0-100
+    'speed' => '12.345 MiB/s',
+    'eta' => '1m2s',
+]
+```
+
+---
+
 ## `/src/Providers/` - Provedores de Storage
 
 ### Classe Base: `AbstractProvider`
@@ -96,8 +194,8 @@ $progress->eta;       // "00:05"
 ### Providers Compostos (Decorator Pattern)
 | Arquivo          | Padrão    | Descrição                                  | Status       |
 | ---------------- | --------- | ------------------------------------------ | ------------ |
-| `CryptProvider`  | Decorator | Wraps 1 provider, adiciona criptografia    | ⚠️ Experimental |
-| `UnionProvider`  | Composite | Merge N providers em filesystem unificado  | ⚠️ Experimental |
+| `CryptProvider`  | Decorator | Wraps 1 provider, adiciona criptografia    | ✅ Funcional |
+| `UnionProvider`  | Composite | Merge N providers em filesystem unificado  | ✅ Funcional |
 
 ```php
 // CryptProvider wraps outro provider
@@ -159,8 +257,10 @@ Rclone exit codes mapeados para exceções PHP específicas:
 | ---------------------------- | ---------------------------------------- |
 | `ExtraCommandsTest`          | Comandos adicionais (size, about, etc.)  |
 | `UploadDownloadOperationsTest` | Operações de upload/download           |
-| `CryptProviderTest`          | ⚠️ Experimental - pode falhar            |
-| `UnionProviderTest`          | ⚠️ Experimental - pode falhar            |
+| `CryptProviderTest`          | Testes de criptografia (15 testes)       |
+| `UnionProviderTest`          | Testes de union filesystem (16 testes)   |
+| `ConfigurationTest`          | Testes de configuração (13 testes)       |
+| `EdgeCasesTest`              | Casos especiais e edge cases (13 testes) |
 
 ---
 

@@ -1,473 +1,204 @@
 # Verseles\Flyclone
-PHP wrapper for [rclone](https://rclone.org/)
+
+PHP wrapper for [rclone](https://rclone.org/) - the Swiss army knife of cloud storage.
 
 [![PHPUnit](https://img.shields.io/github/actions/workflow/status/verseles/flyclone/phpunit.yml?style=for-the-badge&label=PHPUnit)](https://github.com/verseles/flyclone/actions)
+[![PHP](https://img.shields.io/badge/PHP-8.4+-777bb4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
+[![License](https://img.shields.io/badge/License-CC--BY--NC--SA--4.0-green?style=for-the-badge)](LICENSE.md)
 
-Flyclone provides an intuitive, object-oriented interface for interacting with `rclone`, the powerful command-line program for managing files on cloud storage.
+Flyclone provides an intuitive, object-oriented interface for interacting with rclone. Transfer files between 70+ cloud providers with progress tracking, detailed statistics, and robust error handling.
 
-## Key Features
-*   **Broad Provider Support**: Works with numerous storage backends supported by rclone (see below).
-*   **Fluent API**: Simplifies rclone command execution.
-*   **Progress Reporting**: Built-in support for tracking transfer progress.
-*   **Detailed Transfer Statistics**: Get comprehensive stats including bytes transferred, speed, and errors after each operation.
-*   **Process Management**: Handles rclone process execution, timeouts, and errors.
-*   **Easy Configuration**: Configure providers and rclone flags directly in PHP.
+## Features
 
-## Supported Providers
-Flyclone supports a wide array of rclone providers, including:
-*   Local filesystem ([local](https://rclone.org/local/))
-*   Amazon S3 & S3-compatible (e.g., MinIO) ([s3](https://rclone.org/s3/))
-*   SFTP ([sftp](https://rclone.org/sftp/))
-*   FTP ([ftp](https://rclone.org/ftp/))
-*   Dropbox ([dropbox](https://rclone.org/dropbox/))
-*   Google Drive ([drive](https://rclone.org/drive/))
-*   Mega ([mega](https://rclone.org/mega/))
-*   Backblaze B2 ([b2](https://rclone.org/b2/))
-*   ...and [many others](https://rclone.org/overview/#features) supported by rclone. New providers can often be used by leveraging the generic `Provider` class or by adding specific classes via PR.
+- **70+ Storage Backends** - Local, S3, SFTP, FTP, Dropbox, Google Drive, Mega, B2, and more
+- **Fluent API** - Clean, chainable interface for all rclone operations
+- **Progress Tracking** - Real-time transfer progress with speed, ETA, and percentage
+- **Transfer Statistics** - Detailed stats (bytes, files, speed, errors) after each operation
+- **Encryption Support** - Transparent encryption via CryptProvider
+- **Union Filesystems** - Merge multiple providers into a single virtual filesystem
+- **Type-Safe Errors** - Specific exceptions for each rclone exit code
 
-> **Note:** Support for `crypt` and `union` providers is currently **experimental**. Tests for these providers are not passing, and they should be used with caution.
+## Requirements
 
-![](https://img.shields.io/badge/php-777bb4?style=for-the-badge&logo=php&logoColor=white)
-![](http://img.shields.io/badge/-phpstorm-7256fe?style=for-the-badge&logo=phpstorm&logoColor=white)
-![](https://img.shields.io/badge/composer-885630?style=for-the-badge&logo=composer&logoColor=white)
-![](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)
-![](https://img.shields.io/badge/GIT-E44C30?style=for-the-badge&logo=git&logoColor=white)
+- PHP >= 8.4
+- [rclone](https://rclone.org/install/) binary in PATH
 
 ## Installation
 
-```shell script
+```bash
 composer require verseles/flyclone
 ```
-Requires PHP >= 8.4.
 
-## Usage
-
-### Configuration Basics
-
-**1. Provider Setup:**
-Each storage backend (local disk, S3 bucket, SFTP server, etc.) is represented by a `Provider` class. You'll instantiate a provider with a unique nickname and its rclone configuration parameters.
-
-**2. Obscuring Secrets:**
-Rclone (and therefore Flyclone) often requires sensitive information like API keys or passwords. It's highly recommended to use rclone's `obscure` feature for passwords. Flyclone provides a helper for this:
-```php
-use Verseles\Flyclone\Rclone;
-
-$obscuredPassword = Rclone::obscure('your-sftp-password');
-// This $obscuredPassword can then be used in the provider configuration.
-```
-
-**3. Rclone Binary Path (Optional):**
-Flyclone attempts to locate the `rclone` binary automatically. If it's installed in a non-standard location, you can specify the path:
-```php
-Rclone::setBIN('/path/to/your/rclone_binary');
-```
-
-### Instantiating Rclone
-You create an `Rclone` instance with one or two providers:
-*   **One Provider**: For operations on a single remote (e.g., listing files, creating directories, moving files within the same remote).
-*   **Two Providers**: For operations between two different remotes (e.g., copying from local to S3, syncing SFTP to Dropbox).
+## Quick Start
 
 ```php
 use Verseles\Flyclone\Rclone;
 use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Providers\S3Provider;
 
-// Operations on a single local disk
-$localDisk = new LocalProvider('myLocalDisk');
-$rcloneLocal = new Rclone($localDisk);
+// Single provider - operations on one remote
+$local = new LocalProvider('myDisk');
+$rclone = new Rclone($local);
+$files = $rclone->ls('/path/to/files');
 
-// Operations between local disk and an S3 bucket
-$s3Bucket = new S3Provider('myS3Remote', [
+// Two providers - transfer between remotes
+$s3 = new S3Provider('myS3', [
+    'access_key_id' => 'YOUR_KEY',
+    'secret_access_key' => 'YOUR_SECRET',
     'region' => 'us-east-1',
-    'access_key_id' => 'YOUR_ACCESS_KEY',
-    'secret_access_key' => 'YOUR_SECRET_KEY',
-    // 'endpoint' => 'https://your.minio.server' // For S3-compatible like MinIO
 ]);
-$rcloneS3Transfer = new Rclone($localDisk, $s3Bucket); // $localDisk is source, $s3Bucket is destination
+$rclone = new Rclone($local, $s3);
+$result = $rclone->copy('/local/data', 'my-bucket/backup');
+
+if ($result->success) {
+    echo "Transferred {$result->stats->bytes} bytes at {$result->stats->speed_human}";
+}
 ```
 
-### Common Operations
+## Supported Providers
 
-<details open><summary>List files (<code>ls</code>)</summary>
+| Provider | Class | Notes |
+|----------|-------|-------|
+| Local filesystem | `LocalProvider` | |
+| Amazon S3 / MinIO | `S3Provider` | S3-compatible |
+| SFTP | `SFtpProvider` | SSH File Transfer |
+| FTP | `FtpProvider` | |
+| Dropbox | `DropboxProvider` | |
+| Google Drive | `GDriveProvider` | |
+| Mega.nz | `MegaProvider` | |
+| Backblaze B2 | `B2Provider` | |
+| **Encryption** | `CryptProvider` | Wraps any provider |
+| **Union** | `UnionProvider` | Merges multiple providers |
+
+> All [70+ rclone backends](https://rclone.org/overview/) can be used via the generic `Provider` class.
+
+## Advanced Features
+
+### Encryption with CryptProvider
+
+```php
+use Verseles\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\S3Provider;
+use Verseles\Flyclone\Providers\CryptProvider;
+
+$s3 = new S3Provider('myS3', [/* config */]);
+$encrypted = new CryptProvider('encrypted', [
+    'password' => Rclone::obscure('my-secret-password'),
+    'password2' => Rclone::obscure('my-salt'),
+], $s3);
+
+$rclone = new Rclone($encrypted);
+$rclone->copy('/local/sensitive-data', '/encrypted-bucket/backup');
+// Files are transparently encrypted before upload
+```
+
+### Union Filesystem
 
 ```php
 use Verseles\Flyclone\Rclone;
 use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Providers\S3Provider;
+use Verseles\Flyclone\Providers\UnionProvider;
 
-// Example 1: List local files
-$local = new LocalProvider('homeDir');
-$rclone = new Rclone($local);
-$files = $rclone->ls('/home/user/documents'); // Path on the 'homeDir' remote
-/*
-$files will be an array of objects, e.g.:
-[
-    (object) [
-        "Path" => "report.docx",
-        "Name" => "report.docx",
-        "Size" => 12345,
-        "MimeType" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "ModTime" => 1678886400, // Unix timestamp
-        "IsDir" => false
-    ],
-    (object) [
-        "Path" => "archive",
-        "Name" => "archive",
-        "Size" => -1, // Typically -1 for directories with rclone lsjson
-        "MimeType" => "inode/directory",
-        "ModTime" => 1678886500,
-        "IsDir" => true
-    ]
-]
-*/
-var_dump($files);
+$local = new LocalProvider('cache', ['root' => '/tmp/cache']);
+$s3 = new S3Provider('archive', [/* config */]);
 
-// Example 2: List files from an S3 bucket
-$s3 = new S3Provider('myS3', [ /* S3 config */ ]);
-$rcloneS3 = new Rclone($s3);
-$s3Files = $rcloneS3->ls('my-bucket-name/path/to/folder');
-var_dump($s3Files);
+$union = new UnionProvider('combined', [
+    'action_policy' => 'all',
+    'create_policy' => 'ff',
+], [$local, $s3]);
+
+$rclone = new Rclone($union);
+$files = $rclone->ls('/'); // Lists files from both local and S3
 ```
-</details>
 
-<details><summary>Create a directory (<code>mkdir</code>)</summary>
+### Global Configuration
 
 ```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\SFtpProvider;
+// Set rclone binary path (auto-detected by default)
+Rclone::setBIN('/custom/path/to/rclone');
 
-$sftp = new SFtpProvider('mySFTP', [
-    'host' => 'sftp.example.com',
-    'user' => 'user',
-    'pass' => Rclone::obscure('password')
-]);
-$rclone = new Rclone($sftp);
+// Set global flags for all operations
+Rclone::setFlags(['checksum' => true, 'verbose' => true]);
 
-$rclone->mkdir('/remote/path/new_directory'); // Creates 'new_directory' on SFTP server
+// Set environment variables
+Rclone::setEnvs(['RCLONE_BUFFER_SIZE' => '64M']);
+
+// Set timeouts
+Rclone::setTimeout(300);     // Max execution time (seconds)
+Rclone::setIdleTimeout(120); // Idle timeout (seconds)
+
+// Obscure passwords
+$obscured = Rclone::obscure('plain-password');
 ```
-</details>
 
-<details><summary>Copy files/directories (<code>copy</code>, <code>copyto</code>)</summary>
+### Error Handling
 
 ```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\LocalProvider;
-use Verseles\Flyclone\Providers\S3Provider;
+use Verseles\Flyclone\Exception\FileNotFoundException;
+use Verseles\Flyclone\Exception\DirectoryNotFoundException;
+use Verseles\Flyclone\Exception\TemporaryErrorException;
 
-$local = new LocalProvider('myDisk');
-$s3 = new S3Provider('myS3', [ /* S3 config */ ]);
-$rclone = new Rclone($local, $s3); // local is source, S3 is destination
-
-// Copy a local directory to S3 and get stats
-$result = $rclone->copy('/local/data', 'my-bucket/backups/data');
-if ($result->success) {
-    echo "Copy successful!\n";
-    echo "Bytes transferred: " . $result->stats->bytes . "\n";
-    echo "Average speed: " . $result->stats->speed_human . "\n";
-}
-/*
-$result object structure:
-(object) [
-    'success' => true,
-    'stats' => (object) [
-        'bytes' => 1073741824, // Total bytes transferred
-        'files' => 150,        // Total files transferred
-        'speed_bytes_per_second' => 12946789.23, // Average speed in bytes/s
-        'speed_human' => '12.345 MiB/s', // Human-readable average speed
-        'elapsed_time' => 93.4, // Elapsed time in seconds
-        'errors' => 0,
-        'checks' => 150,
-    ],
-    'raw_output' => '...' // The raw stderr block from rclone
-]
-*/
-
-// Copy a single local file to S3 with a specific name
-$rclone->copyto('/local/file.txt', 'my-bucket/target/renamed.txt');
-```
-</details>
-
-<details><summary>Move files/directories (<code>move</code>, <code>moveto</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\LocalProvider;
-
-$localDisk = new LocalProvider('myDisk');
-$rclone = new Rclone($localDisk); // Operations on the same local disk
-
-// Move a file to another location on the same disk (effectively renaming)
-$result = $rclone->moveto('/old/path/file.txt', '/new/path/renamed_file.txt');
-if ($result->success) {
-    echo "Move successful. Transferred {$result->stats->bytes} bytes.";
-}
-
-
-// To move between different remotes:
-$sftp = new SFtpProvider('mySFTP', [ /* config */ ]);
-$rcloneTransfer = new Rclone($localDisk, $sftp); // Local to SFTP
-$rcloneTransfer->move('/local/source_folder', '/remote_sftp/destination_folder');
-```
-</details>
-
-<details><summary>Sync directories (<code>sync</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\LocalProvider;
-use Verseles\Flyclone\Providers\SFtpProvider;
-
-$local = new LocalProvider('myDocs');
-$sftpBackup = new SFtpProvider('sftpBackup', [ /* config */ ]);
-$rclone = new Rclone($local, $sftpBackup); // Sync from local to SFTP
-
-// Make SFTP /backup/documents identical to local /user/documents
-// Only transfers changed files, deletes files on SFTP not present locally.
-$result = $rclone->sync('/user/documents', '/backup/documents');
-if ($result->success) {
-    echo "Sync complete. {$result->stats->files} files transferred.";
+try {
+    $rclone->copy($source, $dest);
+} catch (FileNotFoundException $e) {
+    // File doesn't exist - no retry needed
+} catch (DirectoryNotFoundException $e) {
+    // Directory doesn't exist
+} catch (TemporaryErrorException $e) {
+    // Temporary error - retry may succeed
 }
 ```
-</details>
-
-<details><summary>Delete files/directories (<code>delete</code>, <code>deletefile</code>, <code>purge</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\S3Provider;
-
-$s3 = new S3Provider('myS3', [ /* config */ ]);
-$rclone = new Rclone($s3);
-
-// Delete a single file
-$result = $rclone->deletefile('my-bucket/path/to/file.txt');
-if ($result->success) echo "File deleted.";
-
-
-// Delete all *.log files in a directory (respects filters)
-$rclone->delete('my-bucket/logs/', ['include' => '*.log']);
-
-// Remove an empty directory
-$rclone->rmdir('my-bucket/empty_folder');
-
-// Remove a directory and all its contents (does NOT respect filters)
-$rclone->purge('my-bucket/old_stuff_to_delete_completely');
-```
-</details>
-
-<details><summary>Check existence (<code>is_file</code>, <code>is_dir</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\LocalProvider;
-
-$local = new LocalProvider('myDisk');
-$rclone = new Rclone($local);
-
-$fileExists = $rclone->is_file('/path/to/some/file.txt');
-if ($fileExists->exists) {
-    echo "File exists. Size: " . $fileExists->details->Size;
-}
-
-$dirExists = $rclone->is_dir('/path/to/some/directory');
-if ($dirExists->exists) {
-    echo "Directory exists.";
-}
-/*
- $fileExists / $dirExists object structure:
- (object) [
-     'exists' => true, // or false
-     'details' => (object) [...], // rclone lsjson item details if exists, or empty array []
-     'error' => '' // or Exception object if ls failed
- ]
-*/
-```
-</details>
-
-<details><summary>Read file content (<code>cat</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\LocalProvider;
-
-$local = new LocalProvider('myDisk');
-$rclone = new Rclone($local);
-
-$content = $rclone->cat('/path/to/config.ini');
-echo $content;
-```
-</details>
-
-<details><summary>Write content to a file (<code>rcat</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\SFtpProvider;
-
-$sftp = new SFtpProvider('mySFTP', [ /* config */ ]);
-$rclone = new Rclone($sftp);
-
-$newContent = "Hello from Flyclone!";
-$result = $rclone->rcat('/remote/path/newfile.txt', $newContent);
-if ($result->success) echo "Content written successfully.";
-```
-</details>
-
-<details><summary>Get size of files/directories (<code>size</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\S3Provider;
-
-$s3 = new S3Provider('myS3', [ /* config */ ]);
-$rclone = new Rclone($s3);
-
-$sizeInfo = $rclone->size('my-bucket/some_folder');
-/*
-$sizeInfo will be an object, e.g.:
-(object) [
-    "count" => 150,
-    "bytes" => 1073741824 // 1 GiB
-]
-*/
-echo "Total files: {$sizeInfo->count}, Total bytes: {$sizeInfo->bytes}";
-```
-</details>
-
-<details><summary>Upload a local file (<code>upload_file</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\S3Provider;
-
-$s3 = new S3Provider('myS3', [ /* S3 config */ ]);
-$rclone = new Rclone($s3); // $s3 is the destination for uploads
-
-// Uploads /tmp/local_file.zip to s3://my-bucket/uploads/local_file.zip
-// The local file /tmp/local_file.zip is removed after successful upload (uses rclone moveto).
-$result = $rclone->upload_file('/tmp/local_file.zip', 'my-bucket/uploads/local_file.zip');
-if ($result->success) echo "Upload successful.";
-```
-</details>
-
-<details><summary>Download a remote file (<code>download_to_local</code>)</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\SFtpProvider;
-
-$sftp = new SFtpProvider('mySFTP', [ /* config */ ]);
-$rclone = new Rclone($sftp); // $sftp is the source for downloads
-
-// Download from SFTP to a specific local path
-$result = $rclone->download_to_local('/remote/path/on_sftp/document.pdf', '/home/user/downloads/document.pdf');
-if ($result->success) {
-    echo "Downloaded to: " . $result->local_path;
-}
-
-// Download to a temporary directory (filename preserved)
-$result = $rclone->download_to_local('/remote/path/on_sftp/image.jpg');
-if ($result->success) {
-    echo "Downloaded to temporary location: " . $result->local_path;
-    // Remember to unlink($result->local_path) and rmdir(dirname($result->local_path)) when done if temporary.
-}
-```
-</details>
-
-<details><summary>Copy with progress reporting</summary>
-
-```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\LocalProvider;
-use Verseles\Flyclone\Providers\DropboxProvider; // Example with Dropbox
-
-$local = new LocalProvider('myLocal');
-$dropbox = new DropboxProvider('myDropbox', [
-    'client_id'     => 'YOUR_DROPBOX_CLIENT_ID',
-    'client_secret' => 'YOUR_DROPBOX_CLIENT_SECRET',
-    'token'         => 'YOUR_DROPBOX_TOKEN', // Get this via rclone config
-]);
-
-$rclone = new Rclone($local, $dropbox);
-
-$sourceFile = '/path/to/large_local_file.zip';
-$destinationPath = '/dropbox_folder/'; // Directory on Dropbox
-
-$result = $rclone->copy($sourceFile, $destinationPath, [], static function ($type, $buffer) use ($rclone) {
-    // $type is \Symfony\Component\Process\Process::OUT or \Symfony\Component\Process\Process::ERR
-    // $buffer contains the raw rclone progress line
-    if ($type === \Symfony\Component\Process\Process::OUT && !empty(trim($buffer))) {
-        $progress = $rclone->getProgress(); // Get structured progress object
-        /*
-        $progress might look like:
-        (object) [
-            'raw' => '1.234 GiB / 2.000 GiB, 61%, 12.345 MiB/s, ETA 1m2s (xfr#1/1)',
-            'dataSent' => '1.234 GiB',
-            'dataTotal' => '2.000 GiB',
-            'sent' => 61, // Percentage
-            'speed' => '12.345 MiB/s',
-            'eta' => '1m2s',
-            'xfr' => '1/1' // Files being transferred / total files in this batch
-        ]
-        */
-        printf(
-            "\rProgress: %d%% (%s / %s) at %s, ETA: %s, Files: %s",
-            $progress->sent,
-            $progress->dataSent,
-            $progress->dataTotal,
-            $progress->speed,
-            $progress->eta,
-            $progress->xfr
-        );
-    }
-});
-if ($result->success) {
-    echo "\nCopy complete! Total bytes: " . $result->stats->bytes . "\n";
-}
-```
-</details>
-
-## Advanced Usage & Tips
-
-*   **Rclone Documentation**: Always refer to the official [rclone documentation](https://rclone.org/docs/) for detailed information on commands and flags. This library is a wrapper, so understanding rclone itself is beneficial.
-*   **Flags**: Any rclone flag (e.g., `--retries`, `--max-depth`) can be passed as the last array argument to most Flyclone methods. Convert flags like `--some-flag value` to `['some-flag' => 'value']` or `--boolean-flag` to `['boolean-flag' => true]`.
-    ```php
-    $rclone->copy('/src', '/dest', ['retries' => 5, 'max-depth' => 3, 'dry-run' => true]);
-    ```
-*   **Single Provider Operations**: If you instantiate `Rclone` with only one provider, operations like `copy` or `move` will assume the source and destination are on that same provider (e.g., moving files within the same S3 bucket).
-*   **Global Rclone Settings**:
-*   `Rclone::setFlags(['checksum' => true, 'verbose' => true])`: Set global flags for all subsequent rclone commands.
-*   `Rclone::setEnvs(['RCLONE_BUFFER_SIZE' => '64M'])`: Set environment variables for rclone (these are usually prefixed with `RCLONE_` automatically if not already).
-*   `Rclone::setTimeout(300)`: Set the maximum execution time for rclone processes (seconds).
-*   `Rclone::setIdleTimeout(120)`: Set the idle timeout for rclone processes (seconds).
-*   **Error Handling**: Flyclone throws specific exceptions based on rclone's exit codes (e.g., `FileNotFoundException`, `DirectoryNotFoundException`, `TemporaryErrorException`). Catch these for robust error management.
-
-## To-do
-- [ ] Send meta details like file id in some storage system like google drive (e.g. for `lsjson` output).
-- [ ] Fix experimental providers (`crypt`, `union`).
 
 ## Testing
-Install Docker and Docker Compose, then run:
-```shell
-cp .env.example .env # Fill in any necessary credentials if you want to test against real cloud providers
-make test-offline    # Runs tests against local, SFTP (Dockerized), S3/MinIO (Dockerized)
-# or simply:
-make                 # Default goal runs 'test-fast'
+
+```bash
+# Install dependencies
+composer install
+
+# Run quick tests (local provider only)
+make test
+
+# Run full offline test suite (requires podman-compose)
+make test-offline
+
+# Run specific provider tests (requires .env configuration)
+make test_dropbox
+make test_gdrive
 ```
 
-> There are other test targets in the `makefile` (e.g., `test_dropbox`, `test_gdrive`), but they require you to fill the `.env` file with actual credentials for those services.
+## Architecture
 
-## Contribution
-> You know the drill: Fork, branch, code, test, PR! Contributions are welcome.
+Flyclone v4 uses a modular architecture:
 
-<details>
-<summary>Changelog</summary>
+| Component | Responsibility |
+|-----------|---------------|
+| `Rclone` | Main orchestrator, public API |
+| `ProcessManager` | Process execution, binary detection, error mapping |
+| `CommandBuilder` | Command construction, environment variables |
+| `StatsParser` | Transfer statistics parsing |
+| `ProgressParser` | Real-time progress parsing |
 
-### v2.3.0 (Upcoming)
-*   **[BREAKING]** Transfer operations (`copy`, `sync`, `move`, `rcat`, `upload_file`, `download_to_local`, `delete`, `deletefile`, `purge`) now return a detailed statistics object instead of a boolean. This allows access to transfer speed, total bytes, errors, and more.
-*   Updated `README.md` with examples for the new statistics feature and added this changelog.
+## Contributing
 
-</details>
+1. Fork the repository
+2. Create a feature branch
+3. Write tests for new functionality
+4. Ensure all tests pass: `make test-offline`
+5. Submit a pull request
+
+## Changelog
+
+### v4.0.0 (In Development)
+- **Architecture**: Extracted `ProcessManager`, `CommandBuilder`, `StatsParser`, `ProgressParser` from monolithic `Rclone` class
+- **Fixed**: `CryptProvider` and `UnionProvider` now fully functional with passing tests
+- **Tests**: Added `ConfigurationTest` (13 tests) and `EdgeCasesTest` (13 tests)
+- **Infrastructure**: Migrated to `podman-compose`, 97+ tests passing
+
+### v3.x
+- Transfer operations return detailed statistics object
+- Progress tracking improvements
 
 ## License
+
 [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](LICENSE.md)
