@@ -185,6 +185,64 @@ try {
 
 ---
 
+## Execução de Roadmap
+
+O projeto utiliza a ferramenta `roadmap` para gerenciar tarefas de longo prazo. Siga estas diretrizes para manter a execução lúcida e focada.
+
+### Antes de Iniciar uma Action
+
+1. **Ler o roadmap.** `readroadmap` para entender o contexto geral e identificar dependências.
+
+2. **Ler apenas arquivos necessários.** Não carregar todo o codebase - apenas o que a action específica precisa.
+
+3. **Planejar antes de codar.** Analisar arquivos relevantes e criar um plano mental ANTES de escrever código.
+
+4. **Verificar actions in_progress.** Se outra action está em andamento, NÃO modificar arquivos relacionados a ela.
+
+5. **Marcar in_progress.** `updateroadmap(actionNumber, status="in_progress", note="Iniciando...")` antes de começar.
+
+### Durante a Execução
+
+6. **Foco estrito.** Trabalhar APENAS na action atual. Não corrigir bugs não relacionados, não refatorar código fora do escopo.
+
+7. **Escopo mínimo.** Se encontrar problemas fora do escopo, documentar em nota mas NÃO corrigir.
+
+8. **Testar incrementalmente.** Rodar `make test` após cada mudança significativa, não apenas no final.
+
+9. **Commits atômicos.** Cada commit deve representar um passo lógico completo da action.
+
+10. **Atualizar notas.** `updateroadmap(actionNumber, note="Progresso: X feito, Y pendente")` para mudanças significativas.
+
+### Ao Concluir uma Action
+
+11. **Verificar completude.** Todos os critérios da action foram atendidos?
+
+12. **Testes passando.** `make test` deve passar antes de marcar como completed.
+
+13. **Atualizar documentação.** Se a action afeta CODEBASE.md ou ADR.md, atualizar agora.
+
+14. **Commit descritivo.** Mensagem referenciando a action: `feat(1.03): Extract StatsParser class`
+
+15. **Marcar completed.** `updateroadmap(actionNumber, status="completed", note="Resumo do que foi feito")`.
+
+16. **Limpar contexto.** Antes da próxima action, descartar leituras de arquivos não mais necessários.
+
+### Prevenindo Drift de Contexto
+
+- **Uma action por sessão** é o ideal. Se múltiplas, são do mesmo milestone.
+- **Subagentes para exploração.** Usar `explore` para investigar código sem poluir contexto principal.
+- **Notas como memória.** As notas do roadmap servem como memória entre sessões.
+- **Reler roadmap** no início de cada nova sessão para reestabelecer contexto.
+
+### Quando Parar e Pedir Ajuda
+
+- Action está demorando mais que o esperado (> 3 tentativas de fix)
+- Descobriu que a action precisa ser dividida em sub-actions
+- Encontrou conflito com outra action in_progress
+- Decisão arquitetural significativa não coberta no ADR.md
+
+---
+
 ## Não Fazer
 
 - **NÃO** ignorar testes falhando
