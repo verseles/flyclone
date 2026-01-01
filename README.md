@@ -130,6 +130,53 @@ var_dump($s3Files);
 ```
 </details>
 
+<details><summary>List files with metadata (<code>lsWithMetadata</code>)</summary>
+
+Some storage providers (like Google Drive, S3, etc.) have additional metadata such as file IDs, custom metadata, or provider-specific properties. Use `lsWithMetadata()` to retrieve these details.
+
+```php
+use Verseles\Flyclone\Rclone;
+use Verseles\Flyclone\Providers\GDriveProvider;
+
+// Example: List Google Drive files with metadata (includes file ID)
+$gdrive = new GDriveProvider('myDrive', [
+    'client_id'     => 'YOUR_CLIENT_ID',
+    'client_secret' => 'YOUR_CLIENT_SECRET',
+    'token'         => '{"access_token":"..."}',
+]);
+$rclone = new Rclone($gdrive);
+
+// Use lsWithMetadata to get provider-specific metadata
+$files = $rclone->lsWithMetadata('/my-folder');
+/*
+$files will include a Metadata property, e.g.:
+[
+    (object) [
+        "Path" => "document.pdf",
+        "Name" => "document.pdf",
+        "Size" => 123456,
+        "ModTime" => 1678886400,
+        "IsDir" => false,
+        "Metadata" => (object) [
+            "id" => "1ABCxyz...",  // Google Drive file ID
+            "mtime" => "2024-01-15T10:30:00.000Z",
+            // ... other provider-specific metadata
+        ]
+    ]
+]
+*/
+
+// Alternative: Use ls() with metadata flag
+$filesWithMetadata = $rclone->ls('/my-folder', ['metadata' => true]);
+```
+
+**Provider-specific metadata examples:**
+- **Google Drive**: file ID (`id`), shared status, starred, etc.
+- **S3**: custom metadata headers, storage class, etc.
+- **Local filesystem**: mode (permissions), uid, gid, atime, mtime
+
+</details>
+
 <details><summary>Create a directory (<code>mkdir</code>)</summary>
 
 ```php
@@ -443,7 +490,7 @@ if ($result->success) {
 *   **Error Handling**: Flyclone throws specific exceptions based on rclone's exit codes (e.g., `FileNotFoundException`, `DirectoryNotFoundException`, `TemporaryErrorException`). Catch these for robust error management.
 
 ## To-do
-- [ ] Send meta details like file id in some storage system like google drive (e.g. for `lsjson` output).
+- [x] Send meta details like file id in some storage system like google drive (e.g. for `lsjson` output). *(Use `lsWithMetadata()` or pass `['metadata' => true]` to `ls()`)*
 - [ ] Fix experimental providers (`crypt`, `union`).
 
 ## Testing

@@ -34,10 +34,11 @@ Orquestra execução do rclone CLI. Aceita 1-2 providers (source/dest).
 | `$envs`        | []      | Variáveis de ambiente extras     |
 
 ### Operações Disponíveis
-| Método       | Descrição                              |
-| ------------ | -------------------------------------- |
-| `ls()`       | Listar arquivos                        |
-| `mkdir()`    | Criar diretório                        |
+| Método             | Descrição                              |
+| ------------------ | -------------------------------------- |
+| `ls()`             | Listar arquivos                        |
+| `lsWithMetadata()` | Listar arquivos com metadados (file ID, etc.) |
+| `mkdir()`          | Criar diretório                        |
 | `copy()`     | Copiar arquivo/diretório               |
 | `copyto()`   | Copiar para destino específico         |
 | `move()`     | Mover arquivo/diretório                |

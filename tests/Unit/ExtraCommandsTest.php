@@ -104,10 +104,84 @@ class ExtraCommandsTest extends AbstractProviderTest
     // Using `backend noop` to test the generic command runner as it's simple and supported by local fs.
     $noopOutput = $rclone->backend('noop', $this->working_directory, ['echo' => 'yes'], ['arg1', 'arg2']);
     $noopData = json_decode($noopOutput);
-    
+
     self::assertIsObject($noopData);
     self::assertObjectHasProperty('name', $noopData);
     self::assertEquals('noop', $noopData->name);
     self::assertEquals(['arg1', 'arg2'], $noopData->arg);
+  }
+
+  #[Test]
+  #[Depends('instantiate_with_one_provider')]
+  public function test_ls_with_metadata_flag(Rclone $rclone): void
+  {
+    // Create a test directory with a file
+    $metadataTestDir = $this->working_directory . '/metadata_test';
+    mkdir($metadataTestDir, 0777, true);
+    $testFile = $metadataTestDir . '/test_metadata_file.txt';
+    file_put_contents($testFile, 'Test content for metadata');
+
+    // Test ls with metadata flag
+    $listing = $rclone->ls($metadataTestDir, ['metadata' => true]);
+
+    self::assertIsArray($listing);
+    self::assertCount(1, $listing);
+    self::assertEquals('test_metadata_file.txt', $listing[0]->Name);
+
+    // For local provider, Metadata should be present and contain atime, mtime, mode, uid, gid
+    self::assertObjectHasProperty('Metadata', $listing[0]);
+    self::assertIsObject($listing[0]->Metadata);
+
+    // Local filesystem metadata includes these properties
+    self::assertObjectHasProperty('mode', $listing[0]->Metadata);
+    self::assertObjectHasProperty('mtime', $listing[0]->Metadata);
+  }
+
+  #[Test]
+  #[Depends('instantiate_with_one_provider')]
+  public function test_ls_with_metadata_convenience_method(Rclone $rclone): void
+  {
+    // Create a test directory with files
+    $metadataTestDir = $this->working_directory . '/metadata_convenience_test';
+    mkdir($metadataTestDir, 0777, true);
+    file_put_contents($metadataTestDir . '/file1.txt', 'Content 1');
+    file_put_contents($metadataTestDir . '/file2.txt', 'Content 2');
+
+    // Test lsWithMetadata convenience method
+    $listing = $rclone->lsWithMetadata($metadataTestDir);
+
+    self::assertIsArray($listing);
+    self::assertCount(2, $listing);
+
+    // Verify each file has Metadata property
+    foreach ($listing as $item) {
+      self::assertObjectHasProperty('Name', $item);
+      self::assertObjectHasProperty('Metadata', $item);
+      self::assertIsObject($item->Metadata);
+
+      // Local filesystem metadata properties
+      self::assertObjectHasProperty('mode', $item->Metadata);
+      self::assertObjectHasProperty('mtime', $item->Metadata);
+    }
+  }
+
+  #[Test]
+  #[Depends('instantiate_with_one_provider')]
+  public function test_ls_without_metadata_flag_excludes_metadata(Rclone $rclone): void
+  {
+    // Create a test directory with a file
+    $noMetadataTestDir = $this->working_directory . '/no_metadata_test';
+    mkdir($noMetadataTestDir, 0777, true);
+    file_put_contents($noMetadataTestDir . '/simple_file.txt', 'Simple content');
+
+    // Test ls without metadata flag - should NOT have Metadata property
+    $listing = $rclone->ls($noMetadataTestDir);
+
+    self::assertIsArray($listing);
+    self::assertCount(1, $listing);
+    self::assertEquals('simple_file.txt', $listing[0]->Name);
+
+    // Standard listing should NOT include Metadata property
+    self::assertObjectNotHasProperty('Metadata', $listing[0]);
   }
 }

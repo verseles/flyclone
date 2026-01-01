@@ -883,18 +883,21 @@ class Rclone
    * Lists objects at the source path. (rclone lsjson)
    *
    * @param string $path  Path to list.
-   * @param array  $flags Additional flags.
+   * @param array  $flags Additional flags. Use ['metadata' => true] to include provider-specific
+   *                      metadata like file IDs (e.g., Google Drive file IDs).
    *
    * @return array Array of objects, each representing a file or directory.
    *               ModTime is converted to UNIX timestamp.
+   *               When metadata flag is enabled, items include a 'Metadata' property with
+   *               provider-specific details (e.g., file IDs, custom metadata).
    * @throws \JsonException If JSON decoding fails.
    */
   public function ls(string $path, array $flags = []) : array
   {
     $result_json = $this->simpleRun('lsjson', [$this->left_side->backend($path)], $flags);
-    
+
     $items_array = json_decode($result_json, FALSE, 512, JSON_THROW_ON_ERROR);
-    
+
     // Process ModTime for each item
     foreach ($items_array as $item) {
       if (isset($item->ModTime) && is_string($item->ModTime)) {
@@ -907,6 +910,31 @@ class Rclone
       }
     }
     return $items_array;
+  }
+
+  /**
+   * Lists objects at the source path with provider-specific metadata included. (rclone lsjson --metadata)
+   *
+   * This is a convenience method that automatically enables the metadata flag.
+   * Use this to retrieve provider-specific details like file IDs from Google Drive,
+   * custom metadata from S3, or other backend-specific information.
+   *
+   * @param string $path  Path to list.
+   * @param array  $flags Additional flags.
+   *
+   * @return array Array of objects, each representing a file or directory.
+   *               Each item includes a 'Metadata' property with provider-specific details.
+   *               For Google Drive, this includes the file ID.
+   *               ModTime is converted to UNIX timestamp.
+   * @throws \JsonException If JSON decoding fails.
+   *
+   * @see https://rclone.org/commands/rclone_lsjson/
+   */
+  public function lsWithMetadata(string $path, array $flags = []) : array
+  {
+    // Enable metadata flag and merge with any additional flags
+    $flags['metadata'] = true;
+    return $this->ls($path, $flags);
   }
   
   /**
