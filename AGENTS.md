@@ -103,9 +103,12 @@ cp .env.example .env
 
 ### Web Search
 
-11. **Use web search para:**
-    - Confirmar métodos eficientes/modernos
-    - Resolver erros quando ficar preso
+11. **Use web search com FREQUÊNCIA:**
+    - Antes de implementar: confirmar abordagem moderna/eficiente
+    - Ao encontrar erro: pesquisar soluções antes de tentar fixes aleatórios
+    - Ao ficar incerto: pesquisar ao invés de assumir
+    - Documentação oficial: usar context7 ou busca direta
+    - **Mínimo 2-3 pesquisas por action complexa**
     - Aguardar 1 segundo entre pesquisas (rate limit)
 
 ### Notificações
@@ -187,7 +190,7 @@ try {
 
 ## Execução de Roadmap
 
-O projeto utiliza a ferramenta `roadmap` para gerenciar tarefas de longo prazo. Siga estas diretrizes para manter a execução lúcida e focada.
+O projeto utiliza o arquivo `roadmap/roadmap.md` para gerenciar tarefas de longo prazo. Siga estas diretrizes para manter a execução lúcida e focada.
 
 ### Estado Atual do Projeto
 
@@ -198,7 +201,7 @@ O projeto utiliza a ferramenta `roadmap` para gerenciar tarefas de longo prazo. 
 
 **⚠️ IMPORTANTE:** Ao iniciar sessão para trabalhar no roadmap:
 1. `git checkout v4` - Garantir que está na branch correta
-2. `readroadmap` - Ver estado atual e próximas actions
+2. `cat roadmap/roadmap.md` - Ver estado atual e próximas actions
 3. Escolher UMA action pendente e marcar `in_progress`
 
 ### Tags e Milestones
@@ -212,7 +215,7 @@ O projeto utiliza a ferramenta `roadmap` para gerenciar tarefas de longo prazo. 
 
 ### Antes de Iniciar uma Action
 
-1. **Ler o roadmap.** `readroadmap` para entender o contexto geral e identificar dependências.
+1. **Ler o roadmap.** `cat roadmap/roadmap.md` para entender o contexto geral e identificar dependências.
 
 2. **Ler apenas arquivos necessários.** Não carregar todo o codebase - apenas o que a action específica precisa.
 
@@ -220,11 +223,11 @@ O projeto utiliza a ferramenta `roadmap` para gerenciar tarefas de longo prazo. 
 
 4. **Verificar actions in_progress.** Se outra action está em andamento, NÃO modificar arquivos relacionados a ela.
 
-5. **Marcar in_progress.** `updateroadmap(actionNumber, status="in_progress", note="Iniciando...")` antes de começar.
+5. **Marcar in_progress.** Editar `roadmap/roadmap.md` alterando status para `in_progress` e fazer commit: `git commit -m "roadmap: start 1.01"`
 
 ### Durante a Execução
 
-6. **Foco estrito.** Trabalhar APENAS na action atual. Não corrigir bugs não relacionados, não refatorar código fora do escopo.
+6. **Foco estrito.** Trabalhar APENAS na action atual. Não refatorar código fora do escopo.
 
 7. **Escopo mínimo.** Se encontrar problemas fora do escopo, documentar em nota mas NÃO corrigir.
 
@@ -232,7 +235,7 @@ O projeto utiliza a ferramenta `roadmap` para gerenciar tarefas de longo prazo. 
 
 9. **Commits atômicos.** Cada commit deve representar um passo lógico completo da action.
 
-10. **Atualizar notas.** `updateroadmap(actionNumber, note="Progresso: X feito, Y pendente")` para mudanças significativas.
+10. **Atualizar notas.** Editar `roadmap/roadmap.md` com progresso significativo.
 
 ### Ao Concluir uma Action
 
@@ -244,9 +247,33 @@ O projeto utiliza a ferramenta `roadmap` para gerenciar tarefas de longo prazo. 
 
 14. **Commit descritivo.** Mensagem referenciando a action: `feat(1.03): Extract StatsParser class`
 
-15. **Marcar completed.** `updateroadmap(actionNumber, status="completed", note="Resumo do que foi feito")`.
+15. **Marcar completed.** Editar `roadmap/roadmap.md` alterando status e adicionando nota com resumo.
 
 16. **Limpar contexto.** Antes da próxima action, descartar leituras de arquivos não mais necessários.
+
+### Bugs Encontrados Durante Execução
+
+17. **Sempre corrigir bugs.** Não acumular dívida técnica.
+
+| Momento                    | Ação                                              |
+| -------------------------- | ------------------------------------------------- |
+| ANTES de iniciar action    | Commit separado (`fix: ...`), depois iniciar action |
+| DURANTE a action           | Incluir no commit da action, documentar na nota   |
+
+18. **Documentar na nota do roadmap:** `"Completed. Also fixed: [descrição breve]"`
+
+### Prevenindo Alucinação e Drift
+
+19. **Checkpoint mental periódico.** A cada 3-5 tool calls ou quando incerto:
+    - Reler a action atual no roadmap
+    - Perguntar internamente: "Estou no escopo da action?"
+    - Se divergiu, parar e retomar o foco
+
+20. **Antes de cada commit:** Verificar se as mudanças correspondem à action descrita.
+
+21. **Na dúvida, reler.** Nunca assumir - sempre consultar roadmap/ADR/CODEBASE.
+
+22. **Web search frequente.** Pesquisar antes de implementar, ao encontrar erros, quando incerto.
 
 ### Prevenindo Drift de Contexto
 
