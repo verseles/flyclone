@@ -14,6 +14,10 @@ flyclone/
 │   ├── CommandBuilder.php      # Construção de comandos e flags
 │   ├── StatsParser.php         # Parsing de estatísticas
 │   ├── ProgressParser.php      # Parsing de progresso em tempo real
+│   ├── SecretsRedactor.php     # Redação de segredos em mensagens
+│   ├── Logger.php              # Logging estruturado opcional
+│   ├── RetryHandler.php        # Retry com backoff exponencial
+│   ├── FilterBuilder.php       # API fluente para filtros
 │   ├── Providers/              # Provedores de storage
 │   └── Exception/              # Hierarquia de exceções
 ├── tests/Unit/                 # Testes PHPUnit
@@ -60,6 +64,20 @@ Delega para `ProcessManager`, `CommandBuilder`, `StatsParser` e `ProgressParser`
 | `dedupe()`   | Remover duplicatas                     |
 | `cleanup()`  | Limpar arquivos incompletos            |
 | `backend()`  | Comandos específicos do backend        |
+
+### Métodos de Controle (v4)
+| Método              | Descrição                                   |
+| ------------------- | ------------------------------------------- |
+| `dryRun(bool)`      | Ativa modo simulação                        |
+| `isDryRun()`        | Verifica se dry-run está ativo              |
+| `retry(attempts, delay)` | Configura retry com backoff            |
+| `withRetry(handler)`| Define RetryHandler customizado             |
+| `withFilter(builder)` | Define filtros para operação              |
+| `filter()`          | Retorna FilterBuilder atual                 |
+| `clearFilter()`     | Remove filtros                              |
+| `healthCheck(path)` | Verifica conectividade do provider          |
+| `getLastCommand()`  | Retorna último comando executado            |
+| `getLastEnvs()`     | Retorna últimas env vars (redatadas)        |
 
 ### Tracking de Progresso
 ```php
@@ -169,6 +187,91 @@ Extrai progresso em tempo real do stdout do rclone.
 
 ---
 
+## `/src/SecretsRedactor.php` - Redação de Segredos
+
+Remove informações sensíveis de mensagens de erro e logs.
+
+| Método                     | Descrição                                      |
+| -------------------------- | ---------------------------------------------- |
+| `redact(message, secrets)` | Remove senhas, tokens, URLs com credenciais   |
+| `setEnabled(bool)`         | Habilita/desabilita redação globalmente        |
+| `isEnabled()`              | Verifica se redação está ativa                 |
+
+### Padrões Redatados
+- URLs com credenciais: `https://user:pass@host` → `https://[REDACTED]@host`
+- Variáveis de ambiente: `PASSWORD=secret` → `PASSWORD=[REDACTED]`
+- Segredos conhecidos passados explicitamente
+
+---
+
+## `/src/Logger.php` - Logging Estruturado
+
+Logger opcional para debugging e monitoramento.
+
+| Método                        | Descrição                                  |
+| ----------------------------- | ------------------------------------------ |
+| `setDebugMode(bool)`          | Ativa modo debug (loga comandos)           |
+| `isDebugMode()`               | Verifica se debug está ativo               |
+| `setLogger(object)`           | Define logger PSR-3 externo                |
+| `debug/info/warning/error()`  | Métodos de log por nível                   |
+| `logCommand(cmd, envs)`       | Loga execução de comando (modo debug)      |
+| `logResult(success, duration)`| Loga resultado (modo debug)                |
+| `getLogs()`                   | Retorna logs internos                      |
+| `clearLogs()`                 | Limpa logs internos                        |
+
+---
+
+## `/src/RetryHandler.php` - Retry com Backoff
+
+Mecanismo de retry para falhas temporárias.
+
+| Método                          | Descrição                               |
+| ------------------------------- | --------------------------------------- |
+| `create()`                      | Factory method                          |
+| `maxAttempts(int)`              | Define máximo de tentativas (default 3) |
+| `baseDelay(int)`                | Delay base em ms (default 1000)         |
+| `multiplier(float)`             | Multiplicador exponencial (default 2.0) |
+| `maxDelay(int)`                 | Delay máximo em ms (default 30000)      |
+| `retryOn(callable)`             | Condição customizada para retry         |
+| `onRetry(callable)`             | Callback executado a cada retry         |
+| `execute(callable)`             | Executa operação com retry              |
+
+```php
+$result = RetryHandler::create()
+    ->maxAttempts(5)
+    ->baseDelay(500)
+    ->execute(fn() => $rclone->copy($src, $dst));
+```
+
+---
+
+## `/src/FilterBuilder.php` - API Fluente para Filtros
+
+Construtor de padrões include/exclude para operações.
+
+| Método                    | Descrição                              |
+| ------------------------- | -------------------------------------- |
+| `include(pattern)`        | Adiciona padrão de inclusão            |
+| `exclude(pattern)`        | Adiciona padrão de exclusão            |
+| `extensions(ext[])`       | Inclui por extensões                   |
+| `minSize(size)`           | Tamanho mínimo (ex: "100K", "1M")      |
+| `maxSize(size)`           | Tamanho máximo                         |
+| `newerThan(age)`          | Arquivos mais novos que (ex: "1d")     |
+| `olderThan(age)`          | Arquivos mais velhos que               |
+| `toFlags()`               | Converte para array de flags rclone    |
+| `reset()`                 | Limpa todos os filtros                 |
+
+```php
+$rclone->withFilter(
+    FilterBuilder::create()
+        ->extensions(['jpg', 'png'])
+        ->minSize('100K')
+        ->exclude('**/thumbs/**')
+)->copy($src, $dst);
+```
+
+---
+
 ## `/src/Providers/` - Provedores de Storage
 
 ### Classe Base: `AbstractProvider`
@@ -228,6 +331,18 @@ Rclone exit codes mapeados para exceções PHP específicas:
 | `ProcessTimedOutException`      | -    | Timeout do processo PHP        |
 | `WriteOperationFailedException` | -    | Falha de escrita               |
 | `UnknownErrorException`         | ?    | Erro não mapeado               |
+| `CredentialWarning`             | -    | Aviso de credencial plaintext  |
+
+### Contexto de Exceção (v4)
+```php
+try {
+    $rclone->copy($src, $dst);
+} catch (RcloneException $e) {
+    $e->isRetryable();       // bool - pode fazer retry?
+    $e->getContext();        // array - comando, provider, path
+    $e->getDetailedMessage();// string - mensagem + contexto
+}
+```
 
 ---
 
@@ -261,6 +376,7 @@ Rclone exit codes mapeados para exceções PHP específicas:
 | `UnionProviderTest`          | Testes de union filesystem (16 testes)   |
 | `ConfigurationTest`          | Testes de configuração (13 testes)       |
 | `EdgeCasesTest`              | Casos especiais e edge cases (13 testes) |
+| `Feature2Test`               | Testes Feature 2: Security & DX (28 testes) |
 
 ---
 

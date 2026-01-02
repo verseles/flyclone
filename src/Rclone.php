@@ -1,5 +1,6 @@
 <?php
 
+declare(strict_types=1);
 
 namespace Verseles\Flyclone;
 
@@ -9,14 +10,23 @@ use Symfony\Component\Process\Process;
 
 class Rclone
 {
-  
   private Provider       $left_side;
   private Provider       $right_side;
   private ProgressParser $progressParser;
-  
+  private ProcessManager $processManager;
+
   // Static configuration - delegated to ProcessManager but kept for backward compatibility
   private static array  $flags = [];
   private static array  $envs  = [];
+
+  /** @var RetryHandler|null Retry handler for transient failures */
+  private ?RetryHandler $retryHandler = null;
+
+  /** @var bool Whether dry-run mode is enabled for this instance */
+  private bool $dryRun = false;
+
+  /** @var FilterBuilder|null Current filter configuration */
+  private ?FilterBuilder $filter = null;
   
   /**
    * Constructor for Rclone.
@@ -24,12 +34,151 @@ class Rclone
    * @param Provider      $left_side  The primary (source) provider.
    * @param Provider|null $right_side The secondary (destination) provider. If null, defaults to $left_side.
    */
-  public function __construct(Provider $left_side, ?Provider $right_side = NULL)
+  public function __construct(Provider $left_side, ?Provider $right_side = null)
   {
     $this->progressParser = new ProgressParser();
-    
+    $this->processManager = new ProcessManager();
+
+    // Extract secrets from providers for redaction
+    $secrets = array_merge(
+      $left_side->extractSecrets(),
+      $right_side ? $right_side->extractSecrets() : []
+    );
+    $this->processManager->setSecrets($secrets);
+
     $this->setLeftSide($left_side);
     $this->setRightSide($right_side ?? $left_side);
+  }
+
+  /**
+   * Enable dry-run mode for this instance.
+   *
+   * In dry-run mode, operations show what would be done without actually doing it.
+   *
+   * @param bool $enabled Whether to enable dry-run mode.
+   */
+  public function dryRun(bool $enabled = true): self
+  {
+    $this->dryRun = $enabled;
+    return $this;
+  }
+
+  /**
+   * Check if dry-run mode is enabled.
+   */
+  public function isDryRun(): bool
+  {
+    return $this->dryRun;
+  }
+
+  /**
+   * Set a retry handler for transient failures.
+   *
+   * @param RetryHandler|null $handler The retry handler, or null to disable.
+   */
+  public function withRetry(?RetryHandler $handler): self
+  {
+    $this->retryHandler = $handler;
+    return $this;
+  }
+
+  /**
+   * Configure retry with default settings.
+   *
+   * @param int $maxAttempts Maximum number of retry attempts.
+   * @param int $baseDelayMs Base delay between retries in milliseconds.
+   */
+  public function retry(int $maxAttempts = 3, int $baseDelayMs = 1000): self
+  {
+    $this->retryHandler = RetryHandler::create()
+      ->maxAttempts($maxAttempts)
+      ->baseDelay($baseDelayMs);
+    return $this;
+  }
+
+  /**
+   * Set filter configuration for operations.
+   *
+   * @param FilterBuilder $filter The filter configuration.
+   */
+  public function withFilter(FilterBuilder $filter): self
+  {
+    $this->filter = $filter;
+    return $this;
+  }
+
+  /**
+   * Create and return a new filter builder.
+   *
+   * Usage: $rclone->filter()->include('*.txt')->exclude('*.tmp')
+   */
+  public function filter(): FilterBuilder
+  {
+    if ($this->filter === null) {
+      $this->filter = FilterBuilder::create();
+    }
+    return $this->filter;
+  }
+
+  /**
+   * Clear the current filter configuration.
+   */
+  public function clearFilter(): self
+  {
+    $this->filter = null;
+    return $this;
+  }
+
+  /**
+   * Check provider connectivity and health.
+   *
+   * @param string|null $path Optional path to check.
+   *
+   * @return object Health check result with 'healthy', 'latency_ms', and 'error' properties.
+   */
+  public function healthCheck(?string $path = null): object
+  {
+    $start = microtime(true);
+
+    try {
+      // Try to list the root or specified path
+      $this->ls($path ?? '');
+
+      $latency = (microtime(true) - $start) * 1000;
+
+      return (object) [
+        'healthy' => true,
+        'latency_ms' => round($latency, 2),
+        'error' => null,
+        'provider' => $this->left_side->provider(),
+      ];
+    } catch (\Exception $e) {
+      $latency = (microtime(true) - $start) * 1000;
+
+      return (object) [
+        'healthy' => false,
+        'latency_ms' => round($latency, 2),
+        'error' => $e->getMessage(),
+        'provider' => $this->left_side->provider(),
+      ];
+    }
+  }
+
+  /**
+   * Get the last executed command (for debugging).
+   */
+  public function getLastCommand(): string
+  {
+    return $this->processManager->getLastCommandString();
+  }
+
+  /**
+   * Get the last environment variables (for debugging).
+   * Sensitive values are redacted.
+   */
+  public function getLastEnvs(): array
+  {
+    return $this->processManager->getLastEnvs();
   }
   
   /**
@@ -244,15 +393,25 @@ class Rclone
    * @param array         $args            Arguments for the command.
    * @param array         $operation_flags Additional operation flags.
    * @param callable|null $onProgress      Optional progress callback.
+   * @param int|null      $timeout         Optional per-operation timeout in seconds.
    *
    * @return Process The completed process instance.
    */
-  private function _run(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = NULL): Process
+  private function _run(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = null, ?int $timeout = null): Process
   {
-    $processManager = new ProcessManager();
+    // Apply dry-run flag if enabled
+    if ($this->dryRun) {
+      $operation_flags['dry-run'] = true;
+    }
+
+    // Apply filter flags if set
+    if ($this->filter !== null && $this->filter->hasFilters()) {
+      $operation_flags = array_merge($operation_flags, $this->filter->toFlags());
+    }
+
     $commandArgs = CommandBuilder::buildCommandArgs(self::getBIN(), $command, $args);
     $finalEnvs = $this->allEnvs($operation_flags);
-    
+
     $progressCallback = null;
     if ($onProgress) {
       $progressCallback = function ($type, $buffer) use ($onProgress) {
@@ -260,8 +419,28 @@ class Rclone
         $onProgress($type, $buffer);
       };
     }
-    
-    return $processManager->run($commandArgs, $finalEnvs, $progressCallback);
+
+    // Log command execution in debug mode
+    Logger::logCommand($this->processManager->getLastCommandString(), $finalEnvs);
+
+    $startTime = microtime(true);
+
+    // Execute with or without retry
+    $executeOperation = fn() => $this->processManager->run($commandArgs, $finalEnvs, $progressCallback, $timeout);
+
+    try {
+      if ($this->retryHandler !== null) {
+        $result = $this->retryHandler->execute($executeOperation);
+      } else {
+        $result = $executeOperation();
+      }
+
+      Logger::logResult(true, microtime(true) - $startTime);
+      return $result;
+    } catch (\Exception $e) {
+      Logger::logResult(false, microtime(true) - $startTime);
+      throw $e;
+    }
   }
   
   /**

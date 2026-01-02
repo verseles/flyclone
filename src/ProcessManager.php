@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Verseles\Flyclone;
 
 use Verseles\Flyclone\Exception\DirectoryNotFoundException;
@@ -9,6 +11,7 @@ use Verseles\Flyclone\Exception\LessSeriousErrorException;
 use Verseles\Flyclone\Exception\MaxTransferReachedException;
 use Verseles\Flyclone\Exception\NoFilesTransferredException;
 use Verseles\Flyclone\Exception\ProcessTimedOutException;
+use Verseles\Flyclone\Exception\RcloneException;
 use Verseles\Flyclone\Exception\SyntaxErrorException;
 use Verseles\Flyclone\Exception\TemporaryErrorException;
 use Verseles\Flyclone\Exception\UnknownErrorException;
@@ -23,6 +26,15 @@ class ProcessManager
     private static int $timeout = 120;
     private static int $idleTimeout = 100;
     private static string $input = '';
+
+    /** @var array Secrets to redact from error messages */
+    private array $secrets = [];
+
+    /** @var array Last executed command (for debugging) */
+    private array $lastCommand = [];
+
+    /** @var array Last environment variables (for debugging) */
+    private array $lastEnvs = [];
 
     public static function getTimeout(): int
     {
@@ -88,10 +100,80 @@ class ProcessManager
         return self::$bin;
     }
 
-    public function run(array $command, array $envs = [], ?callable $onProgress = null): Process
+    /**
+     * Set secrets to be redacted from error messages.
+     *
+     * @param array $secrets Array of secret values to redact.
+     */
+    public function setSecrets(array $secrets): self
     {
+        $this->secrets = $secrets;
+        return $this;
+    }
+
+    /**
+     * Get the last executed command (for debugging).
+     *
+     * @return array The command array.
+     */
+    public function getLastCommand(): array
+    {
+        return $this->lastCommand;
+    }
+
+    /**
+     * Get the last executed command as a string (for debugging).
+     * Sensitive values in environment variables are redacted.
+     *
+     * @return string The command string.
+     */
+    public function getLastCommandString(): string
+    {
+        return implode(' ', $this->lastCommand);
+    }
+
+    /**
+     * Get the last environment variables (for debugging).
+     * Sensitive values are redacted.
+     *
+     * @return array The environment variables with secrets redacted.
+     */
+    public function getLastEnvs(): array
+    {
+        return SecretsRedactor::isEnabled()
+            ? $this->redactEnvValues($this->lastEnvs)
+            : $this->lastEnvs;
+    }
+
+    /**
+     * Redact sensitive values from environment variables.
+     */
+    private function redactEnvValues(array $envs): array
+    {
+        $redacted = [];
+        foreach ($envs as $key => $value) {
+            $keyLower = strtolower($key);
+            $isSensitive = false;
+
+            foreach (['password', 'secret', 'token', 'key', 'auth', 'credential'] as $sensitiveWord) {
+                if (str_contains($keyLower, $sensitiveWord)) {
+                    $isSensitive = true;
+                    break;
+                }
+            }
+
+            $redacted[$key] = $isSensitive ? SecretsRedactor::REDACTED : $value;
+        }
+        return $redacted;
+    }
+
+    public function run(array $command, array $envs = [], ?callable $onProgress = null, ?int $timeout = null): Process
+    {
+        $this->lastCommand = $command;
+        $this->lastEnvs = $envs;
+
         $process = new Process($command, sys_get_temp_dir(), $envs);
-        $process->setTimeout(self::getTimeout());
+        $process->setTimeout($timeout ?? self::getTimeout());
         $process->setIdleTimeout(self::getIdleTimeout());
 
         if (!empty(self::getInput())) {
@@ -131,17 +213,29 @@ class ProcessManager
             $msg = 'Rclone process failed. Stdout: ' . trim($process->getOutput());
         }
 
-        match ((int) $code) {
-            1 => throw new SyntaxErrorException($exception, $msg, (int) $code),
-            3 => throw new DirectoryNotFoundException($exception, $msg, (int) $code),
-            4 => throw new FileNotFoundException($exception, $msg, (int) $code),
-            5 => throw new TemporaryErrorException($exception, $msg, (int) $code),
-            6 => throw new LessSeriousErrorException($exception, $msg, (int) $code),
-            7 => throw new FatalErrorException($exception, $msg, (int) $code),
-            8 => throw new MaxTransferReachedException($exception, $msg, (int) $code),
-            9 => throw new NoFilesTransferredException($exception, $msg, (int) $code),
-            default => throw new UnknownErrorException($exception, "Rclone error (Code: $code): $msg", (int) $code),
+        // Redact secrets from error message
+        $msg = SecretsRedactor::redact($msg, $this->secrets);
+
+        // Create exception with enhanced context
+        $rcloneException = match ((int) $code) {
+            1 => new SyntaxErrorException($exception, $msg, (int) $code),
+            3 => new DirectoryNotFoundException($exception, $msg, (int) $code),
+            4 => new FileNotFoundException($exception, $msg, (int) $code),
+            5 => new TemporaryErrorException($exception, $msg, (int) $code),
+            6 => new LessSeriousErrorException($exception, $msg, (int) $code),
+            7 => new FatalErrorException($exception, $msg, (int) $code),
+            8 => new MaxTransferReachedException($exception, $msg, (int) $code),
+            9 => new NoFilesTransferredException($exception, $msg, (int) $code),
+            default => new UnknownErrorException($exception, "Rclone error (Code: $code): $msg", (int) $code),
         };
+
+        // Add context to exception
+        $rcloneException->setContext([
+            'command' => $this->getLastCommandString(),
+            'exit_code' => $code,
+        ]);
+
+        throw $rcloneException;
     }
 
     public static function obscure(string $secret): string
