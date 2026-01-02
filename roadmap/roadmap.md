@@ -19,21 +19,31 @@ Description: Break monolithic Rclone class into focused components and stabilize
 - [x] 1.09 Add configuration behavior tests - 13 tests covering setFlags, setEnvs, setTimeout, prefix_flags, buildEnvironment
 - [x] 1.10 Add edge case tests - 13 tests covering empty files, special chars, hidden files, parser edge cases
 - [x] 1.11 Document test dependency pattern - PHPUnit #[Depends] + setUp() requires static paths for shared state
+- [x] 1.12 Code review fixes - guessBin() race condition, obscure() validation, formatBytes() edge case, ls() JSON type check
 
 ### Feature 2: v4.0-beta: Security & DX
 Description: Security hardening, retry mechanism, logging, and developer experience improvements
-- [ ] 2.01 Add secrets redaction in error messages and debug output
+
+#### Security Hardening
+- [ ] 2.01 Add secrets redaction in error messages and debug output (SecretsRedactor integration in handleFailure)
 - [ ] 2.02 Add credential validation warnings when plaintext used without obscure()
-- [ ] 2.03 Implement retry mechanism with configurable backoff for transient failures
-- [ ] 2.04 Add structured logging with optional debug mode for commands/responses
+- [ ] 2.03 Add provider validation in constructor - fail fast on invalid config
+
+#### Error Handling & Debugging
+- [ ] 2.04 Improve error context - include command, provider, path in exceptions
 - [ ] 2.05 Add command introspection - get exact rclone command for debugging
-- [ ] 2.06 Improve error context - include command, provider, path in exceptions
-- [ ] 2.07 Add healthCheck() method for provider connectivity verification
-- [ ] 2.08 Add filtering helpers - fluent API for include/exclude patterns
-- [ ] 2.09 Add native dry-run mode with result inspection
-- [ ] 2.10 Add progress callback support: copy($src, $dest, onProgress: fn)
-- [ ] 2.11 Add per-operation timeout configuration
-- [ ] 2.12 Add provider validation in constructor - fail fast on invalid config
+- [ ] 2.06 Add structured logging with optional debug mode for commands/responses
+
+#### Reliability
+- [ ] 2.07 Implement retry mechanism with configurable backoff for transient failures
+- [ ] 2.08 Add healthCheck() method for provider connectivity verification
+- [ ] 2.09 Improve ProgressParser to handle fragmented output buffers gracefully
+
+#### Developer Experience
+- [ ] 2.10 Add filtering helpers - fluent API for include/exclude patterns
+- [ ] 2.11 Add native dry-run mode with result inspection
+- [ ] 2.12 Add progress callback support: copy($src, $dest, onProgress: fn)
+- [ ] 2.13 Add per-operation timeout configuration
 
 ### Feature 3: v4.0-rc: Polish & Release
 Description: Documentation, static analysis, code style, and release preparation

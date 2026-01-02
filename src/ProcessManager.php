@@ -66,24 +66,26 @@ class ProcessManager
 
     public static function guessBin(): string
     {
-        $binPath = once(static function () {
-            $finder = new ExecutableFinder();
-            $rclonePath = $finder->find('rclone', '/usr/bin/rclone', [
-                '/usr/local/bin',
-                '/usr/bin',
-                '/bin',
-                '/usr/local/sbin',
-                '/var/lib/snapd/snap/bin',
-            ]);
-            if ($rclonePath === null) {
-                throw new \RuntimeException('Rclone binary not found. Please ensure rclone is installed and in your PATH, or set the path manually using ProcessManager::setBin().');
-            }
-            return $rclonePath;
-        });
+        if (isset(self::$bin) && self::$bin !== '') {
+            return self::$bin;
+        }
 
-        self::setBin($binPath);
+        $finder = new ExecutableFinder();
+        $rclonePath = $finder->find('rclone', '/usr/bin/rclone', [
+            '/usr/local/bin',
+            '/usr/bin',
+            '/bin',
+            '/usr/local/sbin',
+            '/var/lib/snapd/snap/bin',
+        ]);
 
-        return self::getBin();
+        if ($rclonePath === null) {
+            throw new \RuntimeException('Rclone binary not found. Please ensure rclone is installed and in your PATH, or set the path manually using ProcessManager::setBin().');
+        }
+
+        self::$bin = $rclonePath;
+
+        return self::$bin;
     }
 
     public function run(array $command, array $envs = [], ?callable $onProgress = null): Process
@@ -144,10 +146,20 @@ class ProcessManager
 
     public static function obscure(string $secret): string
     {
+        if ($secret === '') {
+            throw new \InvalidArgumentException('Cannot obscure an empty secret.');
+        }
+
         $process = new Process([self::getBin(), 'obscure', $secret]);
         $process->setTimeout(3);
         $process->mustRun();
 
-        return trim($process->getOutput());
+        $output = trim($process->getOutput());
+
+        if ($output === '') {
+            throw new \RuntimeException('rclone obscure returned empty output.');
+        }
+
+        return $output;
     }
 }

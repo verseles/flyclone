@@ -437,9 +437,17 @@ class Rclone
   public function ls(string $path, array $flags = []) : array
   {
     $result_json = $this->simpleRun('lsjson', [$this->left_side->backend($path)], $flags);
-    
+
+    if ($result_json === '' || $result_json === 'null') {
+      return [];
+    }
+
     $items_array = json_decode($result_json, FALSE, 512, JSON_THROW_ON_ERROR);
-    
+
+    if (!is_array($items_array)) {
+      return [];
+    }
+
     foreach ($items_array as $item) {
       if (isset($item->ModTime) && is_string($item->ModTime)) {
         $time_string = preg_replace('/\.(\d{6})\d*Z$/', '.$1Z', $item->ModTime);

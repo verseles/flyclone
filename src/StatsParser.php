@@ -116,11 +116,12 @@ class StatsParser
 
     public static function formatBytes(int $bytes): string
     {
-        if ($bytes === 0) {
+        if ($bytes <= 0) {
             return '0 B';
         }
         $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
-        $i = floor(log($bytes, 1024));
-        return round($bytes / (1024 ** (int)$i), 2) . ' ' . $units[(int) $i];
+        $i = (int) floor(log($bytes, 1024));
+        $i = max(0, min($i, count($units) - 1));
+        return round($bytes / (1024 ** $i), 2) . ' ' . $units[$i];
     }
 }
