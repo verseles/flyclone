@@ -56,6 +56,6 @@ Description: Documentation, static analysis, code style, and release preparation
 - [ ] 3.07 Generate API documentation (phpDocumentor or similar)
 - [ ] 3.08 Add advanced usage examples in docs (retry, filtering, dry-run, batch)
 - [ ] 3.09 Create per-provider configuration guides
-- [ ] 3.10 Add changelog automation with conventional commits
-- [ ] 3.11 Update README with v4 changes and migration guide
+- [x] 3.10 Add changelog automation with conventional commits (CHANGELOG.md created)
+- [x] 3.11 Update README with v4 changes and migration guide (Feature 3 documented)
 - [ ] 3.12 Tag and release v4.0.0

@@ -308,6 +308,13 @@ Flyclone v4 uses a modular architecture:
 - Added credential validation warnings for plaintext passwords
 - Added `Feature2Test` (28 tests), 125+ tests total
 
+**Feature 3: Polish & Release (rc)**
+- Integrated PHPStan (level 5) and Laravel Pint (PSR-12) with CI
+- Added new commands: `bisync()`, `ncdu()`, `md5sum()`, `sha1sum()`
+- Added static utilities: `listRemotes()`, `configFile()`, `configDump()`
+- Formatted entire codebase with `declare(strict_types=1)`
+- All tests passing (150+ tests)
+
 ### v3.x
 - Transfer operations return detailed statistics object
 - Progress tracking improvements
