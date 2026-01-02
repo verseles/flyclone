@@ -1153,6 +1153,182 @@ class Rclone
     }
 
     /**
+     * Lists all configured remotes (rclone listremotes).
+     *
+     * @see https://rclone.org/commands/rclone_listremotes/
+     *
+     * @param array $flags Additional flags.
+     *
+     * @return array List of remote names (without the trailing colon).
+     */
+    public static function listRemotes(array $flags = []): array
+    {
+        $processManager = new ProcessManager();
+        $command = [self::getBIN(), 'listremotes'];
+        $process = $processManager->run($command, []);
+        $output = trim($process->getOutput());
+
+        if ($output === '') {
+            return [];
+        }
+
+        // Each remote ends with ':' - remove it and return as array
+        return array_map(
+            fn ($remote) => rtrim($remote, ':'),
+            array_filter(explode("\n", $output))
+        );
+    }
+
+    /**
+     * Shows current config file location (rclone config file).
+     *
+     * @see https://rclone.org/commands/rclone_config_file/
+     *
+     * @return string Path to the rclone config file.
+     */
+    public static function configFile(): string
+    {
+        $processManager = new ProcessManager();
+        $command = [self::getBIN(), 'config', 'file'];
+        $process = $processManager->run($command, []);
+
+        return trim($process->getOutput());
+    }
+
+    /**
+     * Shows current config as JSON (rclone config dump).
+     *
+     * @see https://rclone.org/commands/rclone_config_dump/
+     *
+     * @return object Configuration object.
+     * @throws JsonException If JSON decoding fails.
+     */
+    public static function configDump(): object
+    {
+        $processManager = new ProcessManager();
+        $command = [self::getBIN(), 'config', 'dump'];
+        $process = $processManager->run($command, []);
+        $output = trim($process->getOutput());
+
+        if ($output === '' || $output === '{}') {
+            return (object) [];
+        }
+
+        return json_decode($output, false, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Performs bidirectional synchronization between two paths (rclone bisync).
+     *
+     * @see https://rclone.org/commands/rclone_bisync/
+     *
+     * @param string        $path1      First path (source or destination).
+     * @param string        $path2      Second path (source or destination).
+     * @param array         $flags      Additional flags (e.g., 'resync' => true for initial sync).
+     * @param callable|null $onProgress Optional progress callback.
+     *
+     * @return object Object with 'success' status and 'stats'.
+     */
+    public function bisync(string $path1, string $path2, array $flags = [], ?callable $onProgress = null): object
+    {
+        return $this->runAndGetStats(
+            'bisync',
+            [$this->left_side->backend($path1), $this->right_side->backend($path2)],
+            $flags,
+            $onProgress
+        );
+    }
+
+    /**
+     * Returns file system usage information as JSON (rclone ncdu --json).
+     *
+     * @see https://rclone.org/commands/rclone_ncdu/
+     *
+     * @param string|null $path  Path to analyze.
+     * @param array       $flags Additional flags.
+     *
+     * @return array Nested array of directories and files with sizes.
+     * @throws JsonException If JSON decoding fails.
+     */
+    public function ncdu(?string $path = null, array $flags = []): array
+    {
+        // Note: ncdu in JSON mode outputs to stdout in a specific format
+        $result = $this->simpleRun('ncdu', [$this->left_side->backend($path)], array_merge($flags, ['json' => true]));
+
+        if ($result === '' || $result === 'null') {
+            return [];
+        }
+
+        return json_decode($result, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Gets MD5 checksums for files (rclone md5sum).
+     *
+     * @see https://rclone.org/commands/rclone_md5sum/
+     *
+     * @param string|null $path  Path to checksum.
+     * @param array       $flags Additional flags.
+     *
+     * @return array Associative array of [path => md5hash].
+     */
+    public function md5sum(?string $path = null, array $flags = []): array
+    {
+        $result = $this->simpleRun('md5sum', [$this->left_side->backend($path)], $flags);
+
+        if ($result === '') {
+            return [];
+        }
+
+        $checksums = [];
+        foreach (explode("\n", $result) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            // Format: "hash  filename" (two spaces between)
+            if (preg_match('/^([a-fA-F0-9]{32})\s+(.+)$/', $line, $matches)) {
+                $checksums[$matches[2]] = $matches[1];
+            }
+        }
+
+        return $checksums;
+    }
+
+    /**
+     * Gets SHA1 checksums for files (rclone sha1sum).
+     *
+     * @see https://rclone.org/commands/rclone_sha1sum/
+     *
+     * @param string|null $path  Path to checksum.
+     * @param array       $flags Additional flags.
+     *
+     * @return array Associative array of [path => sha1hash].
+     */
+    public function sha1sum(?string $path = null, array $flags = []): array
+    {
+        $result = $this->simpleRun('sha1sum', [$this->left_side->backend($path)], $flags);
+
+        if ($result === '') {
+            return [];
+        }
+
+        $checksums = [];
+        foreach (explode("\n", $result) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            // Format: "hash  filename" (two spaces between)
+            if (preg_match('/^([a-fA-F0-9]{40})\s+(.+)$/', $line, $matches)) {
+                $checksums[$matches[2]] = $matches[1];
+            }
+        }
+
+        return $checksums;
+    }
+
+    /**
      * Gets the left-side (source) provider.
      *
      * @return Provider The left-side provider instance.

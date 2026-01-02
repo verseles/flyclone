@@ -64,6 +64,13 @@ Delega para `ProcessManager`, `CommandBuilder`, `StatsParser` e `ProgressParser`
 | `dedupe()`   | Remover duplicatas                     |
 | `cleanup()`  | Limpar arquivos incompletos            |
 | `backend()`  | Comandos específicos do backend        |
+| `bisync()`   | Sincronização bidirecional             |
+| `ncdu()`     | Uso de disco como JSON                 |
+| `md5sum()`   | Checksums MD5 de arquivos              |
+| `sha1sum()`  | Checksums SHA1 de arquivos             |
+| `listRemotes()` | Lista remotes configurados (static) |
+| `configFile()` | Caminho do arquivo de config (static) |
+| `configDump()` | Config como JSON (static)            |
 
 ### Métodos de Controle (v4)
 | Método              | Descrição                                   |
