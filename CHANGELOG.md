@@ -40,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integrated PHPStan at level 5 with CI
 - Integrated Laravel Pint (PSR-12) with CI
 - Added `bisync()` - bidirectional synchronization
-- Added `ncdu()` - disk usage analysis as JSON
 - Added `md5sum()` - MD5 checksums for files
 - Added `sha1sum()` - SHA1 checksums for files
 - Added `listRemotes()` - list configured remotes (static)

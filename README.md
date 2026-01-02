@@ -310,7 +310,7 @@ Flyclone v4 uses a modular architecture:
 
 **Feature 3: Polish & Release (rc)**
 - Integrated PHPStan (level 5) and Laravel Pint (PSR-12) with CI
-- Added new commands: `bisync()`, `ncdu()`, `md5sum()`, `sha1sum()`
+- Added new commands: `bisync()`, `md5sum()`, `sha1sum()`
 - Added static utilities: `listRemotes()`, `configFile()`, `configDump()`
 - Formatted entire codebase with `declare(strict_types=1)`
 - All tests passing (150+ tests)

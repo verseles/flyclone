@@ -1240,29 +1240,6 @@ class Rclone
     }
 
     /**
-     * Returns file system usage information as JSON (rclone ncdu --json).
-     *
-     * @see https://rclone.org/commands/rclone_ncdu/
-     *
-     * @param string|null $path  Path to analyze.
-     * @param array       $flags Additional flags.
-     *
-     * @return array Nested array of directories and files with sizes.
-     * @throws JsonException If JSON decoding fails.
-     */
-    public function ncdu(?string $path = null, array $flags = []): array
-    {
-        // Note: ncdu in JSON mode outputs to stdout in a specific format
-        $result = $this->simpleRun('ncdu', [$this->left_side->backend($path)], array_merge($flags, ['json' => true]));
-
-        if ($result === '' || $result === 'null') {
-            return [];
-        }
-
-        return json_decode($result, true, 512, JSON_THROW_ON_ERROR);
-    }
-
-    /**
      * Gets MD5 checksums for files (rclone md5sum).
      *
      * @see https://rclone.org/commands/rclone_md5sum/
