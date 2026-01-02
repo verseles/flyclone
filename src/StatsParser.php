@@ -9,12 +9,12 @@ class StatsParser
     public static function parse(string $output): object
     {
         $stats = [
-            'errors'                 => 0,
-            'checks'                 => 0,
-            'files'                  => 0,
-            'bytes'                  => 0,
-            'elapsed_time'           => 0.0,
-            'speed_human'            => '0 B/s',
+            'errors' => 0,
+            'checks' => 0,
+            'files' => 0,
+            'bytes' => 0,
+            'elapsed_time' => 0.0,
+            'speed_human' => '0 B/s',
             'speed_bytes_per_second' => 0.0,
         ];
 
@@ -39,18 +39,18 @@ class StatsParser
                     if (preg_match('/^\s*([\d.]+\s*[KMGTPI]?B)/i', $value, $byteMatches)) {
                         $stats['bytes'] += self::convertSizeToBytes(trim($byteMatches[1]));
                     } elseif (preg_match('/^\s*(\d+)\s*\/\s*\d+/', $value, $fileMatches)) {
-                        $stats['files'] += (int)$fileMatches[1];
+                        $stats['files'] += (int) $fileMatches[1];
                     }
                     break;
                 case 'Renamed':
-                    $stats['files'] += (int)$value;
+                    $stats['files'] += (int) $value;
                     break;
                 case 'Errors':
-                    $stats['errors'] = (int)$value;
+                    $stats['errors'] = (int) $value;
                     break;
                 case 'Checks':
                     if (preg_match('/^\s*(\d+)/', $value, $matches)) {
-                        $stats['checks'] = (int)$matches[1];
+                        $stats['checks'] = (int) $matches[1];
                     }
                     break;
                 case 'Elapsed time':
@@ -77,7 +77,7 @@ class StatsParser
         $units = ['B' => 0, 'K' => 1, 'M' => 2, 'G' => 3, 'T' => 4, 'P' => 5];
         preg_match('/([\d.]+)\s*([KMGTPI]?)B?/i', $sizeStr, $matches);
 
-        if (!isset($matches[1])) {
+        if (! isset($matches[1])) {
             return (int) $sizeStr;
         }
 
@@ -122,6 +122,7 @@ class StatsParser
         $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
         $i = (int) floor(log($bytes, 1024));
         $i = max(0, min($i, count($units) - 1));
+
         return round($bytes / (1024 ** $i), 2) . ' ' . $units[$i];
     }
 }

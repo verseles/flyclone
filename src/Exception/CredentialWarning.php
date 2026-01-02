@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Exception;
 
+use Exception;
+
 /**
  * Warning thrown when credentials appear to be unobscured (plaintext).
  *
@@ -11,9 +13,10 @@ namespace Verseles\Flyclone\Exception;
  * stopping execution. It's triggered when sensitive provider configuration
  * values appear to be in plaintext format instead of using Rclone::obscure().
  */
-class CredentialWarning extends \Exception
+class CredentialWarning extends Exception
 {
     private string $providerName;
+
     private string $fieldName;
 
     public function __construct(string $providerName, string $fieldName, string $message = '')

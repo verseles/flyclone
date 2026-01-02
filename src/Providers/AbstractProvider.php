@@ -4,12 +4,22 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Providers;
 
+use InvalidArgumentException;
 use Verseles\Flyclone\Exception\CredentialWarning;
 use Verseles\Flyclone\Logger;
 use Verseles\Flyclone\Rclone;
 
 abstract class AbstractProvider
 {
+    /** @var string The rclone provider type (e.g., 's3', 'local', 'sftp') */
+    protected string $provider = '';
+
+    /** @var string The provider instance name */
+    protected string $name = '';
+
+    /** @var array<string, mixed> Provider configuration flags */
+    protected array $flags = [];
+
     /** @var bool TRUE if the provider does not support empty folders */
     protected bool $dirAgnostic = false;
 
@@ -19,16 +29,16 @@ abstract class AbstractProvider
     /** @var bool TRUE if the provider lists all files at once */
     protected bool $listsAsTree = false;
 
-    /** @var array Fields that should be validated as required */
+    /** @var array<int, string> Fields that should be validated as required */
     protected array $requiredFields = [];
 
-    /** @var array Fields that contain sensitive data (passwords, tokens, etc.) */
+    /** @var array<int, string> Fields that contain sensitive data (passwords, tokens, etc.) */
     protected array $sensitiveFields = ['password', 'secret', 'token', 'key', 'pass'];
 
     /** @var bool Whether to validate credentials on construction */
     protected static bool $validateCredentials = true;
 
-    /** @var array Collected warnings during construction */
+    /** @var array<int, CredentialWarning> Collected warnings during construction */
     protected array $warnings = [];
 
     /**
@@ -96,19 +106,19 @@ abstract class AbstractProvider
     /**
      * Validate provider configuration.
      *
-     * @throws \InvalidArgumentException If required fields are missing.
+     * @throws InvalidArgumentException If required fields are missing.
      */
     protected function validateConfig(array $flags): void
     {
         $missing = [];
         foreach ($this->requiredFields as $field) {
-            if (!isset($flags[$field]) || $flags[$field] === '') {
+            if (! isset($flags[$field]) || $flags[$field] === '') {
                 $missing[] = $field;
             }
         }
 
-        if (!empty($missing)) {
-            throw new \InvalidArgumentException(sprintf(
+        if (! empty($missing)) {
+            throw new InvalidArgumentException(sprintf(
                 'Provider "%s" is missing required configuration: %s',
                 $this->provider ?? 'unknown',
                 implode(', ', $missing)
@@ -124,12 +134,12 @@ abstract class AbstractProvider
      */
     protected function checkCredentials(array $flags, string $providerName): void
     {
-        if (!self::$validateCredentials) {
+        if (! self::$validateCredentials) {
             return;
         }
 
         foreach ($flags as $key => $value) {
-            if (!is_string($value) || strlen($value) < 4) {
+            if (! is_string($value) || strlen($value) < 4) {
                 continue;
             }
 
@@ -143,7 +153,7 @@ abstract class AbstractProvider
                 }
             }
 
-            if ($isSensitive && !$this->looksObscured($value)) {
+            if ($isSensitive && ! $this->looksObscured($value)) {
                 $warning = new CredentialWarning($providerName, $key);
                 $this->warnings[] = $warning;
 
@@ -191,7 +201,7 @@ abstract class AbstractProvider
      */
     public function hasWarnings(): bool
     {
-        return !empty($this->warnings);
+        return ! empty($this->warnings);
     }
 
     /**
@@ -220,7 +230,7 @@ abstract class AbstractProvider
         $secrets = [];
 
         foreach ($this->flags ?? [] as $key => $value) {
-            if (!is_string($value) || strlen($value) < 4) {
+            if (! is_string($value) || strlen($value) < 4) {
                 continue;
             }
 

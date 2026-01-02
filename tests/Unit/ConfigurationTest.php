@@ -17,11 +17,11 @@ class ConfigurationTest extends TestCase
     public function set_and_get_timeout(): void
     {
         $original = Rclone::getTimeout();
-        
+
         Rclone::setTimeout(300);
         self::assertEquals(300, Rclone::getTimeout());
         self::assertEquals(300, ProcessManager::getTimeout());
-        
+
         Rclone::setTimeout($original);
     }
 
@@ -29,11 +29,11 @@ class ConfigurationTest extends TestCase
     public function set_and_get_idle_timeout(): void
     {
         $original = Rclone::getIdleTimeout();
-        
+
         Rclone::setIdleTimeout(120);
         self::assertEquals(120, Rclone::getIdleTimeout());
         self::assertEquals(120, ProcessManager::getIdleTimeout());
-        
+
         Rclone::setIdleTimeout($original);
     }
 
@@ -41,13 +41,13 @@ class ConfigurationTest extends TestCase
     public function set_and_get_flags(): void
     {
         $original = Rclone::getFlags();
-        
+
         Rclone::setFlags(['retries' => 5, 'verbose' => true]);
         $flags = Rclone::getFlags();
-        
+
         self::assertEquals(5, $flags['retries']);
         self::assertTrue($flags['verbose']);
-        
+
         Rclone::setFlags($original);
     }
 
@@ -55,13 +55,13 @@ class ConfigurationTest extends TestCase
     public function set_and_get_envs(): void
     {
         $original = Rclone::getEnvs();
-        
+
         Rclone::setEnvs(['RCLONE_LOG_LEVEL' => 'DEBUG', 'CUSTOM_VAR' => 'value']);
         $envs = Rclone::getEnvs();
-        
+
         self::assertEquals('DEBUG', $envs['RCLONE_LOG_LEVEL']);
         self::assertEquals('value', $envs['CUSTOM_VAR']);
-        
+
         Rclone::setEnvs($original);
     }
 
@@ -69,11 +69,11 @@ class ConfigurationTest extends TestCase
     public function set_and_get_input(): void
     {
         $original = Rclone::getInput();
-        
+
         Rclone::setInput('test input content');
         self::assertEquals('test input content', Rclone::getInput());
         self::assertEquals('test input content', ProcessManager::getInput());
-        
+
         Rclone::setInput($original);
     }
 
@@ -82,7 +82,7 @@ class ConfigurationTest extends TestCase
     {
         $input = ['flag_true' => true, 'flag_false' => false];
         $result = CommandBuilder::prefixFlags($input, 'RCLONE_');
-        
+
         self::assertEquals('true', $result['RCLONE_FLAG_TRUE']);
         self::assertEquals('false', $result['RCLONE_FLAG_FALSE']);
     }
@@ -92,7 +92,7 @@ class ConfigurationTest extends TestCase
     {
         $input = ['env_true' => true, 'env_false' => false];
         $result = CommandBuilder::prefixFlags($input, 'RCLONE_');
-        
+
         self::assertEquals('true', $result['RCLONE_ENV_TRUE']);
         self::assertEquals('false', $result['RCLONE_ENV_FALSE']);
     }
@@ -102,7 +102,7 @@ class ConfigurationTest extends TestCase
     {
         $input = ['key1' => 'value1', 'key_two' => 'value2'];
         $result = CommandBuilder::prefixFlags($input, 'RCLONE_');
-        
+
         self::assertArrayHasKey('RCLONE_KEY1', $result);
         self::assertArrayHasKey('RCLONE_KEY_TWO', $result);
         self::assertEquals('value1', $result['RCLONE_KEY1']);
@@ -114,7 +114,7 @@ class ConfigurationTest extends TestCase
     {
         $input = ['access_key_id' => 'AKID123', 'secret' => 'secret123'];
         $result = CommandBuilder::prefixFlags($input, 'RCLONE_CONFIG_MYREMOTE_');
-        
+
         self::assertArrayHasKey('RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID', $result);
         self::assertArrayHasKey('RCLONE_CONFIG_MYREMOTE_SECRET', $result);
     }
@@ -123,11 +123,11 @@ class ConfigurationTest extends TestCase
     public function get_and_set_bin(): void
     {
         $original = Rclone::getBIN();
-        
+
         Rclone::setBIN('/custom/path/rclone');
         self::assertEquals('/custom/path/rclone', Rclone::getBIN());
         self::assertEquals('/custom/path/rclone', ProcessManager::getBin());
-        
+
         Rclone::setBIN($original);
     }
 
@@ -144,9 +144,9 @@ class ConfigurationTest extends TestCase
     {
         $provider = new LocalProvider('test_local');
         $rclone = new Rclone($provider);
-        
+
         $providerFlags = $provider->flags();
-        
+
         self::assertArrayHasKey('RCLONE_CONFIG_TESTLOCAL_TYPE', $providerFlags);
         self::assertEquals('local', $providerFlags['RCLONE_CONFIG_TESTLOCAL_TYPE']);
     }
@@ -155,10 +155,10 @@ class ConfigurationTest extends TestCase
     public function build_environment_merges_all_sources(): void
     {
         $provider = new LocalProvider('env_test');
-        
+
         Rclone::setFlags(['global_flag' => 'global_value']);
         Rclone::setEnvs(['CUSTOM_ENV' => 'custom_value']);
-        
+
         $env = CommandBuilder::buildEnvironment(
             $provider,
             $provider,
@@ -166,11 +166,11 @@ class ConfigurationTest extends TestCase
             Rclone::getEnvs(),
             ['operation_flag' => 'op_value']
         );
-        
+
         self::assertArrayHasKey('RCLONE_CONFIG_ENVTEST_TYPE', $env);
         self::assertArrayHasKey('RCLONE_GLOBAL_FLAG', $env);
         self::assertArrayHasKey('RCLONE_OPERATION_FLAG', $env);
-        
+
         Rclone::setFlags([]);
         Rclone::setEnvs([]);
     }

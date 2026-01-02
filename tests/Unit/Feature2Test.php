@@ -6,6 +6,10 @@ namespace Verseles\Flyclone\Test\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
+use Symfony\Component\Process\Process;
+use Verseles\Flyclone\Exception\RcloneException;
+use Verseles\Flyclone\Exception\TemporaryErrorException;
 use Verseles\Flyclone\FilterBuilder;
 use Verseles\Flyclone\Logger;
 use Verseles\Flyclone\ProgressParser;
@@ -13,9 +17,6 @@ use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Rclone;
 use Verseles\Flyclone\RetryHandler;
 use Verseles\Flyclone\SecretsRedactor;
-use Verseles\Flyclone\Exception\RcloneException;
-use Verseles\Flyclone\Exception\TemporaryErrorException;
-use Symfony\Component\Process\Process;
 
 /**
  * Tests for Feature 2: Security & DX improvements.
@@ -141,13 +142,14 @@ class Feature2Test extends TestCase
         $handler = RetryHandler::create()
             ->maxAttempts(3)
             ->baseDelay(10)
-            ->retryWhen(fn($e) => $attempts < 3);
+            ->retryWhen(fn ($e) => $attempts < 3);
 
         $result = $handler->execute(function () use (&$attempts) {
             $attempts++;
             if ($attempts < 3) {
-                throw new \RuntimeException('Temporary failure');
+                throw new RuntimeException('Temporary failure');
             }
+
             return 'success';
         });
 
@@ -163,13 +165,14 @@ class Feature2Test extends TestCase
         $handler = RetryHandler::create()
             ->maxAttempts(2)
             ->baseDelay(10)
-            ->retryWhen(fn() => true);
+            ->retryWhen(fn () => true);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
 
         $handler->execute(function () use (&$attempts) {
             $attempts++;
-            throw new \RuntimeException('Always fails');
+
+            throw new RuntimeException('Always fails');
         });
     }
 
@@ -181,16 +184,16 @@ class Feature2Test extends TestCase
         $handler = RetryHandler::create()
             ->maxAttempts(3)
             ->baseDelay(10)
-            ->retryWhen(fn() => true)
+            ->retryWhen(fn () => true)
             ->onRetry(function () use (&$retryCount) {
                 $retryCount++;
             });
 
         try {
             $handler->execute(function () {
-                throw new \RuntimeException('Fail');
+                throw new RuntimeException('Fail');
             });
-        } catch (\RuntimeException) {
+        } catch (RuntimeException) {
             // Expected
         }
 
@@ -206,11 +209,12 @@ class Feature2Test extends TestCase
             ->enabled(false)
             ->maxAttempts(3);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
 
         $handler->execute(function () use (&$attempts) {
             $attempts++;
-            throw new \RuntimeException('Fail');
+
+            throw new RuntimeException('Fail');
         });
 
         $this->assertEquals(1, $attempts);
@@ -306,7 +310,7 @@ class Feature2Test extends TestCase
         $parser = new ProgressParser();
 
         // Simulate fragmented input
-        $parser->parse(Process::OUT, "Transferred:   1 MiB / 10 MiB, ");
+        $parser->parse(Process::OUT, 'Transferred:   1 MiB / 10 MiB, ');
         $parser->parse(Process::OUT, "10%, 100 KiB/s, ETA 1m30s\n");
 
         $progress = $parser->getProgress();
@@ -318,7 +322,7 @@ class Feature2Test extends TestCase
     {
         $parser = new ProgressParser();
 
-        $parser->parse(Process::OUT, "Transferred:   5 MiB / 10 MiB, 50%, 200 KiB/s, ETA 30s");
+        $parser->parse(Process::OUT, 'Transferred:   5 MiB / 10 MiB, 50%, 200 KiB/s, ETA 30s');
         $parser->flush();
 
         $progress = $parser->getProgress();
@@ -355,7 +359,7 @@ class Feature2Test extends TestCase
     public function temporary_error_exception_is_retryable(): void
     {
         $exception = new TemporaryErrorException(
-            new \RuntimeException('Inner'),
+            new RuntimeException('Inner'),
             'Temporary error'
         );
 

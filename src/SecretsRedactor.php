@@ -44,12 +44,6 @@ class SecretsRedactor
         '/(token|key|secret|password|auth)=([^&\s]+)/i',
     ];
 
-    /**
-     * Known rclone obscured password pattern.
-     * Obscured passwords start with specific characters.
-     */
-    private const OBSCURED_PATTERN = '/[A-Za-z0-9_-]{20,}/';
-
     private static bool $enabled = true;
 
     /**
@@ -78,7 +72,7 @@ class SecretsRedactor
      */
     public static function redact(string $message, array $knownSecrets = []): string
     {
-        if (!self::$enabled || $message === '') {
+        if (! self::$enabled || $message === '') {
             return $message;
         }
 
@@ -104,6 +98,7 @@ class SecretsRedactor
                 $message = str_replace($secret, self::REDACTED, $message);
             }
         }
+
         return $message;
     }
 
@@ -155,7 +150,7 @@ class SecretsRedactor
         $secrets = [];
 
         foreach ($providerFlags as $key => $value) {
-            if (!is_string($value) || strlen($value) < 4) {
+            if (! is_string($value) || strlen($value) < 4) {
                 continue;
             }
 

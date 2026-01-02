@@ -49,6 +49,7 @@ class FilterBuilder
     public function include(string $pattern): self
     {
         $this->includes[] = $pattern;
+
         return $this;
     }
 
@@ -62,6 +63,7 @@ class FilterBuilder
         foreach ($patterns as $pattern) {
             $this->include($pattern);
         }
+
         return $this;
     }
 
@@ -73,6 +75,7 @@ class FilterBuilder
     public function exclude(string $pattern): self
     {
         $this->excludes[] = $pattern;
+
         return $this;
     }
 
@@ -86,6 +89,7 @@ class FilterBuilder
         foreach ($patterns as $pattern) {
             $this->exclude($pattern);
         }
+
         return $this;
     }
 
@@ -100,6 +104,7 @@ class FilterBuilder
         foreach ($exts as $ext) {
             $this->include('*.' . ltrim($ext, '.'));
         }
+
         return $this;
     }
 
@@ -139,6 +144,7 @@ class FilterBuilder
     public function minSize(int|string $size): self
     {
         $this->minSize = $this->parseSize($size);
+
         return $this;
     }
 
@@ -150,6 +156,7 @@ class FilterBuilder
     public function maxSize(int|string $size): self
     {
         $this->maxSize = $this->parseSize($size);
+
         return $this;
     }
 
@@ -161,6 +168,7 @@ class FilterBuilder
     public function olderThan(string $age): self
     {
         $this->minAge = $this->parseAge($age);
+
         return $this;
     }
 
@@ -172,6 +180,7 @@ class FilterBuilder
     public function newerThan(string $age): self
     {
         $this->maxAge = $this->parseAge($age);
+
         return $this;
     }
 
@@ -181,6 +190,7 @@ class FilterBuilder
     public function deleteExcluded(bool $delete = true): self
     {
         $this->deleteExcluded = $delete;
+
         return $this;
     }
 
@@ -278,8 +288,8 @@ class FilterBuilder
      */
     public function hasFilters(): bool
     {
-        return !empty($this->includes)
-            || !empty($this->excludes)
+        return ! empty($this->includes)
+            || ! empty($this->excludes)
             || $this->minSize !== null
             || $this->maxSize !== null
             || $this->minAge !== null
@@ -298,6 +308,7 @@ class FilterBuilder
         $this->minAge = null;
         $this->maxAge = null;
         $this->deleteExcluded = false;
+
         return $this;
     }
 
@@ -316,6 +327,7 @@ class FilterBuilder
         if (preg_match('/^([\d.]+)\s*([BKMGT])?$/i', $size, $matches)) {
             $value = (float) $matches[1];
             $unit = $matches[2] ?? 'B';
+
             return (int) ($value * ($units[$unit] ?? 1));
         }
 
@@ -336,6 +348,7 @@ class FilterBuilder
         if ($bytes >= 1024) {
             return round($bytes / 1024, 2) . 'K';
         }
+
         return $bytes . 'B';
     }
 
@@ -349,6 +362,7 @@ class FilterBuilder
         if (preg_match('/^(\d+)\s*([smhdwMy])?$/i', trim($age), $matches)) {
             $value = (int) $matches[1];
             $unit = $matches[2] ?? 's';
+
             return $value * ($units[$unit] ?? 1);
         }
 
@@ -369,6 +383,7 @@ class FilterBuilder
         if ($seconds >= 60) {
             return (int) ($seconds / 60) . 'm';
         }
+
         return $seconds . 's';
     }
 }

@@ -47,10 +47,10 @@ Description: Security hardening, retry mechanism, logging, and developer experie
 
 ### Feature 3: v4.0-rc: Polish & Release
 Description: Documentation, static analysis, code style, and release preparation
-- [ ] 3.01 Integrate PHPStan at max level with CI
-- [ ] 3.02 Add PHP CS Fixer or Pint with CI integration
+- [x] 3.01 Integrate PHPStan at level 5 with CI (level max deferred to 3.04)
+- [x] 3.02 Add Laravel Pint with CI integration (PSR-12 + custom rules)
 - [ ] 3.03 Cover @codeCoverageIgnore blocks with mock infrastructure
-- [ ] 3.04 Improve return type hints with proper array docblocks
+- [ ] 3.04 Improve return type hints with proper array docblocks (raise PHPStan to max)
 - [ ] 3.05 Expose additional rclone commands (config, listremotes, ncdu, bisync)
 - [ ] 3.06 Add version-aware stats parsing for different rclone versions
 - [ ] 3.07 Generate API documentation (phpDocumentor or similar)

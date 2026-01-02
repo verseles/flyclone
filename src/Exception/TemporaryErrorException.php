@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Exception;
 
+use Exception;
+
 /**
  * Exception for temporary/transient errors that may succeed on retry.
  *
@@ -11,7 +13,7 @@ namespace Verseles\Flyclone\Exception;
  */
 class TemporaryErrorException extends RcloneException
 {
-    public function __construct(\Exception $exception, string $message = 'Temporary error (one that more retries might fix) (Retry errors).', int $code = 5)
+    public function __construct(Exception $exception, string $message = 'Temporary error (one that more retries might fix) (Retry errors).', int $code = 5)
     {
         parent::__construct($message, $code, $exception);
     }

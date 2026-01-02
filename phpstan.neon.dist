@@ -1,0 +1,30 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    excludePaths:
+        - vendor
+
+    # Treat missing type hints as errors
+    treatPhpDocTypesAsCertain: false
+
+    # Report missing typehints
+    reportUnmatchedIgnoredErrors: false
+
+    # Ignore certain errors that are acceptable
+    ignoreErrors:
+        # Allow dynamic properties on stdClass-like objects (rclone JSON responses)
+        - '#Access to an undefined property object::\$#'
+        - '#Access to an undefined property stdClass::\$#'
+        # Allow array shapes in return types
+        - '#Method .+ should return array\{.+\} but returns array#'
+        # Allow mixed in some cases
+        - '#Cannot cast mixed to string#'
+        - '#Part \$\w+ \(mixed\) of encapsed string cannot be cast to string#'
+        # Process timeout can be thrown by mustRun internally
+        -
+            message: '#Dead catch - .+ is never thrown in the try block#'
+            path: src/ProcessManager.php
+
+    # PHP version
+    phpVersion: 80400

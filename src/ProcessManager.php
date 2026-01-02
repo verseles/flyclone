@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone;
 
+use Exception;
+use InvalidArgumentException;
+use RuntimeException;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyProcessTimedOutException;
+use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 use Verseles\Flyclone\Exception\DirectoryNotFoundException;
 use Verseles\Flyclone\Exception\FatalErrorException;
 use Verseles\Flyclone\Exception\FileNotFoundException;
@@ -11,20 +18,18 @@ use Verseles\Flyclone\Exception\LessSeriousErrorException;
 use Verseles\Flyclone\Exception\MaxTransferReachedException;
 use Verseles\Flyclone\Exception\NoFilesTransferredException;
 use Verseles\Flyclone\Exception\ProcessTimedOutException;
-use Verseles\Flyclone\Exception\RcloneException;
 use Verseles\Flyclone\Exception\SyntaxErrorException;
 use Verseles\Flyclone\Exception\TemporaryErrorException;
 use Verseles\Flyclone\Exception\UnknownErrorException;
-use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyProcessTimedOutException;
-use Symfony\Component\Process\ExecutableFinder;
-use Symfony\Component\Process\Process;
 
 class ProcessManager
 {
     private static string $bin;
+
     private static int $timeout = 120;
+
     private static int $idleTimeout = 100;
+
     private static string $input = '';
 
     /** @var array Secrets to redact from error messages */
@@ -92,7 +97,7 @@ class ProcessManager
         ]);
 
         if ($rclonePath === null) {
-            throw new \RuntimeException('Rclone binary not found. Please ensure rclone is installed and in your PATH, or set the path manually using ProcessManager::setBin().');
+            throw new RuntimeException('Rclone binary not found. Please ensure rclone is installed and in your PATH, or set the path manually using ProcessManager::setBin().');
         }
 
         self::$bin = $rclonePath;
@@ -108,6 +113,7 @@ class ProcessManager
     public function setSecrets(array $secrets): self
     {
         $this->secrets = $secrets;
+
         return $this;
     }
 
@@ -164,6 +170,7 @@ class ProcessManager
 
             $redacted[$key] = $isSensitive ? SecretsRedactor::REDACTED : $value;
         }
+
         return $redacted;
     }
 
@@ -176,7 +183,7 @@ class ProcessManager
         $process->setTimeout($timeout ?? self::getTimeout());
         $process->setIdleTimeout(self::getIdleTimeout());
 
-        if (!empty(self::getInput())) {
+        if (! empty(self::getInput())) {
             $process->setInput(self::getInput());
         }
 
@@ -191,12 +198,13 @@ class ProcessManager
             } else {
                 $process->mustRun();
             }
+
             return $process;
         } catch (ProcessFailedException $e) {
             $this->handleFailure($e);
         } catch (SymfonyProcessTimedOutException $e) {
             throw new ProcessTimedOutException($e);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw new UnknownErrorException($e, 'An unexpected error occurred: ' . $e->getMessage());
         } finally {
             self::setInput('');
@@ -241,7 +249,7 @@ class ProcessManager
     public static function obscure(string $secret): string
     {
         if ($secret === '') {
-            throw new \InvalidArgumentException('Cannot obscure an empty secret.');
+            throw new InvalidArgumentException('Cannot obscure an empty secret.');
         }
 
         $process = new Process([self::getBin(), 'obscure', $secret]);
@@ -251,7 +259,7 @@ class ProcessManager
         $output = trim($process->getOutput());
 
         if ($output === '') {
-            throw new \RuntimeException('rclone obscure returned empty output.');
+            throw new RuntimeException('rclone obscure returned empty output.');
         }
 
         return $output;

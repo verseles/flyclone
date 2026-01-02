@@ -6,12 +6,11 @@ namespace Verseles\Flyclone\Test\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\ProcessManager;
-use Verseles\Flyclone\StatsParser;
+use Symfony\Component\Process\Process;
 use Verseles\Flyclone\ProgressParser;
 use Verseles\Flyclone\Providers\LocalProvider;
-use Symfony\Component\Process\Process;
+use Verseles\Flyclone\Rclone;
+use Verseles\Flyclone\StatsParser;
 
 class EdgeCasesTest extends TestCase
 {
@@ -190,7 +189,7 @@ class EdgeCasesTest extends TestCase
     {
         $hiddenDir = $this->tempDir . '/hidden_test';
         mkdir($hiddenDir, 0755, true);
-        
+
         $provider = new LocalProvider('edge');
         $rclone = new Rclone($provider);
 

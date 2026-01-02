@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone;
 
+use Exception;
+use RuntimeException;
 use Verseles\Flyclone\Exception\RcloneException;
 
 /**
@@ -12,9 +14,13 @@ use Verseles\Flyclone\Exception\RcloneException;
 class RetryHandler
 {
     private int $maxAttempts = 3;
+
     private int $baseDelayMs = 1000;
+
     private float $multiplier = 2.0;
+
     private int $maxDelayMs = 30000;
+
     private bool $enabled = true;
 
     /** @var callable|null Custom retry condition */
@@ -37,6 +43,7 @@ class RetryHandler
     public function maxAttempts(int $attempts): self
     {
         $this->maxAttempts = max(1, $attempts);
+
         return $this;
     }
 
@@ -46,6 +53,7 @@ class RetryHandler
     public function baseDelay(int $milliseconds): self
     {
         $this->baseDelayMs = max(0, $milliseconds);
+
         return $this;
     }
 
@@ -55,6 +63,7 @@ class RetryHandler
     public function multiplier(float $multiplier): self
     {
         $this->multiplier = max(1.0, $multiplier);
+
         return $this;
     }
 
@@ -64,6 +73,7 @@ class RetryHandler
     public function maxDelay(int $milliseconds): self
     {
         $this->maxDelayMs = max(0, $milliseconds);
+
         return $this;
     }
 
@@ -73,6 +83,7 @@ class RetryHandler
     public function enabled(bool $enabled): self
     {
         $this->enabled = $enabled;
+
         return $this;
     }
 
@@ -84,6 +95,7 @@ class RetryHandler
     public function retryWhen(callable $condition): self
     {
         $this->retryCondition = $condition;
+
         return $this;
     }
 
@@ -95,6 +107,7 @@ class RetryHandler
     public function onRetry(callable $callback): self
     {
         $this->onRetry = $callback;
+
         return $this;
     }
 
@@ -104,15 +117,15 @@ class RetryHandler
      * @param callable $operation The operation to execute.
      *
      * @return mixed The result of the operation.
-     * @throws \Exception The last exception if all retries fail.
+     * @throws Exception The last exception if all retries fail.
      */
     public function execute(callable $operation): mixed
     {
-        if (!$this->enabled) {
+        if (! $this->enabled || $this->maxAttempts < 1) {
             return $operation();
         }
 
-        $lastException = null;
+        $lastException = new RuntimeException('No attempts executed');
         $attempt = 0;
 
         while ($attempt < $this->maxAttempts) {
@@ -120,11 +133,11 @@ class RetryHandler
 
             try {
                 return $operation();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $lastException = $e;
 
                 // Check if we should retry
-                if (!$this->shouldRetry($e, $attempt)) {
+                if (! $this->shouldRetry($e, $attempt)) {
                     throw $e;
                 }
 
@@ -154,7 +167,7 @@ class RetryHandler
     /**
      * Determine if an exception should trigger a retry.
      */
-    private function shouldRetry(\Exception $exception, int $attempt): bool
+    private function shouldRetry(Exception $exception, int $attempt): bool
     {
         // Don't retry if we've exhausted attempts
         if ($attempt >= $this->maxAttempts) {
@@ -163,7 +176,7 @@ class RetryHandler
 
         // Use custom condition if set
         if ($this->retryCondition !== null) {
-            return ($this->retryCondition)($exception);
+            return (bool) ($this->retryCondition)($exception);
         }
 
         // Default: retry only RcloneExceptions that are marked as retryable

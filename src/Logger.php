@@ -24,8 +24,11 @@ class Logger
 
     /** @var object|null PSR-3 compatible logger */
     private static ?object $logger = null;
+
     private static bool $debugMode = false;
+
     private static array $logs = [];
+
     private static int $maxLogs = 1000;
 
     /**
@@ -145,7 +148,7 @@ class Logger
      */
     public static function getLogsByLevel(string $level): array
     {
-        return array_filter(self::$logs, fn($log) => $log['level'] === $level);
+        return array_filter(self::$logs, fn ($log) => $log['level'] === $level);
     }
 
     /**

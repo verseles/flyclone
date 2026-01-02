@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Exception;
 
+use RuntimeException;
+
 /**
  * Base exception for all rclone-related errors.
  *
  * Provides enhanced context including command executed, provider info, and paths.
  */
-class RcloneException extends \RuntimeException
+class RcloneException extends RuntimeException
 {
     /** @var array Additional context about the error */
     protected array $context = [];
@@ -22,6 +24,7 @@ class RcloneException extends \RuntimeException
     public function setContext(array $context): self
     {
         $this->context = array_merge($this->context, $context);
+
         return $this;
     }
 
@@ -67,7 +70,7 @@ class RcloneException extends \RuntimeException
     {
         $details = [$this->getMessage()];
 
-        if (!empty($this->context)) {
+        if (! empty($this->context)) {
             $details[] = 'Context:';
             foreach ($this->context as $key => $value) {
                 $details[] = "  $key: " . (is_array($value) ? json_encode($value) : $value);

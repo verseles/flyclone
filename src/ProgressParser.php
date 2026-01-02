@@ -88,6 +88,7 @@ class ProgressParser
                 $matches[5],
                 $matches[6]
             );
+
             return;
         }
 
