@@ -17,6 +17,10 @@ Flyclone provides an intuitive, object-oriented interface for interacting with r
 - **Encryption Support** - Transparent encryption via CryptProvider
 - **Union Filesystems** - Merge multiple providers into a single virtual filesystem
 - **Type-Safe Errors** - Specific exceptions for each rclone exit code
+- **Automatic Retry** - Exponential backoff for transient failures
+- **Filtering API** - Fluent builder for include/exclude patterns
+- **Security First** - Secrets redaction in errors, credential validation warnings
+- **Debug Mode** - Command introspection and structured logging
 
 ## Requirements
 
@@ -147,7 +151,98 @@ try {
     // Directory doesn't exist
 } catch (TemporaryErrorException $e) {
     // Temporary error - retry may succeed
+    if ($e->isRetryable()) {
+        // Can check programmatically
+    }
+    // Rich context available
+    $context = $e->getContext(); // ['command' => '...', 'provider' => '...']
 }
+```
+
+### Automatic Retry
+
+```php
+use Verseles\Flyclone\RetryHandler;
+
+// Simple retry configuration
+$rclone->retry(maxAttempts: 5, baseDelayMs: 1000)
+    ->copy($source, $dest);
+
+// Advanced retry with custom handler
+$handler = RetryHandler::create()
+    ->maxAttempts(5)
+    ->baseDelay(500)
+    ->multiplier(2.0)
+    ->maxDelay(30000)
+    ->onRetry(fn($attempt, $e) => logger("Retry $attempt: {$e->getMessage()}"));
+
+$rclone->withRetry($handler)->copy($source, $dest);
+```
+
+### Filtering
+
+```php
+use Verseles\Flyclone\FilterBuilder;
+
+// Filter by extension and size
+$rclone->withFilter(
+    FilterBuilder::create()
+        ->extensions(['jpg', 'png', 'gif'])
+        ->minSize('100K')
+        ->maxSize('50M')
+        ->exclude('**/thumbnails/**')
+)->copy($source, $dest);
+
+// Filter by age
+$rclone->withFilter(
+    FilterBuilder::create()
+        ->newerThan('7d')  // Last 7 days
+        ->include('*.log')
+)->sync($source, $dest);
+```
+
+### Dry-Run Mode
+
+```php
+// Preview what would happen without making changes
+$rclone->dryRun(true)->sync($source, $dest);
+
+// Check if dry-run is enabled
+if ($rclone->isDryRun()) {
+    echo "Running in simulation mode";
+}
+```
+
+### Health Check
+
+```php
+// Verify provider connectivity
+$health = $rclone->healthCheck();
+
+if ($health->healthy) {
+    echo "Connected in {$health->latency_ms}ms";
+} else {
+    echo "Failed: {$health->error}";
+}
+```
+
+### Debugging
+
+```php
+use Verseles\Flyclone\Logger;
+
+// Enable debug mode to log all commands
+Logger::setDebugMode(true);
+
+// After an operation, inspect what was executed
+$rclone->copy($source, $dest);
+echo $rclone->getLastCommand();  // "rclone copy ..."
+
+// Get redacted environment variables
+$envs = $rclone->getLastEnvs();  // Secrets are [REDACTED]
+
+// Retrieve all debug logs
+$logs = Logger::getLogs();
 ```
 
 ## Testing
@@ -178,6 +273,10 @@ Flyclone v4 uses a modular architecture:
 | `CommandBuilder` | Command construction, environment variables |
 | `StatsParser` | Transfer statistics parsing |
 | `ProgressParser` | Real-time progress parsing |
+| `RetryHandler` | Exponential backoff retry mechanism |
+| `FilterBuilder` | Fluent API for include/exclude patterns |
+| `SecretsRedactor` | Sensitive data redaction in errors/logs |
+| `Logger` | Structured logging with debug mode |
 
 ## Contributing
 
@@ -190,10 +289,24 @@ Flyclone v4 uses a modular architecture:
 ## Changelog
 
 ### v4.0.0 (In Development)
-- **Architecture**: Extracted `ProcessManager`, `CommandBuilder`, `StatsParser`, `ProgressParser` from monolithic `Rclone` class
-- **Fixed**: `CryptProvider` and `UnionProvider` now fully functional with passing tests
-- **Tests**: Added `ConfigurationTest` (13 tests) and `EdgeCasesTest` (13 tests)
-- **Infrastructure**: Migrated to `podman-compose`, 97+ tests passing
+
+**Feature 1: Core Refactoring (alpha)**
+- Extracted `ProcessManager`, `CommandBuilder`, `StatsParser`, `ProgressParser` from monolithic `Rclone` class
+- Fixed `CryptProvider` and `UnionProvider` - now fully functional
+- Added `ConfigurationTest` (13 tests) and `EdgeCasesTest` (13 tests)
+- Migrated to `podman-compose`
+
+**Feature 2: Security & DX (beta)**
+- Added `SecretsRedactor` - automatic redaction of sensitive data in errors
+- Added `RetryHandler` - exponential backoff for transient failures
+- Added `FilterBuilder` - fluent API for include/exclude patterns
+- Added `Logger` - structured logging with debug mode
+- Added `healthCheck()` - provider connectivity verification
+- Added `dryRun()` - simulation mode for operations
+- Added command introspection (`getLastCommand()`, `getLastEnvs()`)
+- Added exception context (`isRetryable()`, `getContext()`)
+- Added credential validation warnings for plaintext passwords
+- Added `Feature2Test` (28 tests), 125+ tests total
 
 ### v3.x
 - Transfer operations return detailed statistics object
