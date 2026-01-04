@@ -2,11 +2,11 @@
 
 **IMPORTANTE:** Ao iniciar qualquer sessão, leia TODOS os arquivos:
 
-| Arquivo        | Conteúdo                         |
-| -------------- | -------------------------------- |
-| @./CODEBASE.md | Mapa do código                   |
-| @./ADR.md      | Decisões arquiteturais           |
-| @./README.md   | Visão geral, instalação e uso    |
+| Arquivo        | Conteúdo                      |
+| -------------- | ----------------------------- |
+| @./CODEBASE.md | Mapa do código                |
+| @./ADR.md      | Decisões arquiteturais        |
+| @./README.md   | Visão geral, instalação e uso |
 
 As regras deste arquivo são **obrigatórias**.
 
@@ -14,43 +14,45 @@ As regras deste arquivo são **obrigatórias**.
 
 ## Referência Rápida
 
-| Campo           | Valor                          |
-| --------------- | ------------------------------ |
-| **Nome**        | Flyclone                       |
-| **Package**     | `verseles/flyclone`            |
-| **PHP**         | >= 8.4 (obrigatório)           |
-| **Repositório** | github.com/verseles/flyclone   |
-| **Licença**     | CC-BY-NC-SA-4.0                |
+| Campo           | Valor                        |
+| --------------- | ---------------------------- |
+| **Nome**        | Flyclone                     |
+| **Package**     | `verseles/flyclone`          |
+| **PHP**         | >= 8.4 (obrigatório)         |
+| **Repositório** | github.com/verseles/flyclone |
+| **Licença**     | CC-BY-NC-SA-4.0              |
 
 ---
 
 ## Dependências
 
-| Dependência       | Obrigatória | Notas                              |
-| ----------------- | ----------- | ---------------------------------- |
-| PHP 8.4+          | Sim         | Property hooks são utilizados      |
-| rclone            | Sim         | Binário deve estar no PATH         |
-| Composer          | Sim         | Gerenciamento de dependências      |
-| podman-compose    | Para testes | Containers SFTP, MinIO, FTP        |
+| Dependência    | Obrigatória | Notas                         |
+| -------------- | ----------- | ----------------------------- |
+| PHP 8.4+       | Sim         | Property hooks são utilizados |
+| rclone         | Sim         | Binário deve estar no PATH    |
+| Composer       | Sim         | Gerenciamento de dependências |
+| podman-compose | Para testes | Containers SFTP, MinIO, FTP   |
 
 ---
 
 ## Comandos
 
 ### Make
-| Comando           | Descrição                                        |
-| ----------------- | ------------------------------------------------ |
-| `make test`       | Testes rápidos (extra_commands, upload_download) |
-| `make test-offline` | Testes completos com containers                |
-| `make init`       | `composer install`                               |
-| `make tog`        | Gera documentação para AI                        |
+
+| Comando             | Descrição                                        |
+| ------------------- | ------------------------------------------------ |
+| `make test`         | Testes rápidos (extra_commands, upload_download) |
+| `make test-offline` | Testes completos com containers                  |
+| `make init`         | `composer install`                               |
+| `make tog`          | Gera documentação para AI                        |
 
 ### Composer
-| Comando                      | Descrição                    |
-| ---------------------------- | ---------------------------- |
-| `composer test`              | Todos os testes              |
-| `composer test-local`        | Apenas LocalProvider (CI)    |
-| `composer run-script test-offline` | Testes offline completos |
+
+| Comando                            | Descrição                 |
+| ---------------------------------- | ------------------------- |
+| `composer test`                    | Todos os testes           |
+| `composer test-local`              | Apenas LocalProvider (CI) |
+| `composer run-script test-offline` | Testes offline completos  |
 
 ---
 
@@ -132,7 +134,7 @@ namespace Verseles\Flyclone\Providers;
 class MyCloudProvider extends Provider
 {
     protected string $provider = 'mycloud';
-    
+
     // Se não suporta pastas vazias (como S3):
     protected bool $dirAgnostic = true;
 }
@@ -180,42 +182,43 @@ try {
 
 ## Docker Compose Services
 
-| Service | Porta | Usuário/Senha           |
-| ------- | ----- | ----------------------- |
-| sftp    | 2222  | Ver docker-compose.yml  |
-| s3      | 9000  | minioadmin/minioadmin   |
-| ftp     | 2121  | Ver docker-compose.yml  |
+| Service | Porta | Usuário/Senha          |
+| ------- | ----- | ---------------------- |
+| sftp    | 2222  | Ver docker-compose.yml |
+| s3      | 9000  | minioadmin/minioadmin  |
+| ftp     | 2121  | Ver docker-compose.yml |
 
 ---
 
 ## Execução de Roadmap
 
-O projeto utiliza o arquivo `roadmap/roadmap.md` para gerenciar tarefas de longo prazo. Siga estas diretrizes para manter a execução lúcida e focada.
+O projeto utiliza o arquivo `ROADMAP.md` para gerenciar tarefas de longo prazo. Siga estas diretrizes para manter a execução lúcida e focada.
 
 ### Estado Atual do Projeto
 
-| Branch | Versão | Status | Ação do Agent |
-| ------ | ------ | ------ | ------------- |
-| `main` | v3.x   | Estável | Apenas hotfixes críticos |
+| Branch | Versão | Status                 | Ação do Agent                 |
+| ------ | ------ | ---------------------- | ----------------------------- |
+| `main` | v3.x   | Estável                | Apenas hotfixes críticos      |
 | `v4`   | v4.0   | **EM DESENVOLVIMENTO** | Todo trabalho do roadmap aqui |
 
 **⚠️ IMPORTANTE:** Ao iniciar sessão para trabalhar no roadmap:
+
 1. `git checkout v4` - Garantir que está na branch correta
 2. `cat roadmap/roadmap.md` - Ver estado atual e próximas actions
 3. Escolher UMA action pendente e marcar `in_progress`
 
 ### Tags e Milestones
 
-| Tag Pattern | Quando Criar | Milestone |
-| ----------- | ------------ | --------- |
-| `v4.0.0-alpha.N` | Após completar Feature 1 (Core Refactoring) | 1 |
-| `v4.0.0-beta.N`  | Após completar Feature 2 (Security & DX) | 2 |
-| `v4.0.0-rc.N`    | Após completar Feature 3 (Polish & Release) | 3 |
-| `v4.0.0`         | Merge para main + release final | - |
+| Tag Pattern      | Quando Criar                                | Milestone |
+| ---------------- | ------------------------------------------- | --------- |
+| `v4.0.0-alpha.N` | Após completar Feature 1 (Core Refactoring) | 1         |
+| `v4.0.0-beta.N`  | Após completar Feature 2 (Security & DX)    | 2         |
+| `v4.0.0-rc.N`    | Após completar Feature 3 (Polish & Release) | 3         |
+| `v4.0.0`         | Merge para main + release final             | -         |
 
 ### Antes de Iniciar uma Action
 
-1. **Ler o roadmap.** `cat roadmap/roadmap.md` para entender o contexto geral e identificar dependências.
+1. **Ler o roadmap.** para entender o contexto geral e identificar dependências.
 
 2. **Ler apenas arquivos necessários.** Não carregar todo o codebase - apenas o que a action específica precisa.
 
@@ -223,7 +226,7 @@ O projeto utiliza o arquivo `roadmap/roadmap.md` para gerenciar tarefas de longo
 
 4. **Verificar actions in_progress.** Se outra action está em andamento, NÃO modificar arquivos relacionados a ela.
 
-5. **Marcar in_progress.** Editar `roadmap/roadmap.md` alterando status para `in_progress` e fazer commit: `git commit -m "roadmap: start 1.01"`
+5. **Marcar in_progress.** Atualize o roadmap assim que iniciar trabalho
 
 ### Durante a Execução
 
@@ -235,7 +238,7 @@ O projeto utiliza o arquivo `roadmap/roadmap.md` para gerenciar tarefas de longo
 
 9. **Commits atômicos.** Cada commit deve representar um passo lógico completo da action.
 
-10. **Atualizar notas.** Editar `roadmap/roadmap.md` com progresso significativo.
+10. **Atualizar notas.** Atualize roadmap com progresso significativo.
 
 ### Ao Concluir uma Action
 
@@ -247,7 +250,7 @@ O projeto utiliza o arquivo `roadmap/roadmap.md` para gerenciar tarefas de longo
 
 14. **Commit descritivo.** Mensagem referenciando a action: `feat(1.03): Extract StatsParser class`
 
-15. **Marcar completed.** Editar `roadmap/roadmap.md` alterando status e adicionando nota com resumo.
+15. **Marcar completed.** Atualize roadmap alterando status e adicionando nota com resumo.
 
 16. **Limpar contexto.** Antes da próxima action, descartar leituras de arquivos não mais necessários.
 
@@ -255,23 +258,20 @@ O projeto utiliza o arquivo `roadmap/roadmap.md` para gerenciar tarefas de longo
 
 17. **Sempre corrigir bugs.** Não acumular dívida técnica.
 
-| Momento                    | Ação                                              |
-| -------------------------- | ------------------------------------------------- |
-| ANTES de iniciar action    | Commit separado (`fix: ...`), depois iniciar action |
-| DURANTE a action           | Incluir no commit da action, documentar na nota   |
+| Momento                 | Ação                                                |
+| ----------------------- | --------------------------------------------------- |
+| ANTES de iniciar action | Commit separado (`fix: ...`), depois iniciar action |
+| DURANTE a action        | Incluir no commit da action, documentar na nota     |
 
 18. **Documentar na nota do roadmap:** `"Completed. Also fixed: [descrição breve]"`
 
 ### Prevenindo Alucinação e Drift
 
-19. **Checkpoint mental periódico.** A cada 3-5 tool calls ou quando incerto:
-    - Reler a action atual no roadmap
-    - Perguntar internamente: "Estou no escopo da action?"
-    - Se divergiu, parar e retomar o foco
+19. **Checkpoint mental periódico.** Verifique o roadmap com frequência.
 
 20. **Antes de cada commit:** Verificar se as mudanças correspondem à action descrita.
 
-21. **Na dúvida, reler.** Nunca assumir - sempre consultar roadmap/ADR/CODEBASE.
+21. **Na dúvida, reler.** Nunca assumir - sempre consultar ROADMAP/ADR/CODEBASE.
 
 22. **Web search frequente.** Pesquisar antes de implementar, ao encontrar erros, quando incerto.
 
