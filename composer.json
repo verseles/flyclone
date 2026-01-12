@@ -33,9 +33,13 @@
     "test" : "phpunit",
     "test-local" : "phpunit --testsuite offline_no_docker",
     "test-offline" : "phpunit --testsuite offline",
+    "test-coverage" : "phpunit --coverage-html coverage --coverage-clover coverage.xml",
     "security-check" : "security-checker security:check composer.lock",
+    "analyse" : "phpstan analyse",
+    "lint" : "pint",
+    "lint-test" : "pint --test",
     "post-install-cmd"   : [
-      "exit 0 || [ $COMPOSER_DEV_MODE -eq 0 ] || composer run security-check"
+      "[ \"$COMPOSER_DEV_MODE\" -eq 0 ] || composer run security-check || true"
     ]
   },
   "config"            : {
@@ -45,6 +49,8 @@
   "prefer-stable"     : true,
   "require-dev"       : {
     "phpunit/phpunit" : "^12.0",
-    "enlightn/security-checker": "^1.9"
+    "enlightn/security-checker": "^1.9",
+    "phpstan/phpstan": "^2.0",
+    "laravel/pint": "^1.18"
   }
 }

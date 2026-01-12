@@ -17,7 +17,13 @@
         displayDetailsOnTestsThatTriggerWarnings="true"
         displayDetailsOnTestsThatTriggerErrors="true"
 >
-    <coverage/>
+    <coverage includeUncoveredFiles="true">
+        <report>
+            <html outputDirectory="coverage" lowUpperBound="50" highLowerBound="80"/>
+            <clover outputFile="coverage.xml"/>
+            <text outputFile="php://stdout" showOnlySummary="true"/>
+        </report>
+    </coverage>
     <testsuites>
         <testsuite name="all">
             <directory>tests</directory>
