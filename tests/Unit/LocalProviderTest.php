@@ -49,13 +49,14 @@ class LocalProviderTest extends AbstractProviderTest
 
   #[Test]
   #[Depends('write_to_a_file')]
-  public function is_file_with_metadata_flag(array $params) : void
+  public function is_file_with_hash_flag(array $params) : void
   {
     [$left_side, $temp_filepath] = $params;
 
-    // Check if is_file accepts flags and returns exists=true for existing file
-    $result = $left_side->is_file($temp_filepath, ['metadata' => true]);
-    self::assertTrue($result->exists, "File should exist when checked with metadata flag.");
+    // Check if is_file accepts flags and returns exists=true for existing file.
+    // Using 'hash' flag instead of 'metadata' as 'metadata' might fail in some CI environments without extended attributes support.
+    $result = $left_side->is_file($temp_filepath, ['hash' => true]);
+    self::assertTrue($result->exists, "File should exist when checked with hash flag.");
   }
   
 }
