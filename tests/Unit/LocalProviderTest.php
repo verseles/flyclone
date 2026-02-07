@@ -46,5 +46,22 @@ class LocalProviderTest extends AbstractProviderTest
     
     return [$left_side, $temp_filepath, $content];
   }
+
+  #[Test]
+  #[Depends('write_to_a_file')]
+  public function is_file_respects_flags(array $params) : void
+  {
+    [$left_side, $temp_filepath] = $params;
+
+    // We verify that flags are passed by using a filtering flag that should exclude the file.
+    // If the flag was ignored, the file would be found and this assertion would fail.
+
+    // 1G is definitely larger than the test file (approx 46 bytes).
+    $result = $left_side->is_file($temp_filepath, ['min-size' => '1G']);
+
+    self::assertFalse($result->exists, "File should NOT be found when min-size is large (flag respected).");
+    // Ensure it returned false due to filtering (empty list), not an error/crash
+    self::assertEmpty($result->error, "Error occurred during check: " . print_r($result->error, TRUE));
+  }
   
 }

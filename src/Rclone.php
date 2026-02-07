@@ -913,39 +913,42 @@ class Rclone
    * Checks if a path exists and is a file.
    *
    * @param string $path Path to check.
+   * @param array  $flags Additional flags (e.g. ['metadata' => true]).
    *
    * @return object Object with 'exists' (bool), 'details' (object|array), and 'error' (string|\Exception) properties.
    */
-  public function is_file(string $path) : object
+  public function is_file(string $path, array $flags = []) : object
   {
-    return $this->exists($path, 'file');
+    return $this->exists($path, 'file', $flags);
   }
   
   /**
    * Checks if a path exists and is a directory.
    *
    * @param string $path Path to check.
+   * @param array  $flags Additional flags.
    *
    * @return object Object with 'exists' (bool), 'details' (object|array), and 'error' (string|\Exception) properties.
    */
-  public function is_dir(string $path) : object
+  public function is_dir(string $path, array $flags = []) : object
   {
-    return $this->exists($path, 'dir');
+    return $this->exists($path, 'dir', $flags);
   }
   
   /**
    * Checks if a path exists and is of the specified type ('file' or 'dir').
    * This method lists the parent directory and then filters for the specific item.
    *
-   * @param string $path The path to check.
-   * @param string $type The type to check for ('file' or 'dir').
+   * @param string $path  The path to check.
+   * @param string $type  The type to check for ('file' or 'dir').
+   * @param array  $flags Additional flags for the ls operation.
    *
    * @return object An object with properties:
    *                - bool 'exists': True if the item exists and matches the type.
    *                - mixed 'details': The item's details from 'lsjson' if it exists, else empty array.
    *                - mixed 'error': The Exception object if an error occurred during 'ls', else empty string.
    */
-  public function exists(string $path, string $type) : object
+  public function exists(string $path, string $type, array $flags = []) : object
   {
     $dirname = dirname($path);
     // If dirname is '.', it means the path is at the remote's root.
@@ -956,7 +959,7 @@ class Rclone
     $basename = basename($path);
     
     try {
-      $listing = $this->ls($dirname); // List parent directory contents.
+      $listing = $this->ls($dirname, $flags); // List parent directory contents.
       $found_item = array_filter($listing, static fn($item) => isset($item->Name) && $item->Name === $basename &&
         isset($item->IsDir) && $item->IsDir === ($type === 'dir'),
       );
