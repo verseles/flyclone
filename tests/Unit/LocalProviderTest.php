@@ -54,14 +54,17 @@ class LocalProviderTest extends AbstractProviderTest
     [$left_side, $temp_filepath] = $params;
 
     // Test 1: Use 'min-size' flag to filter OUT the file (expecting it NOT to exist in the listing)
-    // 1PB is definitely larger than the test file.
-    $resultFalse = $left_side->is_file($temp_filepath, ['min-size' => '1P']);
-    self::assertFalse($resultFalse->exists, "File should NOT be found when min-size is huge (flag respected).");
+    // 1G is definitely larger than the test file.
+    $resultFalse = $left_side->is_file($temp_filepath, ['min-size' => '1G']);
+    self::assertFalse($resultFalse->exists, "File should NOT be found when min-size is large (flag respected).");
+    // Ensure it failed due to filtering, not an error/crash
+    self::assertEmpty($resultFalse->error, "Error occurred during min-size check: " . print_r($resultFalse->error, TRUE));
 
     // Test 2: Use 'max-size' flag to keep the file (expecting it to exist)
-    // 1PB is definitely larger than the test file.
-    $resultTrue = $left_side->is_file($temp_filepath, ['max-size' => '1P']);
-    self::assertTrue($resultTrue->exists, "File SHOULD be found when max-size is huge.");
+    // 1G is definitely larger than the test file.
+    $resultTrue = $left_side->is_file($temp_filepath, ['max-size' => '1G']);
+    self::assertTrue($resultTrue->exists, "File SHOULD be found when max-size is large.");
+    self::assertEmpty($resultTrue->error, "Error occurred during max-size check: " . print_r($resultTrue->error, TRUE));
   }
   
 }
