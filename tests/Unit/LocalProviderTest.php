@@ -49,14 +49,19 @@ class LocalProviderTest extends AbstractProviderTest
 
   #[Test]
   #[Depends('write_to_a_file')]
-  public function is_file_with_hash_flag(array $params) : void
+  public function is_file_with_flags(array $params) : void
   {
     [$left_side, $temp_filepath] = $params;
 
-    // Check if is_file accepts flags and returns exists=true for existing file.
-    // Using 'hash' flag instead of 'metadata' as 'metadata' might fail in some CI environments without extended attributes support.
-    $result = $left_side->is_file($temp_filepath, ['hash' => true]);
-    self::assertTrue($result->exists, "File should exist when checked with hash flag.");
+    // Test 1: Use 'min-size' flag to filter OUT the file (expecting it NOT to exist in the listing)
+    // 1PB is definitely larger than the test file.
+    $resultFalse = $left_side->is_file($temp_filepath, ['min-size' => '1P']);
+    self::assertFalse($resultFalse->exists, "File should NOT be found when min-size is huge (flag respected).");
+
+    // Test 2: Use 'max-size' flag to keep the file (expecting it to exist)
+    // 1PB is definitely larger than the test file.
+    $resultTrue = $left_side->is_file($temp_filepath, ['max-size' => '1P']);
+    self::assertTrue($resultTrue->exists, "File SHOULD be found when max-size is huge.");
   }
   
 }
