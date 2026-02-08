@@ -78,6 +78,14 @@ services :
     <<     : *commons # Herda configurações comuns
     build  : tests/Unit
     command: phpunit ./tests/Unit/UnionProviderTest.php
+  test_configuration  :
+    <<     : *commons
+    build  : tests/Unit
+    command: phpunit ./tests/Unit/ConfigurationTest.php
+  test_edge_cases     :
+    <<     : *commons
+    build  : tests/Unit
+    command: phpunit ./tests/Unit/EdgeCasesTest.php
   test_sftp_to_s3     :
     <<        : *commons # Herda configurações comuns
     build     : tests/Unit

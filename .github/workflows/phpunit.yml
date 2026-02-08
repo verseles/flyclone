@@ -1,8 +1,8 @@
-name       : PHPUnit Test
+name       : CI
 
 on         :
   push        :
-    branches: [ "main" ]
+    branches: [ "main", "v4" ]
   pull_request:
     branches: [ "main" ]
 
@@ -10,29 +10,49 @@ permissions:
   contents: read
 
 jobs       :
-  test:
-
+  analyse:
+    name: Static Analysis
     runs-on: ubuntu-latest
-
-    steps  :
-      -
-        name: Set up PHP
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-      -
-        name: Setup Rclone
+      - name: Install dependencies
+        run : composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      - name: Run PHPStan
+        run : composer run-script analyse
+
+  format:
+    name: Code Style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - name: Install dependencies
+        run : composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      - name: Check code style
+        run : composer run-script format-check
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: [analyse, format]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - name: Setup Rclone
         uses: AnimMouse/setup-rclone@main
-
-      -
-        uses: actions/checkout@v4
-
-      -
-        name: Validate composer.json and composer.lock
+      - name: Validate composer.json and composer.lock
         run : composer validate --strict
-
-      -
-        name: Cache Composer packages
+      - name: Cache Composer packages
         id  : composer-cache
         uses: actions/cache@v4
         with:
@@ -40,11 +60,7 @@ jobs       :
           key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-php-
-
-      -
-        name: Install dependencies
+      - name: Install dependencies
         run : composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-
-      -
-        name: Run test suite
+      - name: Run test suite
         run : composer run-script test-local

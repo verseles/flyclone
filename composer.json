@@ -33,7 +33,15 @@
     "test" : "phpunit",
     "test-local" : "phpunit --testsuite offline_no_docker",
     "test-offline" : "phpunit --testsuite offline",
+    "analyse" : "phpstan analyse --memory-limit=512M",
+    "format" : "pint",
+    "format-check" : "pint --test",
     "security-check" : "security-checker security:check composer.lock",
+    "ci" : [
+      "@analyse",
+      "@format-check",
+      "@test-local"
+    ],
     "post-install-cmd"   : [
       "exit 0 || [ $COMPOSER_DEV_MODE -eq 0 ] || composer run security-check"
     ]
@@ -45,6 +53,8 @@
   "prefer-stable"     : true,
   "require-dev"       : {
     "phpunit/phpunit" : "^12.0",
-    "enlightn/security-checker": "^1.9"
+    "enlightn/security-checker": "^1.9",
+    "phpstan/phpstan": "^2.1",
+    "laravel/pint": "^1.26"
   }
 }
