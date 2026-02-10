@@ -65,8 +65,9 @@ Delega para `ProcessManager`, `CommandBuilder`, `StatsParser` e `ProgressParser`
 | `cleanup()`  | Limpar arquivos incompletos            |
 | `backend()`  | Comandos específicos do backend        |
 | `bisync()`   | Sincronização bidirecional             |
-| `md5sum()`   | Checksums MD5 de arquivos              |
-| `sha1sum()`  | Checksums SHA1 de arquivos             |
+| `hashsum()`  | Checksums com algoritmo variável       |
+| `md5sum()`   | Checksums MD5 (delega a hashsum)       |
+| `sha1sum()`  | Checksums SHA1 (delega a hashsum)      |
 | `listRemotes()` | Lista remotes configurados (static) |
 | `configFile()` | Caminho do arquivo de config (static) |
 | `configDump()` | Config como JSON (static)            |

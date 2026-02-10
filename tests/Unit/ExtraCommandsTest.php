@@ -262,6 +262,28 @@ class ExtraCommandsTest extends AbstractProviderTest
 
     #[Test]
     #[Depends('instantiate_with_one_provider')]
+    public function test_hashsum_command(Rclone $rclone): void
+    {
+        $dir = $this->working_directory . '/hashsum_test';
+        if (! is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        file_put_contents($dir . '/file1.txt', 'hello world');
+
+        // Test with MD5
+        $checksums = $rclone->hashsum('md5', $dir);
+
+        self::assertIsArray($checksums);
+        self::assertArrayHasKey('file1.txt', $checksums);
+        self::assertEquals('5eb63bbbe01eeed093cb22bb8f5acdc3', $checksums['file1.txt']);
+
+        // Test with SHA1
+        $checksums = $rclone->hashsum('sha1', $dir);
+        self::assertEquals('2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', $checksums['file1.txt']);
+    }
+
+    #[Test]
+    #[Depends('instantiate_with_one_provider')]
     public function test_copyto_command(Rclone $rclone): void
     {
         $sourceFile = $this->working_directory . '/copyto_source.txt';

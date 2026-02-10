@@ -1240,18 +1240,19 @@ class Rclone
     }
 
     /**
-     * Gets MD5 checksums for files (rclone md5sum).
+     * Gets checksums for files using the specified hash algorithm (rclone hashsum).
      *
-     * @see https://rclone.org/commands/rclone_md5sum/
+     * @see https://rclone.org/commands/rclone_hashsum/
      *
-     * @param string|null $path  Path to checksum.
-     * @param array       $flags Additional flags.
+     * @param string      $hashAlgorithm The hash algorithm to use (e.g., 'md5', 'sha1', 'dropbox').
+     * @param string|null $path          Path to checksum.
+     * @param array       $flags         Additional flags.
      *
-     * @return array Associative array of [path => md5hash].
+     * @return array Associative array of [path => hash].
      */
-    public function md5sum(?string $path = null, array $flags = []): array
+    public function hashsum(string $hashAlgorithm, ?string $path = null, array $flags = []): array
     {
-        $result = $this->simpleRun('md5sum', [$this->left_side->backend($path)], $flags);
+        $result = $this->simpleRun('hashsum', [$hashAlgorithm, $this->left_side->backend($path)], $flags);
 
         if ($result === '') {
             return [];
@@ -1264,12 +1265,27 @@ class Rclone
                 continue;
             }
             // Format: "hash  filename" (two spaces between)
-            if (preg_match('/^([a-fA-F0-9]{32})\s+(.+)$/', $line, $matches)) {
+            if (preg_match('/^([a-fA-F0-9]+)\s+(.+)$/', $line, $matches)) {
                 $checksums[$matches[2]] = $matches[1];
             }
         }
 
         return $checksums;
+    }
+
+    /**
+     * Gets MD5 checksums for files (rclone md5sum).
+     *
+     * @see https://rclone.org/commands/rclone_md5sum/
+     *
+     * @param string|null $path  Path to checksum.
+     * @param array       $flags Additional flags.
+     *
+     * @return array Associative array of [path => md5hash].
+     */
+    public function md5sum(?string $path = null, array $flags = []): array
+    {
+        return $this->hashsum('md5', $path, $flags);
     }
 
     /**
@@ -1284,25 +1300,7 @@ class Rclone
      */
     public function sha1sum(?string $path = null, array $flags = []): array
     {
-        $result = $this->simpleRun('sha1sum', [$this->left_side->backend($path)], $flags);
-
-        if ($result === '') {
-            return [];
-        }
-
-        $checksums = [];
-        foreach (explode("\n", $result) as $line) {
-            $line = trim($line);
-            if ($line === '') {
-                continue;
-            }
-            // Format: "hash  filename" (two spaces between)
-            if (preg_match('/^([a-fA-F0-9]{40})\s+(.+)$/', $line, $matches)) {
-                $checksums[$matches[2]] = $matches[1];
-            }
-        }
-
-        return $checksums;
+        return $this->hashsum('sha1', $path, $flags);
     }
 
     /**
