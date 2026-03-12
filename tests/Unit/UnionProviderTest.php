@@ -20,6 +20,14 @@ class UnionProviderTest extends AbstractProviderTest
 
     private static string $pathB;
 
+    #[Test]
+    public function invalid_upstream_providers_throws_exception(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('UnionProvider upstream_providers must be an array of Provider instances.');
+        new UnionProvider('invalid_union', ['upstream_providers' => 'not_an_array']);
+    }
+
     public function setUp(): void
     {
         $this->setLeftProviderName('union_test');

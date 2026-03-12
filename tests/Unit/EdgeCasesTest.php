@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Test\Unit;
 
+function sys_get_temp_dir_mock(): ?string {
+    return EdgeCasesTest::$mockTempDir;
+}
+
+require_once __DIR__ . '/MockSysGetTempDir.php';
+
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
@@ -14,11 +20,13 @@ use Verseles\Flyclone\StatsParser;
 
 class EdgeCasesTest extends TestCase
 {
+    public static ?string $mockTempDir = null;
     private string $tempDir;
 
     protected function setUp(): void
     {
-        $this->tempDir = sys_get_temp_dir() . '/flyclone_edge_' . uniqid();
+        self::$mockTempDir = null;
+        $this->tempDir = \sys_get_temp_dir() . '/flyclone_edge_' . uniqid();
         mkdir($this->tempDir, 0755, true);
     }
 
@@ -199,4 +207,60 @@ class EdgeCasesTest extends TestCase
         $this->assertCount(1, $result);
         $this->assertEquals('.hidden', $result[0]->Name);
     }
+
+    #[Test]
+    public function download_to_local_handles_mkdir_failure_for_temp_dir(): void
+    {
+        $sourceDir = $this->tempDir . '/source';
+        mkdir($sourceDir, 0755, true);
+        file_put_contents($sourceDir . '/file.txt', 'test');
+
+        $provider = new LocalProvider('edge');
+        $rclone = new Rclone($provider);
+
+        // Make temp directory read-only
+        $mockTemp = $this->tempDir . '/mock_temp';
+        mkdir($mockTemp, 0555, true);
+
+        self::$mockTempDir = $mockTemp;
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/Failed to create temporary directory:/');
+
+        try {
+            // null destination uses temp dir
+            $rclone->download_to_local($sourceDir . '/file.txt', null);
+        } finally {
+            chmod($mockTemp, 0755);
+            self::$mockTempDir = null;
+        }
+    }
+
+    #[Test]
+    public function download_to_local_handles_mkdir_failure(): void
+    {
+        $sourceDir = $this->tempDir . '/source';
+        mkdir($sourceDir, 0755, true);
+        file_put_contents($sourceDir . '/file.txt', 'test');
+
+        $provider = new LocalProvider('edge');
+        $rclone = new Rclone($provider);
+
+        // Create a read-only parent directory
+        $parentDir = $this->tempDir . '/readonly_parent';
+        mkdir($parentDir, 0555, true); // read and execute, no write
+
+        $destFile = $parentDir . '/nested/file.txt';
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Failed to create parent directory for download: $parentDir/nested");
+
+        try {
+            $rclone->download_to_local($sourceDir . '/file.txt', $destFile);
+        } finally {
+            // Restore permissions to allow cleanup
+            chmod($parentDir, 0755);
+        }
+    }
+
 }

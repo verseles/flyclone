@@ -49,7 +49,7 @@ Description: Security hardening, retry mechanism, logging, and developer experie
 Description: Documentation, static analysis, code style, and release preparation
 - [x] 3.01 Integrate PHPStan at level 5 with CI (level max deferred to 3.04)
 - [x] 3.02 Add Laravel Pint with CI integration (PSR-12 + custom rules)
-- [ ] 3.03 Cover @codeCoverageIgnore blocks with mock infrastructure
+- [x] 3.03 Cover @codeCoverageIgnore blocks with mock infrastructure
 - [ ] 3.04 Improve return type hints with proper array docblocks (raise PHPStan to max)
 - [x] 3.05 Expose additional rclone commands (listRemotes, configFile, configDump, bisync, md5sum, sha1sum)
 - [ ] 3.06 Add version-aware stats parsing for different rclone versions

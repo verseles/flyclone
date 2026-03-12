@@ -17,9 +17,7 @@ class UnionProvider extends Provider
     {
         if (isset($flags['upstream_providers'])) {
             if (! is_array($flags['upstream_providers'])) {
-                // @codeCoverageIgnoreStart
                 throw new LogicException('UnionProvider upstream_providers must be an array of Provider instances.');
-                // @codeCoverageIgnoreEnd
             }
             $this->upstreamProviders = $flags['upstream_providers'];
             unset($flags['upstream_providers']);
