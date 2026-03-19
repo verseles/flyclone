@@ -8,6 +8,26 @@ class StatsParser
 {
     public static function parse(string $output): object
     {
+        $output = trim($output);
+        if ($output === '') {
+            return (object) [
+                'errors' => 0,
+                'checks' => 0,
+                'files' => 0,
+                'bytes' => 0,
+                'elapsed_time' => 0.0,
+                'speed_human' => '0 B/s',
+                'speed_bytes_per_second' => 0.0,
+            ];
+        }
+
+        $lines = explode("\n", $output);
+        $firstLine = trim($lines[0] ?? '');
+
+        if (str_starts_with($firstLine, '{')) {
+            return self::parseJson($lines);
+        }
+
         $stats = [
             'errors' => 0,
             'checks' => 0,
@@ -18,10 +38,8 @@ class StatsParser
             'speed_bytes_per_second' => 0.0,
         ];
 
-        $lines = explode("\n", $output);
-
         foreach ($lines as $line) {
-            if (preg_match('/Transferred:\s+([\d.]+\s*[KMGTPI]?B)/i', $line, $matches)) {
+            if (preg_match('/Transferred:\s+([\d.]+\s*[KMGTPI]?i?B)/i', $line, $matches)) {
                 $stats['bytes'] = self::convertSizeToBytes(trim($matches[1]));
                 continue;
             }
@@ -32,11 +50,11 @@ class StatsParser
             }
 
             $key = trim($parts[0]);
-            $value = trim($parts[1]);
+                $value = trim($parts[1]);
 
             switch ($key) {
                 case 'Transferred':
-                    if (preg_match('/^\s*([\d.]+\s*[KMGTPI]?B)/i', $value, $byteMatches)) {
+                    if (preg_match('/^\s*([\d.]+\s*[KMGTPI]?i?B)/i', $value, $byteMatches)) {
                         $stats['bytes'] += self::convertSizeToBytes(trim($byteMatches[1]));
                     } elseif (preg_match('/^\s*(\d+)\s*\/\s*\d+/', $value, $fileMatches)) {
                         $stats['files'] += (int) $fileMatches[1];
@@ -67,6 +85,53 @@ class StatsParser
         return (object) $stats;
     }
 
+    private static function parseJson(array $lines): object
+    {
+        $stats = [
+            'errors' => 0,
+            'checks' => 0,
+            'files' => 0,
+            'bytes' => 0,
+            'elapsed_time' => 0.0,
+            'speed_human' => '0 B/s',
+            'speed_bytes_per_second' => 0.0,
+        ];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $json = json_decode($line, false);
+            if (! is_object($json)) {
+                continue;
+            }
+
+            if (isset($json->bytes)) {
+                $stats['bytes'] = (int) $json->bytes;
+            }
+            if (isset($json->checks)) {
+                $stats['checks'] = (int) $json->checks;
+            }
+            if (isset($json->errors)) {
+                $stats['errors'] = (int) $json->errors;
+            }
+            if (isset($json->transfers)) {
+                $stats['files'] = (int) $json->transfers;
+            }
+            if (isset($json->elapsedTime)) {
+                $stats['elapsed_time'] = (float) $json->elapsedTime;
+            }
+            if (isset($json->speed)) {
+                $stats['speed_bytes_per_second'] = (float) $json->speed;
+                $stats['speed_human'] = self::formatBytes((int) $stats['speed_bytes_per_second']) . '/s';
+            }
+        }
+
+        return (object) $stats;
+    }
+
     public static function convertSizeToBytes(string $sizeStr): int
     {
         $sizeStr = trim($sizeStr);
@@ -75,7 +140,7 @@ class StatsParser
         }
 
         $units = ['B' => 0, 'K' => 1, 'M' => 2, 'G' => 3, 'T' => 4, 'P' => 5];
-        preg_match('/([\d.]+)\s*([KMGTPI]?)B?/i', $sizeStr, $matches);
+        preg_match('/([\d.]+)\s*([KMGTPI]?)i?B?/i', $sizeStr, $matches);
 
         if (! isset($matches[1])) {
             return (int) $sizeStr;
@@ -101,7 +166,7 @@ class StatsParser
         if (preg_match('/(\d+(\.\d+)?)h/', $durationStr, $matches)) {
             $totalSeconds += (float) $matches[1] * 3600;
         }
-        if (preg_match('/(\d+(\.\d+)?)m/', $durationStr, $matches)) {
+        if (preg_match('/(\d+(\.\d+)?)m(?!s)/', $durationStr, $matches)) {
             $totalSeconds += (float) $matches[1] * 60;
         }
         if (preg_match('/(\d+(\.\d+)?)s/', $durationStr, $matches)) {
