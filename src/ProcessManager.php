@@ -88,7 +88,7 @@ class ProcessManager
         }
 
         $finder = new ExecutableFinder();
-        $rclonePath = $finder->find('rclone', '/usr/bin/rclone', [
+        $rclonePath = $finder->find('rclone', null, [
             '/usr/local/bin',
             '/usr/bin',
             '/bin',
