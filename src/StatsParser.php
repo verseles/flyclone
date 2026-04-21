@@ -50,7 +50,7 @@ class StatsParser
             }
 
             $key = trim($parts[0]);
-                $value = trim($parts[1]);
+            $value = trim($parts[1]);
 
             switch ($key) {
                 case 'Transferred':
