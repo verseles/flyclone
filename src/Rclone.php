@@ -416,9 +416,9 @@ class Rclone
             $operation_flags['dry-run'] = true;
         }
 
-        // Apply filter flags if set
+        // Apply filter args if set
         if ($this->filter !== null && $this->filter->hasFilters()) {
-            $operation_flags = array_merge($operation_flags, $this->filter->toFlags());
+            $args = array_merge($args, $this->filter->toArgs());
         }
 
         $commandArgs = CommandBuilder::buildCommandArgs(self::getBIN(), $command, $args);
