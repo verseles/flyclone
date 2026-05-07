@@ -147,7 +147,7 @@ class StatsParser
         }
 
         $value = (float) $matches[1];
-        $unit = strtoupper(($matches[2] ?? '') === '' ? 'B' : $matches[2]);
+        $unit = strtoupper($matches[2] === '' ? 'B' : $matches[2]);
 
         if (isset($units[$unit])) {
             return (int) ($value * (1024 ** $units[$unit]));

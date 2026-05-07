@@ -120,7 +120,7 @@ abstract class AbstractProvider
         if (! empty($missing)) {
             throw new InvalidArgumentException(sprintf(
                 'Provider "%s" is missing required configuration: %s',
-                $this->provider ?? 'unknown',
+                $this->provider,
                 implode(', ', $missing)
             ));
         }
@@ -209,7 +209,7 @@ abstract class AbstractProvider
      */
     public function getRawFlags(): array
     {
-        return $this->flags ?? [];
+        return $this->flags;
     }
 
     /**
@@ -229,7 +229,7 @@ abstract class AbstractProvider
     {
         $secrets = [];
 
-        foreach ($this->flags ?? [] as $key => $value) {
+        foreach ($this->flags as $key => $value) {
             if (! is_string($value) || strlen($value) < 4) {
                 continue;
             }
