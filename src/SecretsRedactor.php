@@ -109,12 +109,9 @@ class SecretsRedactor
     {
         foreach (self::SENSITIVE_KEYS as $key) {
             // Match RCLONE_CONFIG_*_{KEY}=value or RCLONE_{KEY}=value
-            $pattern = '/RCLONE_(?:CONFIG_[A-Z0-9_]+_)?' . strtoupper($key) . '[A-Z0-9_]*=([^\s]+)/i';
-            $message = preg_replace($pattern, 'RCLONE_$0=' . self::REDACTED, $message) ?? $message;
-
             // Simpler replacement for the value part
-            $pattern2 = '/(RCLONE_(?:CONFIG_[A-Z0-9_]+_)?' . strtoupper($key) . '[A-Z0-9_]*=)([^\s]+)/i';
-            $message = preg_replace($pattern2, '$1' . self::REDACTED, $message) ?? $message;
+            $pattern = '/(RCLONE_(?:CONFIG_[A-Z0-9_]+_)?' . strtoupper($key) . '[A-Z0-9_]*=)([^\s]+)/i';
+            $message = preg_replace($pattern, '$1' . self::REDACTED, $message) ?? $message;
         }
 
         return $message;
