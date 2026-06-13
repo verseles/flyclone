@@ -48,7 +48,7 @@ class ProgressParser
         $this->lineBuffer .= $buffer;
 
         // Process complete lines
-        $lines = explode("\n", $this->lineBuffer);
+        $lines = preg_split("/\r\n|\n|\r/", $this->lineBuffer);
 
         // Keep the last incomplete line in the buffer
         $this->lineBuffer = array_pop($lines) ?? '';
