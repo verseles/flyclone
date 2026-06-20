@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone;
 
+use LogicException;
 use Verseles\Flyclone\Providers\Provider;
 
 class CommandBuilder
@@ -25,7 +26,13 @@ class CommandBuilder
                 $finalEnvVarName = $prefix . $baseKey;
             }
 
-            $newArr[$finalEnvVarName] = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
+            $value = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
+
+            if (array_key_exists($finalEnvVarName, $newArr) && $newArr[$finalEnvVarName] !== $value) {
+                throw new LogicException("Duplicate rclone environment variable after normalization: {$finalEnvVarName}");
+            }
+
+            $newArr[$finalEnvVarName] = $value;
         }
 
         return $newArr;
@@ -43,12 +50,57 @@ class CommandBuilder
             'RCLONE_CONFIG' => '/dev/null',
         ];
 
-        $envVars = array_merge($envVars, $leftSide->flags(), $rightSide->flags());
+        $envVars = array_merge($envVars, self::mergeProviderFlags($leftSide->flags(), $rightSide->flags()));
         $envVars = array_merge($envVars, self::prefixFlags($globalFlags, 'RCLONE_'));
         $envVars = array_merge($envVars, self::prefixFlags($globalEnvs, 'RCLONE_'));
         $envVars = array_merge($envVars, self::prefixFlags($operationFlags, 'RCLONE_'));
 
         return $envVars;
+    }
+
+    public static function mergeProviderFlags(array ...$flagSets): array
+    {
+        $merged = [];
+        $remoteConfigs = [];
+
+        foreach ($flagSets as $flags) {
+            foreach (self::extractRemoteConfigs($flags) as $remoteName => $config) {
+                if (array_key_exists($remoteName, $remoteConfigs) && $remoteConfigs[$remoteName] !== $config) {
+                    throw new LogicException("Conflicting rclone provider remote name: {$remoteName}");
+                }
+
+                $remoteConfigs[$remoteName] = $config;
+            }
+
+            foreach ($flags as $key => $value) {
+                if (array_key_exists($key, $merged) && $merged[$key] !== $value) {
+                    throw new LogicException("Conflicting rclone provider environment variable: {$key}");
+                }
+
+                $merged[$key] = $value;
+            }
+        }
+
+        return $merged;
+    }
+
+    private static function extractRemoteConfigs(array $flags): array
+    {
+        $configs = [];
+
+        foreach ($flags as $key => $value) {
+            if (preg_match('/^RCLONE_CONFIG_([^_]+)_(.+)$/', (string) $key, $matches) !== 1) {
+                continue;
+            }
+
+            $configs[$matches[1]][$matches[2]] = $value;
+        }
+
+        foreach ($configs as &$config) {
+            ksort($config);
+        }
+
+        return $configs;
     }
 
     public static function buildCommandArgs(string $binary, string $command, array $args = []): array

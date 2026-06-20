@@ -18,6 +18,7 @@ flyclone/
 │   ├── Logger.php              # Logging estruturado opcional
 │   ├── RetryHandler.php        # Retry com backoff exponencial
 │   ├── FilterBuilder.php       # API fluente para filtros
+│   ├── TemporaryPath.php        # Diretórios temporários privados e nomes únicos
 │   ├── Providers/              # Provedores de storage
 │   └── Exception/              # Hierarquia de exceções
 ├── tests/Unit/                 # Testes PHPUnit
@@ -41,6 +42,8 @@ Delega para `ProcessManager`, `CommandBuilder`, `StatsParser` e `ProgressParser`
 | `$idleTimeout` | 100s    | Timeout de inatividade           |
 | `$flags`       | []      | Flags globais para todos comandos|
 | `$envs`        | []      | Variáveis de ambiente extras     |
+
+As flags/envs/timeouts globais são capturados por instância no construtor. Em workers long-lived, prefira `withFlags()`, `withEnvs()`, `withTimeout()` e `withIdleTimeout()` por instância.
 
 ### Operações Disponíveis
 | Método       | Descrição                              |
@@ -82,6 +85,10 @@ Delega para `ProcessManager`, `CommandBuilder`, `StatsParser` e `ProgressParser`
 | `withFilter(builder)` | Define filtros para operação              |
 | `filter()`          | Retorna FilterBuilder atual                 |
 | `clearFilter()`     | Remove filtros                              |
+| `withFlags(array)`  | Define flags rclone apenas na instância     |
+| `withEnvs(array)`   | Define env vars apenas na instância         |
+| `withTimeout(int)`  | Define timeout apenas na instância          |
+| `withIdleTimeout(int)` | Define idle timeout apenas na instância  |
 | `healthCheck(path)` | Verifica conectividade do provider          |
 | `getLastCommand()`  | Retorna último comando executado            |
 | `getLastEnvs()`     | Retorna últimas env vars (redatadas)        |
@@ -135,12 +142,21 @@ Constrói comandos e variáveis de ambiente para rclone.
 | ------------------------------- | ------------------------------------------------- |
 | `prefixFlags(array, prefix)`    | Transforma keys: `key` → `RCLONE_PREFIX_KEY`      |
 | `buildEnvironment(providers, flags, opFlags)` | Consolida env vars de providers + globais |
+| `mergeProviderFlags(...flags)` | Une envs de providers e falha em colisões conflitantes |
 
 ### Padrão de Variáveis de Ambiente
 ```
 RCLONE_CONFIG_{PROVIDER_NAME}_{KEY} = value
 ```
 Exemplo: `RCLONE_CONFIG_MYS3_ACCESS_KEY_ID = xxx`
+
+Colisões de env vars entre providers falham em vez de sobrescrever silenciosamente. Duplicatas com o mesmo valor são permitidas para operações single-provider.
+
+---
+
+## `/src/TemporaryPath.php` - Temporários Seguros
+
+Cria diretórios temporários privados (`0700`) e nomes únicos para remotes internos. Usado por `download_to_local()`, `upload_file()` e remotes locais temporários para evitar colisões entre workers long-lived.
 
 ---
 
@@ -307,6 +323,8 @@ $rclone->withFilter(
 | `CryptProvider`  | Decorator | Wraps 1 provider, adiciona criptografia    | ✅ Funcional |
 | `UnionProvider`  | Composite | Merge N providers em filesystem unificado  | ✅ Funcional |
 
+`SFtpProvider` aceita `key_pem` diretamente e o alias `private_key`, que é convertido para `RCLONE_CONFIG_{REMOTE}_KEY_PEM`. `key_pem` e `key_file` são mutuamente exclusivos.
+
 ```php
 // CryptProvider wraps outro provider
 $s3 = new S3Provider('s3', ['bucket' => 'data']);
@@ -382,6 +400,8 @@ try {
 | `CryptProviderTest`          | Testes de criptografia (15 testes)       |
 | `UnionProviderTest`          | Testes de union filesystem (16 testes)   |
 | `ConfigurationTest`          | Testes de configuração (13 testes)       |
+| `SFtpProviderConfigTest`     | Validação config-only do provider SFTP   |
+| `TemporaryPathTest`          | Temporários privados e nomes únicos      |
 | `EdgeCasesTest`              | Casos especiais e edge cases (13 testes) |
 | `Feature2Test`               | Testes Feature 2: Security & DX (28 testes) |
 

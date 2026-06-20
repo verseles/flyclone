@@ -32,6 +32,14 @@ class Rclone
     /** @var bool Whether dry-run mode is enabled for this instance */
     private bool $dryRun = false;
 
+    private array $instanceFlags;
+
+    private array $instanceEnvs;
+
+    private int $instanceTimeout;
+
+    private int $instanceIdleTimeout;
+
     /** @var FilterBuilder|null Current filter configuration */
     private ?FilterBuilder $filter = null;
 
@@ -45,6 +53,10 @@ class Rclone
     {
         $this->progressParser = new ProgressParser();
         $this->processManager = new ProcessManager();
+        $this->instanceFlags = self::getFlags();
+        $this->instanceEnvs = self::getEnvs();
+        $this->instanceTimeout = self::getTimeout();
+        $this->instanceIdleTimeout = self::getIdleTimeout();
 
         // Extract secrets from providers for redaction
         $secrets = array_merge(
@@ -114,6 +126,34 @@ class Rclone
     public function withFilter(FilterBuilder $filter): self
     {
         $this->filter = $filter;
+
+        return $this;
+    }
+
+    public function withFlags(array $flags): self
+    {
+        $this->instanceFlags = $flags;
+
+        return $this;
+    }
+
+    public function withEnvs(array $envs): self
+    {
+        $this->instanceEnvs = $envs;
+
+        return $this;
+    }
+
+    public function withTimeout(int $timeout): self
+    {
+        $this->instanceTimeout = $timeout;
+
+        return $this;
+    }
+
+    public function withIdleTimeout(int $idleTimeout): self
+    {
+        $this->instanceIdleTimeout = $idleTimeout;
 
         return $this;
     }
@@ -380,8 +420,8 @@ class Rclone
         return CommandBuilder::buildEnvironment(
             $this->left_side,
             $this->right_side,
-            self::getFlags(),
-            self::getEnvs(),
+            $this->instanceFlags,
+            $this->instanceEnvs,
             $additional_operation_flags
         );
     }
@@ -409,8 +449,14 @@ class Rclone
      *
      * @return Process The completed process instance.
      */
-    private function _run(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = null, ?int $timeout = null): Process
-    {
+    private function _run(
+        string $command,
+        array $args = [],
+        array $operation_flags = [],
+        ?callable $onProgress = null,
+        ?int $timeout = null,
+        ?string $input = null,
+    ): Process {
         // Apply dry-run flag if enabled
         if ($this->dryRun) {
             $operation_flags['dry-run'] = true;
@@ -438,7 +484,14 @@ class Rclone
         $startTime = microtime(true);
 
         // Execute with or without retry
-        $executeOperation = fn () => $this->processManager->run($commandArgs, $finalEnvs, $progressCallback, $timeout);
+        $executeOperation = fn () => $this->processManager->run(
+            $commandArgs,
+            $finalEnvs,
+            $progressCallback,
+            $timeout ?? $this->instanceTimeout,
+            $this->instanceIdleTimeout,
+            $input,
+        );
 
         try {
             if ($this->retryHandler !== null) {
@@ -484,8 +537,13 @@ class Rclone
      *
      * @return object An object containing the success status and transfer statistics.
      */
-    private function runAndGetStats(string $command, array $args = [], array $operation_flags = [], ?callable $onProgress = null): object
-    {
+    private function runAndGetStats(
+        string $command,
+        array $args = [],
+        array $operation_flags = [],
+        ?callable $onProgress = null,
+        ?string $input = null,
+    ): object {
         $env_options = $operation_flags;
 
         $env_options['stats'] = '1s';
@@ -496,7 +554,7 @@ class Rclone
             $env_options['progress'] = true;
         }
 
-        $completedProcess = $this->_run($command, $args, $env_options, $onProgress);
+        $completedProcess = $this->_run($command, $args, $env_options, $onProgress, input: $input);
 
         $stderr = $completedProcess->getErrorOutput();
 
@@ -876,9 +934,7 @@ class Rclone
      */
     public function rcat(string $path, string $input, array $flags = [], ?callable $onProgress = null): object
     {
-        self::setInput($input);
-
-        return $this->runAndGetStats('rcat', [$this->left_side->backend($path)], $flags, $onProgress);
+        return $this->runAndGetStats('rcat', [$this->left_side->backend($path)], $flags, $onProgress, input: $input);
     }
 
     /**
@@ -893,7 +949,10 @@ class Rclone
      */
     public function upload_file(string $local_path, string $remote_path, array $flags = [], ?callable $onProgress = null): object
     {
-        $uploader = new self(left_side: new LocalProvider('local_temp_upload'), right_side: $this->left_side);
+        $uploader = $this->newRelatedRclone(
+            left_side: new LocalProvider(TemporaryPath::remoteName('local_temp_upload')),
+            right_side: $this->left_side,
+        );
 
         return $uploader->moveto($local_path, $remote_path, $flags, $onProgress);
     }
@@ -913,12 +972,7 @@ class Rclone
         $remote_filename = basename($remote_path);
 
         if ($local_destination_path === null) {
-            $temp_dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'flyclone_download_' . uniqid();
-            if (! mkdir($temp_dir, 0777, true) && ! is_dir($temp_dir)) {
-                // @codeCoverageIgnoreStart
-                throw new RuntimeException("Failed to create temporary directory: $temp_dir");
-                // @codeCoverageIgnoreEnd
-            }
+            $temp_dir = TemporaryPath::directory('flyclone_download');
             $final_local_path = $temp_dir . DIRECTORY_SEPARATOR . $remote_filename;
         } elseif (is_dir($local_destination_path)) {
             $final_local_path = rtrim($local_destination_path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $remote_filename;
@@ -934,7 +988,10 @@ class Rclone
             $final_local_path = $local_destination_path;
         }
 
-        $downloader = new self(left_side: $this->left_side, right_side: new LocalProvider('local_temp_download'));
+        $downloader = $this->newRelatedRclone(
+            left_side: $this->left_side,
+            right_side: new LocalProvider(TemporaryPath::remoteName('local_temp_download')),
+        );
 
         $result = $downloader->copyto($remote_path, $final_local_path, $flags, $onProgress);
 
@@ -943,6 +1000,26 @@ class Rclone
         }
 
         return $result;
+    }
+
+    private function newRelatedRclone(Provider $left_side, ?Provider $right_side = null): self
+    {
+        $rclone = new self($left_side, $right_side);
+        $rclone->withFlags($this->instanceFlags)
+            ->withEnvs($this->instanceEnvs)
+            ->withTimeout($this->instanceTimeout)
+            ->withIdleTimeout($this->instanceIdleTimeout)
+            ->dryRun($this->dryRun);
+
+        if ($this->retryHandler !== null) {
+            $rclone->withRetry($this->retryHandler);
+        }
+
+        if ($this->filter !== null) {
+            $rclone->withFilter(clone $this->filter);
+        }
+
+        return $rclone;
     }
 
     /**
@@ -1147,7 +1224,12 @@ class Rclone
 
         $processManager = new ProcessManager();
         $finalEnvs = $this->allEnvs();
-        $completedProcess = $processManager->run($command_array, $finalEnvs);
+        $completedProcess = $processManager->run(
+            $command_array,
+            $finalEnvs,
+            timeout: $this->instanceTimeout,
+            idleTimeout: $this->instanceIdleTimeout,
+        );
 
         return trim($completedProcess->getOutput());
     }

@@ -132,6 +132,11 @@ Rclone::setEnvs(['RCLONE_BUFFER_SIZE' => '64M']);
 Rclone::setTimeout(300);     // Max execution time (seconds)
 Rclone::setIdleTimeout(120); // Idle timeout (seconds)
 
+// Prefer instance-scoped options for long-lived workers
+$rclone->withFlags(['checksum' => true])
+    ->withTimeout(300)
+    ->withIdleTimeout(120);
+
 // Obscure passwords
 $obscured = Rclone::obscure('plain-password');
 ```
@@ -245,13 +250,26 @@ $envs = $rclone->getLastEnvs();  // Secrets are [REDACTED]
 $logs = Logger::getLogs();
 ```
 
+### SFTP Private Keys
+
+```php
+use Verseles\Flyclone\Providers\SFtpProvider;
+
+$sftp = new SFtpProvider('deploy', [
+    'host' => 'sftp.example.com',
+    'user' => 'deploy',
+    // Passed as RCLONE_CONFIG_DEPLOY_KEY_PEM; no key file is created by Flyclone.
+    'private_key' => $privateKeyPem,
+]);
+```
+
 ## Testing
 
 ```bash
 # Install dependencies
 composer install
 
-# Run quick tests (local provider only)
+# Run quick tests
 make test
 
 # Run full offline test suite (requires podman-compose)
@@ -275,6 +293,7 @@ Flyclone v4 uses a modular architecture:
 | `ProgressParser` | Real-time progress parsing |
 | `RetryHandler` | Exponential backoff retry mechanism |
 | `FilterBuilder` | Fluent API for include/exclude patterns |
+| `TemporaryPath` | Private temp directories and unique temporary remote names |
 | `SecretsRedactor` | Sensitive data redaction in errors/logs |
 | `Logger` | Structured logging with debug mode |
 
@@ -287,6 +306,16 @@ Flyclone v4 uses a modular architecture:
 5. Submit a pull request
 
 ## Changelog
+
+### v5.0.0
+
+- Fail fast on conflicting provider environment variable collisions.
+- Reject provider names that normalize to an empty rclone remote name.
+- Add instance-scoped flags/envs/timeouts for long-lived workers.
+- Generate unique temporary local provider names for upload/download helpers.
+- Create automatic download temp directories with owner-only permissions.
+- Add `SFtpProvider` `private_key` alias for rclone `key_pem` and reject ambiguous `key_pem` + `key_file` configs.
+- Include configuration/security tests in the fast make test path.
 
 ### v4.0.0 (In Development)
 

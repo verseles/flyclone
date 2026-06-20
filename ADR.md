@@ -260,6 +260,30 @@ Fluxo:
 
 ---
 
+## ADR-010: Segurança de Configuração por Instância e Remotes Temporários
+
+**Status:** Aceito  
+**Data:** 2026-06-20
+
+### Contexto
+Aplicações com workers long-lived podem executar múltiplas operações rclone em sequência. Flags/timeouts estáticos, nomes de providers que normalizam para a mesma env var, remotes temporários fixos e arquivos temporários amplos podem causar vazamento de estado, colisões ou exposição desnecessária de credenciais.
+
+### Decisão
+1. Capturar flags/envs/timeouts por instância de `Rclone` e expor `withFlags()`, `withEnvs()`, `withTimeout()` e `withIdleTimeout()` para configuração local.
+2. Falhar em colisões conflitantes de env vars de providers em vez de sobrescrever silenciosamente.
+3. Rejeitar provider names que normalizam para vazio.
+4. Usar nomes únicos para providers locais temporários.
+5. Criar diretórios temporários privados (`0700`) quando a biblioteca gera diretórios automaticamente.
+6. Preferir SFTP `key_pem`/`private_key` inline e rejeitar combinação ambígua com `key_file`.
+
+### Consequências
+- ✅ Menos vazamento de estado entre operações em workers persistentes.
+- ✅ Colisões de remotes ficam explícitas e testáveis.
+- ✅ Menos necessidade de materializar chaves privadas em disco.
+- ⚠️ Código que dependia de mudar flags/timeouts globais depois de construir uma instância deve migrar para os métodos `with*()` por instância.
+
+---
+
 ## Template para Novos ADRs
 
 ```markdown

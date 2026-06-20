@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Verseles\Flyclone\Providers;
 
 use LogicException;
+use Verseles\Flyclone\CommandBuilder;
 
 class UnionProvider extends Provider
 {
@@ -32,7 +33,7 @@ class UnionProvider extends Provider
     {
         $allFlags = parent::flags();
         foreach ($this->upstreamProviders as $provider) {
-            $allFlags = array_merge($allFlags, $provider->flags());
+            $allFlags = CommandBuilder::mergeProviderFlags($allFlags, $provider->flags());
         }
 
         return $allFlags;

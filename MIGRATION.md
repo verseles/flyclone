@@ -1,4 +1,44 @@
-# Migration Guide: v3 to v4
+# Migration Guide
+
+## v4 to v5
+
+Flyclone v5 tightens provider configuration safety and removes several ambiguous behaviors.
+
+### Breaking Changes
+
+| Area | v4 | v5 | Action Required |
+|------|----|----|-----------------|
+| Provider env collisions | Conflicting `RCLONE_CONFIG_*` keys could be overwritten silently | Conflicts throw `LogicException` | Give providers unique names or identical config values |
+| Empty normalized provider names | Names like `---` normalized to an empty remote name | Throws `InvalidArgumentException` | Use names containing ASCII letters or digits |
+| Global flags/timeouts | Existing instances read current static values at execution time | Instances capture static defaults on construction | Use `withFlags()`, `withEnvs()`, `withTimeout()`, `withIdleTimeout()` on existing instances |
+| SFTP key config | `key_pem` and `key_file` could be passed together | Combination is rejected | Choose exactly one; prefer `private_key`/`key_pem` for inline PEM |
+
+### Instance-Scoped Options
+
+```php
+$rclone = new Rclone($source, $dest);
+
+$rclone->withFlags(['checksum' => true])
+    ->withEnvs(['RCLONE_BUFFER_SIZE' => '64M'])
+    ->withTimeout(600)
+    ->withIdleTimeout(120);
+```
+
+### SFTP Private Keys
+
+Prefer inline PEM keys instead of temporary key files:
+
+```php
+$sftp = new SFtpProvider('deploy', [
+    'host' => 'sftp.example.com',
+    'user' => 'deploy',
+    'private_key' => $privateKeyPem,
+]);
+```
+
+---
+
+## v3 to v4
 
 This guide helps you migrate from Flyclone v3.x to v4.0.
 

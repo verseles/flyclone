@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Verseles\Flyclone\Providers;
 
 use LogicException;
+use Verseles\Flyclone\CommandBuilder;
 
 class CryptProvider extends Provider
 {
@@ -28,10 +29,7 @@ class CryptProvider extends Provider
 
     public function flags(): array
     {
-        $cryptFlags = parent::flags();
-        $wrappedFlags = $this->wrappedProvider->flags();
-
-        return array_merge($cryptFlags, $wrappedFlags);
+        return CommandBuilder::mergeProviderFlags(parent::flags(), $this->wrappedProvider->flags());
     }
 
     public function getWrappedProvider(): Provider

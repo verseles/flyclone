@@ -7,13 +7,16 @@ test: ## Start containers detached
 init: ## Start a new develop environment
 	make cin
 test-local:
+	podman-compose run test_configuration
 	podman-compose run test_extra_commands
 	podman-compose run cleanup_tests
 test-fast:
+	podman-compose run test_configuration
 	podman-compose run test_extra_commands
 	podman-compose run test_upload_download
 	podman-compose run cleanup_tests
 test-offline:
+	podman-compose run test_configuration
 	podman-compose run test_local
 	podman-compose run test_sftp
 	#podman-compose run test_ftp # TODO: fix docker image

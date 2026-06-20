@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Test\Unit;
 
+use InvalidArgumentException;
+use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use ReflectionMethod;
 use Verseles\Flyclone\CommandBuilder;
+use Verseles\Flyclone\FilterBuilder;
 use Verseles\Flyclone\ProcessManager;
+use Verseles\Flyclone\Providers\CryptProvider;
 use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Rclone;
 
@@ -173,5 +179,120 @@ class ConfigurationTest extends TestCase
 
         Rclone::setFlags([]);
         Rclone::setEnvs([]);
+    }
+
+    #[Test]
+    public function provider_names_must_not_normalize_to_empty(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Provider name must contain');
+
+        new LocalProvider('---');
+    }
+
+    #[Test]
+    public function build_environment_rejects_provider_env_collisions_with_different_values(): void
+    {
+        $left = new LocalProvider('same.name', ['root' => '/tmp/one']);
+        $right = new LocalProvider('same_name', ['root' => '/tmp/two']);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('SAMENAME');
+
+        CommandBuilder::buildEnvironment($left, $right, [], []);
+    }
+
+    #[Test]
+    public function build_environment_rejects_same_remote_with_disjoint_config(): void
+    {
+        $left = new LocalProvider('same_remote', ['root' => '/tmp/one']);
+        $right = new LocalProvider('same-remote', ['nounc' => true]);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('SAMEREMOTE');
+
+        CommandBuilder::buildEnvironment($left, $right, [], []);
+    }
+
+    #[Test]
+    public function prefix_flags_rejects_duplicate_normalized_keys_with_different_values(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('RCLONE_CONFIG_TEST_KEY_PEM');
+
+        CommandBuilder::prefixFlags([
+            'key_pem' => 'one',
+            'KEY-PEM' => 'two',
+        ], 'RCLONE_CONFIG_TEST_');
+    }
+
+    #[Test]
+    public function prefix_flags_allows_duplicate_normalized_keys_with_same_value(): void
+    {
+        $flags = CommandBuilder::prefixFlags([
+            'key_pem' => 'same',
+            'KEY-PEM' => 'same',
+        ], 'RCLONE_CONFIG_TEST_');
+
+        self::assertSame('same', $flags['RCLONE_CONFIG_TEST_KEY_PEM']);
+    }
+
+    #[Test]
+    public function build_environment_allows_duplicate_provider_env_when_values_match(): void
+    {
+        $left = new LocalProvider('same.name', ['root' => '/tmp/shared']);
+        $right = new LocalProvider('same_name', ['root' => '/tmp/shared']);
+
+        $env = CommandBuilder::buildEnvironment($left, $right, [], []);
+
+        self::assertSame('/tmp/shared', $env['RCLONE_CONFIG_SAMENAME_ROOT']);
+        self::assertSame('local', $env['RCLONE_CONFIG_SAMENAME_TYPE']);
+    }
+
+    #[Test]
+    public function compound_provider_flags_reject_wrapped_provider_name_collisions(): void
+    {
+        $wrapped = new LocalProvider('archive');
+        $crypt = new CryptProvider('archive', ['remote' => $wrapped]);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('ARCHIVE');
+
+        $crypt->flags();
+    }
+
+    #[Test]
+    public function compound_provider_flags_merge_when_remote_names_are_unique(): void
+    {
+        $wrapped = new LocalProvider('archive');
+        $crypt = new CryptProvider('encrypted', ['remote' => $wrapped]);
+
+        $flags = $crypt->flags();
+
+        self::assertSame('crypt', $flags['RCLONE_CONFIG_ENCRYPTED_TYPE']);
+        self::assertSame('local', $flags['RCLONE_CONFIG_ARCHIVE_TYPE']);
+        self::assertSame('ARCHIVE:', $flags['RCLONE_CONFIG_ENCRYPTED_REMOTE']);
+    }
+
+    #[Test]
+    public function related_rclones_inherit_parent_filter(): void
+    {
+        $parent = (new Rclone(new LocalProvider('parent')))
+            ->withFilter(FilterBuilder::create()->include('*.txt'));
+
+        $method = new ReflectionMethod(Rclone::class, 'newRelatedRclone');
+        $method->setAccessible(true);
+
+        $child = $method->invoke($parent, new LocalProvider('child'));
+
+        $reflection = new ReflectionClass(Rclone::class);
+        $filterProperty = $reflection->getProperty('filter');
+        $filterProperty->setAccessible(true);
+
+        $childFilter = $filterProperty->getValue($child);
+
+        self::assertInstanceOf(FilterBuilder::class, $childFilter);
+        self::assertNotSame($filterProperty->getValue($parent), $childFilter);
+        self::assertSame(['--include', '*.txt'], $childFilter->toArgs());
     }
 }

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-06-20
+
+### Added
+- `TemporaryPath` for owner-only temporary directories and unique temporary remote names.
+- Instance-scoped `withFlags()`, `withEnvs()`, `withTimeout()`, and `withIdleTimeout()` options for long-lived workers.
+- `SFtpProvider` `private_key` alias that maps to rclone `key_pem`.
+- Config-only tests for SFTP private-key handling and temporary-path safety.
+
+### Changed
+- Provider environment variable collisions now fail fast instead of silently overwriting conflicting values.
+- Internal upload/download helper remotes now use unique names per operation.
+- Automatic download directories are created with `0700` permissions.
+- Fast `make test` now includes configuration/security tests.
+
+### Removed
+- Support for provider names that normalize to an empty rclone remote name.
+- Ambiguous SFTP configs that combine `key_pem` with `key_file`.
+
 ## [4.0.0] - 2025-01-XX
 
 ### Added
@@ -70,5 +88,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progress tracking improvements
 - Initial provider implementations
 
-[Unreleased]: https://github.com/verseles/flyclone/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/verseles/flyclone/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/verseles/flyclone/compare/v4.3.0...v5.0.0
 [4.0.0]: https://github.com/verseles/flyclone/compare/v3.0.0...v4.0.0

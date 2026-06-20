@@ -81,7 +81,7 @@ services :
   test_configuration  :
     <<     : *commons
     build  : tests/Unit
-    command: phpunit ./tests/Unit/ConfigurationTest.php
+    command: phpunit ./tests/Unit/ConfigurationTest.php ./tests/Unit/SFtpProviderConfigTest.php ./tests/Unit/TemporaryPathTest.php
   test_edge_cases     :
     <<     : *commons
     build  : tests/Unit

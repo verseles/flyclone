@@ -78,14 +78,21 @@ abstract class AbstractProvider
         return $prefixed;
     }
 
-    public function name()
+    public function name(): string
     {
         return $this->name;
     }
 
-    public function backend($path = null)
+    public function backend($path = null): string
     {
         return $this->name() . ':' . $path;
+    }
+
+    public static function normalizeName(string $name): string
+    {
+        $name = strtoupper($name);
+
+        return preg_replace('/[^A-Z0-9]+/', '', $name) ?? '';
     }
 
     public function isDirAgnostic(): bool

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Verseles\Flyclone\Providers;
 
+use InvalidArgumentException;
+
 /**
  * Base provider class that other providers extend.
  *
@@ -15,8 +17,12 @@ class Provider extends AbstractProvider
     {
         $this->provider = $provider;
 
-        $name = strtoupper($name);
-        $name = preg_replace('/[^A-Z0-9]+/', '', $name);
+        $name = self::normalizeName($name);
+
+        if ($name === '') {
+            throw new InvalidArgumentException('Provider name must contain at least one ASCII letter or digit.');
+        }
+
         $this->name = $name;
 
         // Validate required fields if defined in subclass

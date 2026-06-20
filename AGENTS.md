@@ -41,7 +41,7 @@ As regras deste arquivo são **obrigatórias**.
 
 | Comando             | Descrição                                        |
 | ------------------- | ------------------------------------------------ |
-| `make test`         | Testes rápidos (extra_commands, upload_download) |
+| `make test`         | Testes rápidos (configuration, extra_commands, upload_download) |
 | `make test-offline` | Testes completos com containers                  |
 | `make init`         | `composer install`                               |
 | `make tog`          | Gera documentação para AI                        |

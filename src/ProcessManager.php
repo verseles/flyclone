@@ -174,17 +174,25 @@ class ProcessManager
         return $redacted;
     }
 
-    public function run(array $command, array $envs = [], ?callable $onProgress = null, ?int $timeout = null): Process
-    {
+    public function run(
+        array $command,
+        array $envs = [],
+        ?callable $onProgress = null,
+        ?int $timeout = null,
+        ?int $idleTimeout = null,
+        ?string $input = null,
+    ): Process {
         $this->lastCommand = $command;
         $this->lastEnvs = $envs;
 
         $process = new Process($command, sys_get_temp_dir(), $envs);
         $process->setTimeout($timeout ?? self::getTimeout());
-        $process->setIdleTimeout(self::getIdleTimeout());
+        $process->setIdleTimeout($idleTimeout ?? self::getIdleTimeout());
 
-        if (! empty(self::getInput())) {
-            $process->setInput(self::getInput());
+        $input ??= self::getInput();
+
+        if ($input !== '') {
+            $process->setInput($input);
         }
 
         return $this->execute($process, $onProgress);

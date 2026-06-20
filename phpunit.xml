@@ -23,6 +23,9 @@
             <directory>tests</directory>
         </testsuite>
         <testsuite name="offline_no_docker">
+            <file>tests/Unit/ConfigurationTest.php</file>
+            <file>tests/Unit/SFtpProviderConfigTest.php</file>
+            <file>tests/Unit/TemporaryPathTest.php</file>
             <file>tests/Unit/LocalProviderTest.php</file>
         </testsuite>
         <testsuite name="offline">
