@@ -1,256 +1,108 @@
 # Verseles\Flyclone
 
-PHP wrapper for [rclone](https://rclone.org/) - the Swiss army knife of cloud storage.
+PHP 8.4+ wrapper for [rclone](https://rclone.org/), focused on safe, testable file operations across local disks, S3-compatible storage, SFTP, FTP, Google Drive, Dropbox, Mega, B2, and the rest of rclone's backends.
 
 [![PHPUnit](https://img.shields.io/github/actions/workflow/status/verseles/flyclone/phpunit.yml?style=for-the-badge&label=PHPUnit)](https://github.com/verseles/flyclone/actions)
 [![PHP](https://img.shields.io/badge/PHP-8.4+-777bb4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
 [![License](https://img.shields.io/badge/License-CC--BY--NC--SA--4.0-green?style=for-the-badge)](LICENSE.md)
 
-Flyclone provides an intuitive, object-oriented interface for interacting with rclone. Transfer files between 70+ cloud providers with progress tracking, detailed statistics, and robust error handling.
+## Why Flyclone
 
-## Features
-
-- **70+ Storage Backends** - Local, S3, SFTP, FTP, Dropbox, Google Drive, Mega, B2, and more
-- **Fluent API** - Clean, chainable interface for all rclone operations
-- **Progress Tracking** - Real-time transfer progress with speed, ETA, and percentage
-- **Transfer Statistics** - Detailed stats (bytes, files, speed, errors) after each operation
-- **Encryption Support** - Transparent encryption via CryptProvider
-- **Union Filesystems** - Merge multiple providers into a single virtual filesystem
-- **Type-Safe Errors** - Specific exceptions for each rclone exit code
-- **Automatic Retry** - Exponential backoff for transient failures
-- **Filtering API** - Fluent builder for include/exclude patterns
-- **Security First** - Secrets redaction in errors, credential validation warnings
-- **Debug Mode** - Command introspection and structured logging
+- Object-oriented providers around rclone remotes.
+- Single-remote and two-remote operations through the same `Rclone` class.
+- Transfer statistics and optional progress callbacks.
+- Typed exceptions for rclone exit codes.
+- Retry support with exponential backoff.
+- Fluent include/exclude filters.
+- Debug logging with secret redaction.
+- v5 safety hardening for long-lived workers: instance-scoped options, provider collision detection, safe temporary remotes, private temp directories, and inline SFTP key support.
 
 ## Requirements
 
 - PHP >= 8.4
-- [rclone](https://rclone.org/install/) binary in PATH
+- `ext-json`
+- `rclone` binary available in `PATH`, or configured with `Rclone::setBIN()`
 
 ## Installation
 
 ```bash
-composer require verseles/flyclone
+composer require verseles/flyclone:^5.0
 ```
 
 ## Quick Start
 
 ```php
-use Verseles\Flyclone\Rclone;
 use Verseles\Flyclone\Providers\LocalProvider;
 use Verseles\Flyclone\Providers\S3Provider;
+use Verseles\Flyclone\Rclone;
 
-// Single provider - operations on one remote
-$local = new LocalProvider('myDisk');
-$rclone = new Rclone($local);
-$files = $rclone->ls('/path/to/files');
+$local = new LocalProvider('local_disk');
 
-// Two providers - transfer between remotes
-$s3 = new S3Provider('myS3', [
+$s3 = new S3Provider('archive_bucket', [
     'access_key_id' => 'YOUR_KEY',
     'secret_access_key' => 'YOUR_SECRET',
     'region' => 'us-east-1',
 ]);
+
 $rclone = new Rclone($local, $s3);
-$result = $rclone->copy('/local/data', 'my-bucket/backup');
+$result = $rclone->copy('/var/backups', 'my-bucket/backups');
 
 if ($result->success) {
     echo "Transferred {$result->stats->bytes} bytes at {$result->stats->speed_human}";
 }
 ```
 
-## Supported Providers
-
-| Provider | Class | Notes |
-|----------|-------|-------|
-| Local filesystem | `LocalProvider` | |
-| Amazon S3 / MinIO | `S3Provider` | S3-compatible |
-| SFTP | `SFtpProvider` | SSH File Transfer |
-| FTP | `FtpProvider` | |
-| Dropbox | `DropboxProvider` | |
-| Google Drive | `GDriveProvider` | |
-| Mega.nz | `MegaProvider` | |
-| Backblaze B2 | `B2Provider` | |
-| **Encryption** | `CryptProvider` | Wraps any provider |
-| **Union** | `UnionProvider` | Merges multiple providers |
-
-> All [70+ rclone backends](https://rclone.org/overview/) can be used via the generic `Provider` class.
-
-## Advanced Features
-
-### Encryption with CryptProvider
+For one-remote operations, pass only one provider:
 
 ```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\S3Provider;
-use Verseles\Flyclone\Providers\CryptProvider;
-
-$s3 = new S3Provider('myS3', [/* config */]);
-$encrypted = new CryptProvider('encrypted', [
-    'password' => Rclone::obscure('my-secret-password'),
-    'password2' => Rclone::obscure('my-salt'),
-], $s3);
-
-$rclone = new Rclone($encrypted);
-$rclone->copy('/local/sensitive-data', '/encrypted-bucket/backup');
-// Files are transparently encrypted before upload
+$files = (new Rclone($local))->ls('/var/backups');
 ```
 
-### Union Filesystem
+## Providers
+
+| Backend | Class | Notes |
+| --- | --- | --- |
+| Local filesystem | `LocalProvider` | Local paths and temporary helper remotes |
+| Amazon S3 / MinIO / R2 | `S3Provider` | S3-compatible flags map to rclone env config |
+| SFTP | `SFtpProvider` | Supports password, `key_file`, and v5 inline `key_pem`/`private_key` |
+| FTP | `FtpProvider` | FTP/FTPS |
+| Google Drive | `GDriveProvider` | OAuth/config-driven rclone backend |
+| Dropbox | `DropboxProvider` | OAuth/config-driven rclone backend |
+| Mega.nz | `MegaProvider` | Mega backend |
+| Backblaze B2 | `B2Provider` | B2 backend |
+| Encrypted remote | `CryptProvider` | Wraps another provider |
+| Union filesystem | `UnionProvider` | Merges upstream providers |
+| Any other rclone backend | `Provider` | Generic provider class |
+
+Provider names are normalized to rclone-safe uppercase remote names. In v5, names that normalize to an empty value are rejected, and conflicting provider environment variables fail fast instead of being silently overwritten.
+
+## Core Operations
 
 ```php
-use Verseles\Flyclone\Rclone;
-use Verseles\Flyclone\Providers\LocalProvider;
-use Verseles\Flyclone\Providers\S3Provider;
-use Verseles\Flyclone\Providers\UnionProvider;
+$rclone = new Rclone($sourceProvider, $destProvider);
 
-$local = new LocalProvider('cache', ['root' => '/tmp/cache']);
-$s3 = new S3Provider('archive', [/* config */]);
-
-$union = new UnionProvider('combined', [
-    'action_policy' => 'all',
-    'create_policy' => 'ff',
-], [$local, $s3]);
-
-$rclone = new Rclone($union);
-$files = $rclone->ls('/'); // Lists files from both local and S3
+$rclone->copy('/source/dir', '/dest/dir');
+$rclone->copyto('/source/file.txt', '/dest/file.txt');
+$rclone->move('/source/dir', '/dest/dir');
+$rclone->moveto('/source/file.txt', '/dest/file.txt');
+$rclone->sync('/source/dir', '/dest/dir');
+$rclone->delete('/path/to/delete');
 ```
 
-### Global Configuration
+Upload and download helpers create unique temporary local remotes internally:
 
 ```php
-// Set rclone binary path (auto-detected by default)
-Rclone::setBIN('/custom/path/to/rclone');
+$rclone = new Rclone($s3);
 
-// Set global flags for all operations
-Rclone::setFlags(['checksum' => true, 'verbose' => true]);
+$rclone->upload_file('/tmp/report.pdf', 'bucket/reports/report.pdf');
+$download = $rclone->download_to_local('bucket/reports/report.pdf');
 
-// Set environment variables
-Rclone::setEnvs(['RCLONE_BUFFER_SIZE' => '64M']);
-
-// Set timeouts
-Rclone::setTimeout(300);     // Max execution time (seconds)
-Rclone::setIdleTimeout(120); // Idle timeout (seconds)
-
-// Prefer instance-scoped options for long-lived workers
-$rclone->withFlags(['checksum' => true])
-    ->withTimeout(300)
-    ->withIdleTimeout(120);
-
-// Obscure passwords
-$obscured = Rclone::obscure('plain-password');
+echo $download->local_path;
 ```
 
-### Error Handling
+## SFTP Private Keys
 
-```php
-use Verseles\Flyclone\Exception\FileNotFoundException;
-use Verseles\Flyclone\Exception\DirectoryNotFoundException;
-use Verseles\Flyclone\Exception\TemporaryErrorException;
-
-try {
-    $rclone->copy($source, $dest);
-} catch (FileNotFoundException $e) {
-    // File doesn't exist - no retry needed
-} catch (DirectoryNotFoundException $e) {
-    // Directory doesn't exist
-} catch (TemporaryErrorException $e) {
-    // Temporary error - retry may succeed
-    if ($e->isRetryable()) {
-        // Can check programmatically
-    }
-    // Rich context available
-    $context = $e->getContext(); // ['command' => '...', 'provider' => '...']
-}
-```
-
-### Automatic Retry
-
-```php
-use Verseles\Flyclone\RetryHandler;
-
-// Simple retry configuration
-$rclone->retry(maxAttempts: 5, baseDelayMs: 1000)
-    ->copy($source, $dest);
-
-// Advanced retry with custom handler
-$handler = RetryHandler::create()
-    ->maxAttempts(5)
-    ->baseDelay(500)
-    ->multiplier(2.0)
-    ->maxDelay(30000)
-    ->onRetry(fn($attempt, $e) => logger("Retry $attempt: {$e->getMessage()}"));
-
-$rclone->withRetry($handler)->copy($source, $dest);
-```
-
-### Filtering
-
-```php
-use Verseles\Flyclone\FilterBuilder;
-
-// Filter by extension and size
-$rclone->withFilter(
-    FilterBuilder::create()
-        ->extensions(['jpg', 'png', 'gif'])
-        ->minSize('100K')
-        ->maxSize('50M')
-        ->exclude('**/thumbnails/**')
-)->copy($source, $dest);
-
-// Filter by age
-$rclone->withFilter(
-    FilterBuilder::create()
-        ->newerThan('7d')  // Last 7 days
-        ->include('*.log')
-)->sync($source, $dest);
-```
-
-### Dry-Run Mode
-
-```php
-// Preview what would happen without making changes
-$rclone->dryRun(true)->sync($source, $dest);
-
-// Check if dry-run is enabled
-if ($rclone->isDryRun()) {
-    echo "Running in simulation mode";
-}
-```
-
-### Health Check
-
-```php
-// Verify provider connectivity
-$health = $rclone->healthCheck();
-
-if ($health->healthy) {
-    echo "Connected in {$health->latency_ms}ms";
-} else {
-    echo "Failed: {$health->error}";
-}
-```
-
-### Debugging
-
-```php
-use Verseles\Flyclone\Logger;
-
-// Enable debug mode to log all commands
-Logger::setDebugMode(true);
-
-// After an operation, inspect what was executed
-$rclone->copy($source, $dest);
-echo $rclone->getLastCommand();  // "rclone copy ..."
-
-// Get redacted environment variables
-$envs = $rclone->getLastEnvs();  // Secrets are [REDACTED]
-
-// Retrieve all debug logs
-$logs = Logger::getLogs();
-```
-
-### SFTP Private Keys
+Prefer inline PEM keys in v5. Flyclone passes the value to rclone as `RCLONE_CONFIG_<REMOTE>_KEY_PEM`; no key file is created by Flyclone.
 
 ```php
 use Verseles\Flyclone\Providers\SFtpProvider;
@@ -258,95 +110,230 @@ use Verseles\Flyclone\Providers\SFtpProvider;
 $sftp = new SFtpProvider('deploy', [
     'host' => 'sftp.example.com',
     'user' => 'deploy',
-    // Passed as RCLONE_CONFIG_DEPLOY_KEY_PEM; no key file is created by Flyclone.
     'private_key' => $privateKeyPem,
+    'key_use_agent' => false,
 ]);
 ```
+
+`private_key` is a convenience alias for `key_pem`. `key_pem` and `key_file` are mutually exclusive.
+
+## Encryption
+
+`CryptProvider` wraps another provider through the required `remote` flag.
+
+```php
+use Verseles\Flyclone\Providers\CryptProvider;
+use Verseles\Flyclone\Providers\S3Provider;
+use Verseles\Flyclone\Rclone;
+
+$s3 = new S3Provider('raw_archive', [
+    'access_key_id' => 'YOUR_KEY',
+    'secret_access_key' => 'YOUR_SECRET',
+    'region' => 'us-east-1',
+]);
+
+$encrypted = new CryptProvider('encrypted_archive', [
+    'remote' => $s3,
+    'remote_path' => 'encrypted-prefix',
+    'password' => Rclone::obscure('my-secret-password'),
+    'password2' => Rclone::obscure('my-salt'),
+]);
+
+(new Rclone($encrypted))->copy('/local/sensitive-data', '/');
+```
+
+## Union Filesystems
+
+`UnionProvider` receives upstream providers through `upstream_providers`.
+
+```php
+use Verseles\Flyclone\Providers\LocalProvider;
+use Verseles\Flyclone\Providers\S3Provider;
+use Verseles\Flyclone\Providers\UnionProvider;
+use Verseles\Flyclone\Rclone;
+
+$cache = new LocalProvider('cache', ['root' => '/tmp/cache']);
+$archive = new S3Provider('archive', [/* config */]);
+
+$union = new UnionProvider('combined', [
+    'upstream_providers' => [$cache, $archive],
+    'action_policy' => 'all',
+    'create_policy' => 'ff',
+]);
+
+$files = (new Rclone($union))->ls('/');
+```
+
+## Configuration
+
+Static configuration is still available and is captured by new `Rclone` instances at construction time:
+
+```php
+Rclone::setBIN('/custom/path/to/rclone');
+Rclone::setFlags(['checksum' => true]);
+Rclone::setEnvs(['RCLONE_BUFFER_SIZE' => '64M']);
+Rclone::setTimeout(300);
+Rclone::setIdleTimeout(120);
+```
+
+For long-lived workers, prefer instance-scoped options:
+
+```php
+$rclone = (new Rclone($source, $dest))
+    ->withFlags(['checksum' => true])
+    ->withEnvs(['RCLONE_BUFFER_SIZE' => '64M'])
+    ->withTimeout(300)
+    ->withIdleTimeout(120);
+```
+
+## Filtering
+
+```php
+use Verseles\Flyclone\FilterBuilder;
+
+$filter = FilterBuilder::create()
+    ->extensions(['jpg', 'png', 'gif'])
+    ->minSize('100K')
+    ->maxSize('50M')
+    ->exclude('**/thumbnails/**');
+
+$rclone->withFilter($filter)->copy('/source', '/dest');
+```
+
+## Progress, Retry, And Dry Run
+
+```php
+use Verseles\Flyclone\RetryHandler;
+
+$handler = RetryHandler::create()
+    ->maxAttempts(5)
+    ->baseDelay(500)
+    ->multiplier(2.0)
+    ->maxDelay(30000)
+    ->onRetry(fn (int $attempt, Throwable $e) => logger("Retry {$attempt}: {$e->getMessage()}"));
+
+$progress = function (object $progress): void {
+    echo $progress->percentage . "%\n";
+};
+
+$rclone->withRetry($handler)
+    ->dryRun(false)
+    ->copy('/source', '/dest', onProgress: $progress);
+```
+
+## Error Handling
+
+```php
+use Verseles\Flyclone\Exception\DirectoryNotFoundException;
+use Verseles\Flyclone\Exception\FileNotFoundException;
+use Verseles\Flyclone\Exception\TemporaryErrorException;
+
+try {
+    $rclone->copy('/source', '/dest');
+} catch (FileNotFoundException|DirectoryNotFoundException $e) {
+    // Permanent user/input error.
+} catch (TemporaryErrorException $e) {
+    if ($e->isRetryable()) {
+        // Retry may succeed.
+    }
+
+    $context = $e->getContext();
+}
+```
+
+## Debugging
+
+```php
+use Verseles\Flyclone\Logger;
+
+Logger::setDebugMode(true);
+
+$rclone->copy('/source', '/dest');
+
+echo $rclone->getLastCommand();
+$envs = $rclone->getLastEnvs(); // Secrets are redacted.
+$logs = Logger::getLogs();
+```
+
+## Utilities
+
+```php
+$remotes = Rclone::listRemotes();
+$config = Rclone::configDump();
+$md5 = $rclone->md5sum('/path');
+$sha1 = $rclone->sha1sum('/path');
+$health = $rclone->healthCheck('/');
+```
+
+## v5 Breaking Changes
+
+- Provider names that normalize to an empty rclone remote name now throw `InvalidArgumentException`.
+- Conflicting provider env vars now throw `LogicException` instead of overwriting values.
+- Two providers with the same normalized remote name and different config now fail fast.
+- Existing `Rclone` instances no longer observe later changes to static flags/envs/timeouts; use `withFlags()`, `withEnvs()`, `withTimeout()`, and `withIdleTimeout()` for per-instance updates.
+- `SFtpProvider` rejects ambiguous `key_pem` plus `key_file` configuration.
+
+See [MIGRATION.md](MIGRATION.md) for migration notes.
 
 ## Testing
 
 ```bash
-# Install dependencies
 composer install
 
-# Run quick tests
+# Fast local/offline checks
+composer test-local
 make test
 
-# Run full offline test suite (requires podman-compose)
+# Full offline provider suite, when podman-compose is available
 make test-offline
 
-# Run specific provider tests (requires .env configuration)
-make test_dropbox
-make test_gdrive
+# Static analysis and formatting
+composer analyse
+composer run-script format-check
 ```
+
+Provider-specific tests such as `make test_dropbox` and `make test_gdrive` require a configured `.env`.
 
 ## Architecture
 
-Flyclone v4 uses a modular architecture:
+Flyclone v5 is organized around small components:
 
 | Component | Responsibility |
-|-----------|---------------|
-| `Rclone` | Main orchestrator, public API |
-| `ProcessManager` | Process execution, binary detection, error mapping |
-| `CommandBuilder` | Command construction, environment variables |
+| --- | --- |
+| `Rclone` | Public API and operation orchestration |
+| `Provider` and subclasses | rclone remote configuration |
+| `CommandBuilder` | Command arguments and environment variables |
+| `ProcessManager` | Symfony Process execution and binary detection |
 | `StatsParser` | Transfer statistics parsing |
 | `ProgressParser` | Real-time progress parsing |
-| `RetryHandler` | Exponential backoff retry mechanism |
-| `FilterBuilder` | Fluent API for include/exclude patterns |
+| `RetryHandler` | Retry policy and backoff |
+| `FilterBuilder` | Include/exclude filter construction |
 | `TemporaryPath` | Private temp directories and unique temporary remote names |
-| `SecretsRedactor` | Sensitive data redaction in errors/logs |
-| `Logger` | Structured logging with debug mode |
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for new functionality
-4. Ensure all tests pass: `make test-offline`
-5. Submit a pull request
+| `SecretsRedactor` | Secret redaction for errors/logs/envs |
+| `Logger` | Structured debug logging |
 
 ## Changelog
 
 ### v5.0.0
 
-- Fail fast on conflicting provider environment variable collisions.
-- Reject provider names that normalize to an empty rclone remote name.
-- Add instance-scoped flags/envs/timeouts for long-lived workers.
-- Generate unique temporary local provider names for upload/download helpers.
-- Create automatic download temp directories with owner-only permissions.
-- Add `SFtpProvider` `private_key` alias for rclone `key_pem` and reject ambiguous `key_pem` + `key_file` configs.
-- Include configuration/security tests in the fast make test path.
+- Hardened provider configuration for long-lived workers.
+- Added instance-scoped flags, envs, and timeouts.
+- Added provider env collision detection.
+- Added remote-name collision detection.
+- Added safe temporary local provider names.
+- Added private temporary download directories.
+- Added SFTP inline private key support via `key_pem`/`private_key`.
+- Added configuration/security tests to the fast test path.
 
-### v4.0.0 (In Development)
+### v4.x
 
-**Feature 1: Core Refactoring (alpha)**
-- Extracted `ProcessManager`, `CommandBuilder`, `StatsParser`, `ProgressParser` from monolithic `Rclone` class
-- Fixed `CryptProvider` and `UnionProvider` - now fully functional
-- Added `ConfigurationTest` (13 tests) and `EdgeCasesTest` (13 tests)
-- Migrated to `podman-compose`
-
-**Feature 2: Security & DX (beta)**
-- Added `SecretsRedactor` - automatic redaction of sensitive data in errors
-- Added `RetryHandler` - exponential backoff for transient failures
-- Added `FilterBuilder` - fluent API for include/exclude patterns
-- Added `Logger` - structured logging with debug mode
-- Added `healthCheck()` - provider connectivity verification
-- Added `dryRun()` - simulation mode for operations
-- Added command introspection (`getLastCommand()`, `getLastEnvs()`)
-- Added exception context (`isRetryable()`, `getContext()`)
-- Added credential validation warnings for plaintext passwords
-- Added `Feature2Test` (28 tests), 125+ tests total
-
-**Feature 3: Polish & Release (rc)**
-- Integrated PHPStan (level 5) and Laravel Pint (PSR-12) with CI
-- Added new commands: `bisync()`, `md5sum()`, `sha1sum()`
-- Added static utilities: `listRemotes()`, `configFile()`, `configDump()`
-- Formatted entire codebase with `declare(strict_types=1)`
-- All tests passing (150+ tests)
+- Modularized `Rclone` internals into process, command, stats, progress, retry, filter, logger, and redaction components.
+- Added typed exception context, health checks, dry-run mode, command introspection, and static utilities.
+- Added `CryptProvider` and `UnionProvider` support.
 
 ### v3.x
-- Transfer operations return detailed statistics object
-- Progress tracking improvements
+
+- Added detailed transfer statistics and progress tracking improvements.
 
 ## License
 
