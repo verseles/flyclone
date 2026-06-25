@@ -20,28 +20,17 @@ abstract class AbstractTwoProvidersTest extends TestCase
 
     // Added the new trait for progress testing capabilities
 
-    protected string $leftProviderName = 'undefined_disk_left' {
-        get => $this->leftProviderName;
-        set => $value;
-    }
+    // Name for the left (source) provider
+    protected string $leftProviderName = 'undefined_disk_left';
 
- // Name for the left (source) provider
-    protected string $rightProviderName = 'undefined_disk_right' {
-        get => $this->rightProviderName;
-        set => $value;
-    }
-
-// Name for the right (destination) provider
-    protected string $left_working_directory = '/tmp/flyclone_left' {
-        get => $this->left_working_directory;
-        set => $value;
-    }
+    // Name for the right (destination) provider
+    protected string $rightProviderName = 'undefined_disk_right';
 
     // Base working directory for the left provider
-    protected string $right_working_directory = '/tmp/flyclone_right' {
-        get => $this->right_working_directory;
-        set => $value;
-    } // Base working directory for the right provider
+    protected string $left_working_directory = '/tmp/flyclone_left';
+
+    // Base working directory for the right provider
+    protected string $right_working_directory = '/tmp/flyclone_right';
 
     /**
      * Instantiates the left provider. Must be implemented by concrete test classes.
